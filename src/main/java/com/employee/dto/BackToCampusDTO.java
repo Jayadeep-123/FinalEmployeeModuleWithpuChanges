@@ -27,4 +27,7 @@ public class BackToCampusDTO {
 	
 	// Optional - Capture checklist details similar to forward to central office
 	private String checkListIds; // Optional - Comma-separated checklist IDs
+	
+	private Integer UpdatedBy;
+	
 }

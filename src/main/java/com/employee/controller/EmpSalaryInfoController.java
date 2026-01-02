@@ -50,15 +50,28 @@ public class EmpSalaryInfoController {
 	 * @param salaryInfoDTO Contains tempPayrollId, salary info, checklist IDs, etc.
 	 * @return ResponseEntity with the updated SalaryInfoDTO
 	 */
-	@PostMapping("/forward-to-central-office/{tempPayrollId}")
-	public ResponseEntity<SalaryInfoDTO> forwardToCentralOffice(
-	    @RequestBody SalaryInfoDTO salaryInfoDTO,
-	    @PathVariable String tempPayrollId) {
-	    // Ensure tempPayrollId is set in the DTO (from path variable, overriding body if needed)
-	    salaryInfoDTO.setTempPayrollId(tempPayrollId);
-	    SalaryInfoDTO result = empSalaryInfoService.forwardToCentralOffice(salaryInfoDTO);
-	    return new ResponseEntity<>(result, HttpStatus.OK);
-	}
+    @PostMapping("/forward-to-central-office/{tempPayrollId}")
+    public ResponseEntity<SalaryInfoDTO> forwardToCentralOffice(
+        @RequestBody SalaryInfoDTO salaryInfoDTO,
+        @PathVariable String tempPayrollId) {
+       
+        // Ensure tempPayrollId is set in the DTO
+        // Logic to handle potential placeholder in URL (e.g. from Swagger if not filled properly)
+        if (tempPayrollId != null && !tempPayrollId.equals("{tempPayrollId}") && !tempPayrollId.trim().isEmpty()) {
+            salaryInfoDTO.setTempPayrollId(tempPayrollId);
+            System.out.println("Using tempPayrollId from PathVariable: " + tempPayrollId);
+        } else {
+            // If path variable is placeholder or empty, ensure DTO has a value from body
+            if (salaryInfoDTO.getTempPayrollId() == null || salaryInfoDTO.getTempPayrollId().trim().isEmpty()) {
+                 throw new com.employee.exception.ResourceNotFoundException("tempPayrollId is required in either path or request body.");
+            }
+            System.out.println("Using tempPayrollId from RequestBody: " + salaryInfoDTO.getTempPayrollId());
+        }
+       
+        SalaryInfoDTO result = empSalaryInfoService.forwardToCentralOffice(salaryInfoDTO);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+ 
 	
 	/**
 	 * POST endpoint to send employee back to campus

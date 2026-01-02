@@ -7,7 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
  
 import com.employee.dto.CentralOfficeChecklistDTO;
 import com.employee.dto.RejectBackToDODTO;
@@ -56,6 +58,9 @@ public class CentralOfficeLevelService {
    
     @Autowired
     private EmpSalaryInfoRepository empSalaryInfoRepository;
+    
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
  
     public CentralOfficeChecklistDTO updateChecklist(CentralOfficeChecklistDTO checklistDTO) {
         // Validation: Check if tempPayrollId is provided
@@ -249,9 +254,9 @@ public class CentralOfficeLevelService {
         City citydata = cityrepository.findById(city_id)
             .orElseThrow(() -> new ResourceNotFoundException("City not found for city_id: " + city_id));
  
-        // 3. Find Organization or throw
+        // 3. Find Organization or throw (READ-ONLY - just for validation and getting payrollCode)
         Integer org_id_wrapper = employee.getOrg_id();
- 
+
         if (org_id_wrapper == null) {
             logger.error("CRITICAL: Cannot generate permanent ID for emp_id: {}. Organization ID (org_id) is missing.", employee.getEmp_id());
             throw new ResourceNotFoundException("Cannot generate permanent ID: The Organization ID (org_id) is missing for employee: " + employee.getEmp_id());
@@ -259,23 +264,46 @@ public class CentralOfficeLevelService {
        
         int org_id = org_id_wrapper.intValue();
        
+        // Read organization to validate it exists (READ-ONLY - no updates to master table)
         Organization org_data = organizationrepository.findById(org_id)
             .orElseThrow(() -> new ResourceNotFoundException("Organization not found for org_id: " + org_id));
- 
+        
+        // Validate organization is active (optional check)
+        if (org_data.getIsActive() != 1) {
+            logger.warn("Organization (org_id: {}) is not active, but proceeding with ID generation", org_id);
+        }
+
         // --- All data is present, proceed with logic ---
        
         String payrole_city_code = citydata.getPayroll_city_code();
         long pay_role_code = org_data.getPayrollCode();
+        
+        // Build prefix pattern: city_code + org_code (e.g., "55" + "400" = "55400")
+        String prefix = payrole_city_code + pay_role_code;
        
-        // --- NEW INCREMENT LOGIC ---
-        long current_max_number = org_data.getPayrollMaxNo();
-        long new_max_number = current_max_number + 1; // Increment by 1
+        // --- FIND MAX EXISTING PAYROLL ID (instead of reading from organization table) ---
+        String maxExistingPayrollId = employeeRepository.findMaxPayrollIdByKey(prefix + "%");
+        long new_max_number = 1; // Default to 1 if no existing IDs found
+        
+        if (maxExistingPayrollId != null && maxExistingPayrollId.startsWith(prefix)) {
+            try {
+                // Extract the number part after the prefix
+                String numberPart = maxExistingPayrollId.substring(prefix.length());
+                long current_max_number = Long.parseLong(numberPart);
+                new_max_number = current_max_number + 1; // Increment by 1
+                logger.info("Found max existing payroll ID: {}. Incrementing to: {}", maxExistingPayrollId, new_max_number);
+            } catch (NumberFormatException e) {
+                logger.warn("Could not parse number part from max payroll ID: {}. Starting from 1.", maxExistingPayrollId);
+                new_max_number = 1;
+            }
+        } else {
+            logger.info("No existing payroll IDs found with prefix: {}. Starting from 1.", prefix);
+        }
        
-        logger.info("Incrementing payroll number for org_id {}: from {} to {}",
-                    org_id, current_max_number, new_max_number);
+        logger.info("Generating new payroll ID for org_id {}: prefix={}, next_number={}", org_id, prefix, new_max_number);
        
         // Use the NEW incremented number to build the ID
-        String permanentId = payrole_city_code + pay_role_code + new_max_number;
+        String permanentId = prefix + new_max_number;
        
         // --- SAVE TO EMPLOYEE TABLE ---
         employee.setPayRollId(permanentId);
@@ -284,28 +312,63 @@ public class CentralOfficeLevelService {
  
  
         // --- SAVE TO EMP_SALARY_INFO TABLE ---
-        logger.info("Updating EmpSalaryInfo record for emp_id: {}", employee.getEmp_id());
-       
-        EmpSalaryInfo salInfo = empSalaryInfoRepository.findByEmpIdAndIsActive(employee.getEmp_id(), 1)
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Active EmpSalaryInfo record not found for emp_id: " + employee.getEmp_id()
-                + ". Cannot save permanent payroll ID."));
- 
-        salInfo.setPayrollId(permanentId);
-        empSalaryInfoRepository.save(salInfo); // Save this record now
-        logger.info("Successfully saved payroll ID to EmpSalaryInfo for emp_id: {}", employee.getEmp_id());
- 
- 
- 
-        // --- SAVE THE INCREMENTED NUMBER BACK TO THE ORGANIZATION ---
-        org_data.setPayrollMaxNo(new_max_number);
-        organizationrepository.save(org_data); // Save the updated counter
-        logger.info("Successfully updated and saved new payrollMaxNo ({}) to Organization (org_id: {})",
-                    new_max_number, org_id);
- 
+        // Update payroll_id in EmpSalaryInfo table using native SQL
+        updateEmpSalaryInfoPayrollId(employee.getEmp_id(), permanentId);
+
+        // NOTE: Organization table is a master table (read-only). We don't update it.
+        // The payroll number sequence is maintained by querying existing permanent payroll IDs.
+        logger.info("Generated permanent payroll ID: {} for emp_id: {} (organization table not updated - master table)", permanentId, employee.getEmp_id());
+
         return permanentId;
     }
-   
+    
+    /**
+     * Update EmpSalaryInfo.payroll_id using native SQL in a completely isolated transaction
+     * Uses TransactionTemplate to ensure complete isolation from main transaction
+     * If this fails due to trigger issues, it will NOT affect the main transaction
+     */
+    private void updateEmpSalaryInfoPayrollId(Integer empId, String payrollId) {
+        // Create a new transaction template with REQUIRES_NEW propagation
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        // Set read-only to false (default) and isolation level
+        transactionTemplate.setReadOnly(false);
+        
+        try {
+            // Execute in separate transaction - any exception here will only rollback this transaction
+            transactionTemplate.executeWithoutResult(status -> {
+                try {
+                    // Use native SQL UPDATE to update only payroll_id field
+                    int updatedRows = empSalaryInfoRepository.updatePayrollIdOnly(empId, payrollId);
+                    
+                    if (updatedRows > 0) {
+                        logger.info("Successfully updated payroll_id to '{}' in EmpSalaryInfo for emp_id: {}", payrollId, empId);
+                    } else {
+                        logger.warn("No rows updated when setting payroll_id in EmpSalaryInfo for emp_id: {}. Record may not exist or be inactive.", empId);
+                    }
+                } catch (Exception e) {
+                    // Log the error - this will cause the separate transaction to rollback
+                    logger.error("Database error updating payroll_id in EmpSalaryInfo for emp_id: {} (separate transaction). " +
+                                "Error: {}. This separate transaction will rollback, but main transaction continues.", empId, e.getMessage());
+                    // Rethrow to trigger rollback of ONLY this separate transaction
+                    throw new RuntimeException("EmpSalaryInfo update failed", e);
+                }
+            });
+        } catch (org.springframework.transaction.TransactionException e) {
+            // Catch transaction-level exceptions
+            logger.error("Transaction error updating EmpSalaryInfo.payroll_id for emp_id: {} (separate transaction). " +
+                        "Main transaction (Employee.payrollId) is NOT affected. Error: {}", empId, e.getMessage());
+        } catch (org.springframework.dao.DataAccessException e) {
+            // Catch data access exceptions (JDBC, Hibernate, etc.)
+            logger.error("Data access error updating EmpSalaryInfo.payroll_id for emp_id: {} (separate transaction). " +
+                        "Main transaction (Employee.payrollId) is NOT affected. Error: {}", empId, e.getMessage());
+        } catch (Exception e) {
+            // Catch any other exception - main transaction is NOT affected
+            logger.error("Unexpected error updating EmpSalaryInfo.payroll_id for emp_id: {} (separate transaction). " +
+                        "Main transaction (Employee.payrollId) is NOT affected. Error: {}", empId, e.getMessage());
+        }
+    }
+    
     /**
      * Reject and send employee back to DO (Demand Officer)
      * This method is called when Central Office rejects an employee application

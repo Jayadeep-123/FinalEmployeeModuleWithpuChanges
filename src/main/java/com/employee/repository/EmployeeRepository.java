@@ -78,6 +78,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
        @Query("SELECT MAX(e.tempPayrollId) FROM Employee e WHERE e.tempPayrollId LIKE :keyPrefix")
        String findMaxTempPayrollIdByKey(@Param("keyPrefix") String keyPrefix);
        
+       // Find max permanent payroll ID that matches the prefix pattern
+       @Query("SELECT MAX(e.payRollId) FROM Employee e WHERE e.payRollId IS NOT NULL AND e.payRollId LIKE :keyPrefix")
+       String findMaxPayrollIdByKey(@Param("keyPrefix") String keyPrefix);
+       
        @Query("SELECT e FROM Employee e WHERE e.primary_mobile_no = :mobileNo")
        Optional<Employee> findByPrimary_mobile_no(@Param("mobileNo") Long mobileNo);
        
