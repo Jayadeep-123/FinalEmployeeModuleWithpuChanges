@@ -406,7 +406,7 @@ public class EmployeeBasicInfoTabService {
      * Helper: Save EmpDetails entity (handles update/create logic)
      */
     private void saveEmpDetailsEntity(EmpDetails empDetails, Employee employee, Integer updatedBy) {
-        Optional<EmpDetails> existingDetails = empDetailsRepository.findById(employee.getEmp_id());
+        Optional<EmpDetails> existingDetails = empDetailsRepository.findByEmployeeId(employee.getEmp_id());
         if (existingDetails.isPresent()) {
             updateEmpDetailsFields(existingDetails.get(), empDetails);
             // Set updated_by and updated_date for UPDATE mode
@@ -441,6 +441,7 @@ public class EmployeeBasicInfoTabService {
         if (existingPf.isPresent()) {
             EmpPfDetails existing = existingPf.get();
             existing.setPre_esi_no(empPfDetails.getPre_esi_no());
+            existing.setUan_no(empPfDetails.getUan_no());
             existing.setIs_active(empPfDetails.getIs_active());
             // Set updated_by and updated_date for UPDATE mode
             if (updatedBy != null) {
@@ -680,7 +681,7 @@ public class EmployeeBasicInfoTabService {
         }
 
         if (basicInfo.getTempPayrollId() != null && !basicInfo.getTempPayrollId().trim().isEmpty()) {
-            employee.setTempPayrollId(basicInfo.getTempPayrollId());
+            employee.setTempPayrollId(basicInfo.getTempPayrollId().trim());
         }
 
         if (basicInfo.getCreatedBy() != null && basicInfo.getCreatedBy() > 0) {
@@ -957,6 +958,8 @@ public class EmployeeBasicInfoTabService {
         target.setCaste_id(source.getCaste_id());
         target.setReligion_id(source.getReligion_id());
         target.setMarital_status_id(source.getMarital_status_id());
+        target.setFatherName(source.getFatherName());
+        target.setUanNo(source.getUanNo());
         target.setIs_active(source.getIs_active());
         // Status field removed from Employee entity - removed setStatus call
     }
@@ -977,6 +980,8 @@ public class EmployeeBasicInfoTabService {
         target.setCaste_id(source.getCaste_id());
         target.setReligion_id(source.getReligion_id());
         target.setMarital_status_id(source.getMarital_status_id());
+        target.setFatherName(source.getFatherName());
+        target.setUanNo(source.getUanNo());
         target.setIs_active(source.getIs_active());
         // Status field removed from Employee entity - removed setStatus call
     }
@@ -999,6 +1004,7 @@ public class EmployeeBasicInfoTabService {
         EmpPfDetails empPfDetails = new EmpPfDetails();
         empPfDetails.setEmployee_id(employee);
         empPfDetails.setPre_esi_no(basicInfo.getPreEsiNum());
+        empPfDetails.setUan_no(basicInfo.getPreUanNum());
         empPfDetails.setIs_active(1);
 
         // Set created_by and created_date (required NOT NULL columns)
@@ -1463,7 +1469,7 @@ public class EmployeeBasicInfoTabService {
      */
     private int saveExperienceEntities(Employee employee, PreviousEmployerInfoDTO previousEmployerInfo, Integer createdBy, Integer updatedBy) {
         List<EmpExperienceDetails> experienceEntities = prepareExperienceEntities(previousEmployerInfo, employee, createdBy);
-        updateOrCreateExperienceEntities(experienceEntities, employee, updatedBy);
+        updateOrCreateExperienceEntities(experienceEntities, employee, previousEmployerInfo, updatedBy); // Pass DTO to handle documents
         return experienceEntities.size();
     }
 
@@ -1578,10 +1584,11 @@ public class EmployeeBasicInfoTabService {
     }
 
     /**
-     * Helper: Update or create Experience entities
+     * Helper: Update or create Experience entities and their associated documents
      */
-    private void updateOrCreateExperienceEntities(List<EmpExperienceDetails> newExperience, Employee employee, Integer updatedBy) {
+    private void updateOrCreateExperienceEntities(List<EmpExperienceDetails> newExperience, Employee employee, PreviousEmployerInfoDTO dto, Integer updatedBy) {
         int empId = employee.getEmp_id();
+        Integer createdBy = dto.getCreatedBy();
 
         List<EmpExperienceDetails> existingExperience = empExperienceDetailsRepository.findAll().stream()
                 .filter(exp -> exp.getEmployee_id() != null && exp.getEmployee_id().getEmp_id() == empId && exp.getIs_active() == 1)
@@ -1595,26 +1602,92 @@ public class EmployeeBasicInfoTabService {
                 newExp.setEmployee_id(employee);
                 newExp.setIs_active(1);
 
+                EmpExperienceDetails savedExp;
                 if (i < existingExperience.size()) {
                     EmpExperienceDetails existing = existingExperience.get(i);
                     updateExperienceFields(existing, newExp);
-                    // Set updated_by and updated_date on update
                     if (updatedBy != null && updatedBy > 0) {
                         existing.setUpdated_by(updatedBy);
                         existing.setUpdated_date(LocalDateTime.now());
                     }
-                    empExperienceDetailsRepository.save(existing);
+                    savedExp = empExperienceDetailsRepository.save(existing);
                 } else {
-                    empExperienceDetailsRepository.save(newExp);
+                    savedExp = empExperienceDetailsRepository.save(newExp);
+                }
+
+                // Handle documents for this employer
+                if (dto.getPreviousEmployers().get(i).getDocuments() != null) {
+                    saveEmployerDocuments(employee, savedExp, dto.getPreviousEmployers().get(i).getDocuments(), createdBy, updatedBy);
                 }
             } else if (i < existingExperience.size()) {
-                existingExperience.get(i).setIs_active(0);
+                EmpExperienceDetails expToDelete = existingExperience.get(i);
+                expToDelete.setIs_active(0);
                 if (updatedBy != null && updatedBy > 0) {
-                    existingExperience.get(i).setUpdated_by(updatedBy);
-                    existingExperience.get(i).setUpdated_date(LocalDateTime.now());
+                    expToDelete.setUpdated_by(updatedBy);
+                    expToDelete.setUpdated_date(LocalDateTime.now());
                 }
-                empExperienceDetailsRepository.save(existingExperience.get(i));
+                empExperienceDetailsRepository.save(expToDelete);
+               
+                // Deactivate associated documents
+                deactivateExperienceDocuments(expToDelete.getEmp_exp_detl_id(), updatedBy);
             }
+        }
+    }
+
+    /**
+     * Helper: Save documents for a specific experience record
+     */
+    private void saveEmployerDocuments(Employee employee, EmpExperienceDetails experience, List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docs, Integer createdBy, Integer updatedBy) {
+        // Deactivate existing documents for this experience record to handle updates (simple replace strategy for sub-lists)
+        deactivateExperienceDocuments(experience.getEmp_exp_detl_id(), updatedBy);
+
+        for (PreviousEmployerInfoDTO.ExperienceDocumentDTO docDTO : docs) {
+            if (docDTO.getDocPath() == null || docDTO.getDocPath().trim().isEmpty() || "string".equalsIgnoreCase(docDTO.getDocPath().trim())) {
+                continue;
+            }
+
+            EmpDocuments doc = new EmpDocuments();
+            doc.setEmp_id(employee);
+            doc.setEmp_exp_detl_id(experience);
+            doc.setDoc_path(docDTO.getDocPath().trim());
+            doc.setIs_verified(0);
+            doc.setIs_active(1);
+           
+            if (docDTO.getDocTypeId() != null) {
+                doc.setEmp_doc_type_id(empDocTypeRepository.findById(docDTO.getDocTypeId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Document Type not found with ID: " + docDTO.getDocTypeId())));
+            } else {
+                // Default to "Experience Certificate" or similar if type not provided?
+                // For now, let's assume docTypeId is mandatory for experience docs.
+                throw new ResourceNotFoundException("Document Type ID is required for experience documents");
+            }
+
+            doc.setCreated_by(createdBy != null ? createdBy : 1);
+            doc.setCreated_date(LocalDateTime.now());
+            if (updatedBy != null) {
+                doc.setUpdated_by(updatedBy);
+                doc.setUpdated_date(LocalDateTime.now());
+            }
+
+            empDocumentsRepository.save(doc);
+        }
+    }
+
+    /**
+     * Helper: Deactivate all documents for a specific experience record
+     */
+    private void deactivateExperienceDocuments(int expId, Integer updatedBy) {
+        List<EmpDocuments> existingDocs = empDocumentsRepository.findAll().stream()
+                .filter(d -> d.getEmp_exp_detl_id() != null && d.getEmp_exp_detl_id().getEmp_exp_detl_id() == expId && d.getIs_active() == 1)
+                .collect(Collectors.toList());
+       
+        for (EmpDocuments doc : existingDocs) {
+            doc.setIs_active(0);
+            if (updatedBy != null) {
+                doc.setUpdated_by(updatedBy);
+                doc.setUpdated_date(LocalDateTime.now());
+            }
+            empDocumentsRepository.save(doc);
         }
     }
 
@@ -2041,6 +2114,20 @@ public class EmployeeBasicInfoTabService {
                         (employer.getCompanyAddressLine2() != null ? " " + employer.getCompanyAddressLine2() : "");
                 if (companyAddress.trim().length() > 50) {
                     throw new ResourceNotFoundException("Company Address cannot exceed 50 characters");
+                }
+
+                // Validate documents for this employer
+                if (employer.getDocuments() != null) {
+                    for (PreviousEmployerInfoDTO.ExperienceDocumentDTO doc : employer.getDocuments()) {
+                        if (doc.getDocPath() == null || doc.getDocPath().trim().isEmpty() || "string".equalsIgnoreCase(doc.getDocPath().trim())) {
+                            continue;
+                        }
+                        if (doc.getDocTypeId() == null) {
+                            throw new ResourceNotFoundException("Document Type ID is required for documents of company: " + employer.getCompanyName());
+                        }
+                        empDocTypeRepository.findById(doc.getDocTypeId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Document Type with ID " + doc.getDocTypeId() + " not found or inactive for company: " + employer.getCompanyName()));
+                    }
                 }
             }
         }

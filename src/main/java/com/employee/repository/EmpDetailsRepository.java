@@ -28,5 +28,8 @@ public interface EmpDetailsRepository extends JpaRepository<EmpDetails, Integer>
 	
 	@Query("SELECT ed FROM EmpDetails ed WHERE ed.personal_email = :personalEmail AND ed.employee_id.emp_id != :empId")
 	Optional<EmpDetails> findByPersonal_emailExcludingEmpId(@Param("personalEmail") String personalEmail, @Param("empId") Integer empId);
+	
+	@Query("SELECT ed FROM EmpDetails ed WHERE ed.employee_id.emp_id = :empId")
+    Optional<EmpDetails> findByEmployeeId(@Param("empId") Integer empId);
 }
 

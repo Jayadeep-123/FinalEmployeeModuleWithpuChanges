@@ -29,7 +29,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetails, Intege
      * 3. 'b.isActive' is correct (isActive from BankDetails)
      */
 	@Query("SELECT b FROM BankDetails b " +
-	           "JOIN FETCH b.empPaymentType pt " +
+	          
 	           "WHERE b.empId.emp_id = :empId AND b.isActive = 1")
 	    List<BankDetails> findActiveBankDetailsByEmpId(@Param("empId") int empId);
 
