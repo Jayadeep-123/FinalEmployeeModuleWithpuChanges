@@ -54,5 +54,7 @@ public interface CampusRepository extends JpaRepository<Campus, Integer> {
      */
     @Query("SELECT c FROM Campus c WHERE c.isActive = :isActive")
     List<Campus> findByIsActive(@Param("isActive") Integer isActive);
-
+    
+    @Query("SELECT c FROM Campus c WHERE c.city_id = :cityId AND c.isActive = 1")
+    List<Campus> findCampusesByCityId(@Param("cityId") int cityId);
 }

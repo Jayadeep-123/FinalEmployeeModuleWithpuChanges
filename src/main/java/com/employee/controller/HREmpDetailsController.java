@@ -26,7 +26,9 @@ import com.employee.dto.EmployeeCampusInfoDTO;
 import com.employee.dto.EmployeeCurrentInfoDTO;
 import com.employee.dto.EmployeeRelationDTO;
 import com.employee.dto.FamilyMemberInOrgDTO;
+import com.employee.entity.EmpProfileView;
 import com.employee.entity.EmployeeBasicInfoView;
+import com.employee.service.GetEmpDetailsService;
 //import com.employee.service.EmpDocTypeService;
 import com.employee.service.HREmpDetlService;
 
@@ -36,6 +38,7 @@ import com.employee.service.HREmpDetlService;
 public class HREmpDetailsController {
 	
 	@Autowired HREmpDetlService hrEmpDetlService;
+	@Autowired GetEmpDetailsService getEmpDetailsService;
 	
 //	@Autowired
 //	private EmpDocTypeService empDocTypeService;
@@ -162,8 +165,25 @@ public class HREmpDetailsController {
     }
     
     
+//    
+//    @GetMapping("/EmpProfileView/{payrollId}") // 1. Change path variable name to 'payrollId'
+//	public ResponseEntity<?> getProfileByPayrollId(@PathVariable String payrollId) { // 2. Change method name and path variable parameter
+//	    
+//	    // 3. Call the correct service method with the correct parameter
+//	    Optional<EmpProfileView> profile = getEmpDetailsService.getProfileByPayrollId(payrollId);
+//	    
+//	    if (profile.isPresent()) {
+//	        return ResponseEntity.ok(profile.get());
+//	    } else {
+//	        // 4. Update the error message to show which ID was searched
+//	        return ResponseEntity.status(404).body("No employee found for PayrollId: " + payrollId);
+//	    }
+//	}
     
-   
     
+    @GetMapping("/EmpProfileView/{payrollId}")
+    public Optional<EmpProfileView> getProfileByPayrollId(@PathVariable String payrollId) {
+        return getEmpDetailsService.getProfileByPayrollId(payrollId);
+    }
     
 }

@@ -29,7 +29,7 @@ import com.employee.dto.EmployeeAgreementDetailsDto;
 import com.employee.dto.EmployeeBankDetailsResponseDTO;
 import com.employee.dto.EmployeeCampusInfoDTO;
 import com.employee.dto.EmployeeCurrentInfoDTO;
-import com.employee.dto.EmployeeCurrentInfoDTO.SubjectInfo;
+//import com.employee.dto.EmployeeCurrentInfoDTO.SubjectInfo;
 import com.employee.dto.EmployeeRelationDTO;
 import com.employee.dto.FamilyMemberInOrgDTO;
 import com.employee.dto.QualificationDetailsDto;
@@ -254,40 +254,74 @@ public class HREmpDetlService {
 	        return response;
 	    }
 	    
+//	    public EmployeeCurrentInfoDTO getCurrentInfoByPayrollId(String payrollId) {
+//
+//	        // ✅ Use your existing Optional<Employee> method
+//	        Optional<Employee> optionalEmp = employeeRepository.findByPayRollId(payrollId);
+//
+//	        if (optionalEmp.isEmpty()) {
+//	            throw new RuntimeException("Employee not found for payrollId: " + payrollId);
+//	        }
+//
+//	        Employee emp = optionalEmp.get();
+//
+//	        // Fetch subjects assigned to this employee
+//	        List<EmpSubject> empSubjects = empSubjectRepository.findActiveSubjectsByEmpId(emp.getEmp_id());
+//	        
+//	        List<SubjectInfo> subjectInfoList = empSubjects.stream()
+//	                .map(sub -> new SubjectInfo(
+//	                        // 1. Subject Name
+//	                        sub.getSubject_id() != null ? sub.getSubject_id().getSubject_name() : null,
+//	                        
+//	                        // 2. Agreed Per Week (Mapped from your single DB column)
+//	                        sub.getAgree_no_period() 
+//	                ))
+//	                .collect(Collectors.toList());
+//
+//	        // Prepare final DTO
+//	        EmployeeCurrentInfoDTO dto = new EmployeeCurrentInfoDTO();
+//	        dto.setEmployeeName(emp.getFirst_name() + " " + emp.getLast_name());
+//	        dto.setDateOfJoining(emp.getDate_of_join());
+//	        dto.setHiredBy(emp.getEmployee_hired() != null
+//	                ? emp.getEmployee_hired().getFirst_name() + " " + emp.getEmployee_hired().getLast_name()
+//	                : null);
+//	        dto.setReferredBy(emp.getEmployee_reference() != null
+//	                ? emp.getEmployee_reference().getFirst_name() + " " + emp.getEmployee_reference().getLast_name()
+//	                : null);
+//	        dto.setSubjects(subjectInfoList);
+//
+//	        return dto;
+//	    }
+	    
 	    public EmployeeCurrentInfoDTO getCurrentInfoByPayrollId(String payrollId) {
 
-	        // ✅ Use your existing Optional<Employee> method
+	        // 1. Fetch Employee
 	        Optional<Employee> optionalEmp = employeeRepository.findByPayRollId(payrollId);
-
 	        if (optionalEmp.isEmpty()) {
-	            throw new RuntimeException("Employee not found for payrollId: " + payrollId);
+	            throw new RuntimeException("Employee not found");
 	        }
-
 	        Employee emp = optionalEmp.get();
 
-	        // Fetch subjects assigned to this employee
-	        List<EmpSubject> empSubjects = empSubjectRepository.findActiveSubjectsByEmpId(emp.getEmp_id());
-
-	        List<SubjectInfo> subjectInfoList = empSubjects.stream()
-	                .map(sub -> new SubjectInfo(
-	                        sub.getSubject_id() != null ? sub.getSubject_id().getSubject_name(): null,
-//	                        sub.getDepartmentId() != null ? sub.getDepartmentId().getDepartmentName() : null,
-//	                        sub.getDesignationId() != null ? sub.getDesignationId().getDesignationName() : null,
-	                        sub.getAgree_no_period()
-	                ))
-	                .collect(Collectors.toList());
-
-	        // Prepare final DTO
+	        // 2. Prepare DTO
 	        EmployeeCurrentInfoDTO dto = new EmployeeCurrentInfoDTO();
 	        dto.setEmployeeName(emp.getFirst_name() + " " + emp.getLast_name());
 	        dto.setDateOfJoining(emp.getDate_of_join());
-	        dto.setHiredBy(emp.getEmployee_hired() != null
-	                ? emp.getEmployee_hired().getFirst_name() + " " + emp.getEmployee_hired().getLast_name()
-	                : null);
-	        dto.setReferredBy(emp.getEmployee_reference() != null
-	                ? emp.getEmployee_reference().getFirst_name() + " " + emp.getEmployee_reference().getLast_name()
-	                : null);
-	        dto.setSubjects(subjectInfoList);
+	        dto.setHiredBy(emp.getEmployee_hired() != null ? emp.getEmployee_hired().getFirst_name() : null);
+	        dto.setReferredBy(emp.getEmployee_reference() != null ? emp.getEmployee_reference().getFirst_name() : null);
+
+	        // 3. Fetch Subjects and Set the FIRST one found
+	        List<EmpSubject> empSubjects = empSubjectRepository.findActiveSubjectsByEmpId(emp.getEmp_id());
+
+	        if (!empSubjects.isEmpty()) {
+	            EmpSubject firstSubject = empSubjects.get(0); // ✅ Get the first subject
+	            
+	            dto.setSubjectName(firstSubject.getSubject_id() != null ? firstSubject.getSubject_id().getSubject_name() : null);
+	            dto.setAgreedPerWeek(firstSubject.getAgree_no_period());
+	        } else {
+	            // Optional: Handle case where no subject exists
+	            dto.setSubjectName(null);
+	            dto.setAgreedPerWeek(0);
+	        }
 
 	        return dto;
 	    }

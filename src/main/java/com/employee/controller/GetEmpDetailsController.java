@@ -49,19 +49,19 @@ public class GetEmpDetailsController {
 //        return getEmpDetailsService.getFamilyDetailsByEmpId(empId);
 //    }
 	
-	@GetMapping("/EmpProfileView/{payrollId}") // 1. Change path variable name to 'payrollId'
-	public ResponseEntity<?> getProfileByPayrollId(@PathVariable String payrollId) { // 2. Change method name and path variable parameter
-	    
-	    // 3. Call the correct service method with the correct parameter
-	    Optional<EmpProfileView> profile = getEmpDetailsService.getProfileByPayrollId(payrollId);
-	    
-	    if (profile.isPresent()) {
-	        return ResponseEntity.ok(profile.get());
-	    } else {
-	        // 4. Update the error message to show which ID was searched
-	        return ResponseEntity.status(404).body("No employee found for PayrollId: " + payrollId);
-	    }
-	}
+//	@GetMapping("/EmpProfileView/{payrollId}") // 1. Change path variable name to 'payrollId'
+//	public ResponseEntity<?> getProfileByPayrollId(@PathVariable String payrollId) { // 2. Change method name and path variable parameter
+//	    
+//	    // 3. Call the correct service method with the correct parameter
+//	    Optional<EmpProfileView> profile = getEmpDetailsService.getProfileByPayrollId(payrollId);
+//	    
+//	    if (profile.isPresent()) {
+//	        return ResponseEntity.ok(profile.get());
+//	    } else {
+//	        // 4. Update the error message to show which ID was searched
+//	        return ResponseEntity.status(404).body("No employee found for PayrollId: " + payrollId);
+//	    }
+//	}
   
 	
 	@GetMapping("/EmployeeOnboardingProfileCardView/{tempPayrollId}")

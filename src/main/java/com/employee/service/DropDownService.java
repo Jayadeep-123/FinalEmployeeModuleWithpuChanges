@@ -12,6 +12,7 @@ import com.employee.dto.Dgmdto;
 import com.employee.dto.GenericDropdownDTO;
 import com.employee.dto.OrganizationDTO;
 import com.employee.entity.Building;
+import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
 import com.employee.entity.Department;
 import com.employee.entity.Employee;
@@ -399,5 +400,16 @@ public class DropDownService {
 		}).collect(Collectors.toList());
 		return resultdata != null ? resultdata : null;
 	}
+	
+	
+public List<GenericDropdownDTO> getCampusesByCity(int cityId) {
+    // Call the new repository method
+    List<Campus> campuses = campusRepository.findCampusesByCityId(cityId);
+    
+    // Convert to GenericDropdownDTO
+    return campuses.stream()
+            .map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName()))
+            .collect(Collectors.toList());
+}
 
 }

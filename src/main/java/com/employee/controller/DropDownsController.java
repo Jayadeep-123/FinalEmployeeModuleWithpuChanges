@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.CampusContactDTO;
@@ -457,4 +458,10 @@ public class DropDownsController {
         List<Relation> relations = empDropdownService.getAll();
         return new ResponseEntity<>(relations, HttpStatus.OK);
     }
+	
+	
+	@GetMapping("/campuses/by-city")
+	public ResponseEntity<List<GenericDropdownDTO>> getCampusesByCity(@RequestParam int cityId) {
+	    return ResponseEntity.ok(empDropdownService.getCampusesByCity(cityId));
+	}
 }
