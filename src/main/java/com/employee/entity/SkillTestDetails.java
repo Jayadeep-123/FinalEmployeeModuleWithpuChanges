@@ -141,8 +141,8 @@ public class SkillTestDetails {
     private String password;
     
     // Foreign key to sce_skill_test_approval_status table
-    @Column(name = "skill_test_approval_status_id")
-    private Integer skillTestApprovalStatusId;
+    @Column(name = "group_id")
+    private Integer groupId;
     
     // Foreign key to sce_emp_type table
     @ManyToOne(fetch = FetchType.LAZY)

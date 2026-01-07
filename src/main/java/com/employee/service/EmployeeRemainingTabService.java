@@ -1222,6 +1222,14 @@ public class EmployeeRemainingTabService {
             } else {
                 throw new ResourceNotFoundException("IFSC Code is required (NOT NULL column)");
             }
+
+            // New contact fields (Personal)
+            personalAccount.setBankManagerName(bankInfo.getPersonalAccount().getBankManagerName());
+            personalAccount.setBankManagerContactNo(bankInfo.getPersonalAccount().getBankManagerContactNo());
+            personalAccount.setBankManagerEmail(bankInfo.getPersonalAccount().getBankManagerEmail());
+            personalAccount.setCustomerRelationshipOfficerName(bankInfo.getPersonalAccount().getCustomerRelationshipOfficerName());
+            personalAccount.setCustomerRelationshipOfficerContactNo(bankInfo.getPersonalAccount().getCustomerRelationshipOfficerContactNo());
+            personalAccount.setCustomerRelationshipOfficerEmail(bankInfo.getPersonalAccount().getCustomerRelationshipOfficerEmail());
  
 // payableAt is only for salary account, not personal account
             personalAccount.setIsActive(1);
@@ -1315,6 +1323,14 @@ public class EmployeeRemainingTabService {
                     && !bankInfo.getSalaryAccount().getPayableAt().trim().isEmpty()) {
                 salaryAccount.setPayableAt(bankInfo.getSalaryAccount().getPayableAt().trim());
             }
+
+            // New contact fields (Salary)
+            salaryAccount.setBankManagerName(bankInfo.getSalaryAccount().getBankManagerName());
+            salaryAccount.setBankManagerContactNo(bankInfo.getSalaryAccount().getBankManagerContactNo());
+            salaryAccount.setBankManagerEmail(bankInfo.getSalaryAccount().getBankManagerEmail());
+            salaryAccount.setCustomerRelationshipOfficerName(bankInfo.getSalaryAccount().getCustomerRelationshipOfficerName());
+            salaryAccount.setCustomerRelationshipOfficerContactNo(bankInfo.getSalaryAccount().getCustomerRelationshipOfficerContactNo());
+            salaryAccount.setCustomerRelationshipOfficerEmail(bankInfo.getSalaryAccount().getCustomerRelationshipOfficerEmail());
             salaryAccount.setIsActive(1);
  
 // Set created_by only if provided from frontend, otherwise don't set it (entity default will be used)
@@ -1395,6 +1411,12 @@ public class EmployeeRemainingTabService {
         target.setAccType(source.getAccType());
         target.setBankStatementChequePath(source.getBankStatementChequePath());
         target.setIsActive(source.getIsActive());
+        target.setBankManagerName(source.getBankManagerName());
+        target.setBankManagerContactNo(source.getBankManagerContactNo());
+        target.setBankManagerEmail(source.getBankManagerEmail());
+        target.setCustomerRelationshipOfficerName(source.getCustomerRelationshipOfficerName());
+        target.setCustomerRelationshipOfficerContactNo(source.getCustomerRelationshipOfficerContactNo());
+        target.setCustomerRelationshipOfficerEmail(source.getCustomerRelationshipOfficerEmail());
     }
  
 // ============================================================================
