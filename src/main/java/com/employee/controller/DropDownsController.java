@@ -208,16 +208,15 @@ public class DropDownsController {
 		return ResponseEntity.ok(costCenters);
 	}
 
-	@GetMapping("/organizations/active")
-	public ResponseEntity<?> getActiveOrganizations() {
-		List<OrganizationDTO> organizations = empDropdownService.getAllActiveOrganizations();
-
-		if (organizations == null || organizations.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No active organizations found");
-		}
-
-		return ResponseEntity.ok(organizations);
-	}
+	@GetMapping("/organizations/active") 
+    public ResponseEntity<List<OrganizationDTO>> getOrganizationsWithPayroll() {
+        List<OrganizationDTO> orgs = empDropdownService.getOrganizationsWithPayrollDetails();
+        
+        if (orgs.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+        return new ResponseEntity<>(orgs, HttpStatus.OK);
+    }
 
 	@GetMapping("/{campusId}/organizations")
 	public ResponseEntity<?> getOrganizations(@PathVariable int campusId) {

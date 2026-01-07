@@ -245,12 +245,16 @@ public class DropDownService {
 				.collect(Collectors.toList());
 	}
 
-	public List<OrganizationDTO> getAllActiveOrganizations() {
-		return organizationRepo.findByIsActive(1).stream()
-				.map(org -> new OrganizationDTO(org.getOrganizationId(), org.getOrganizationName(),
-						org.getOrganizationType(), org.getOrganizationAddress(), org.getOrganizationCode(),
-						org.getOrganizationHead()))
-				.collect(Collectors.toList());
+	public List<OrganizationDTO> getOrganizationsWithPayrollDetails() {
+	    // 1. Fetch active orgs with valid payroll data
+	    return organizationRepo.findByIsActiveAndPayrollCodeIsNotNullAndPayrollMaxNoIsNotNull(1)
+	            .stream()
+	            // 2. Map Entity fields to your new simple DTO
+	            .map(org -> new OrganizationDTO(
+	                    org.getOrganizationId(),  // Entity field
+	                    org.getOrganizationName() // Entity field
+	            ))
+	            .collect(Collectors.toList());
 	}
 
 	public List<GenericDropdownDTO> getOrganizationsByCampusId(int campusId) {
