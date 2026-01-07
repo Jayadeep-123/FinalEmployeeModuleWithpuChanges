@@ -32,12 +32,6 @@ public class EmpaddressInfo {
 	private Long emrg_contact_no;
 	private int is_active;
 	
-	// Note: district_id column does NOT exist in sce_emp_addrs table
-	// Removed relationship to prevent SQL errors
-	// If column is added later, uncomment below:
-	// @ManyToOne
-	// @JoinColumn(name = "district_id")
-	// private District district_id;
 	
 	@ManyToOne
 	@JoinColumn(name = "emp_id", nullable = false)

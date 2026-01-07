@@ -1942,10 +1942,17 @@ public class EmployeeBasicInfoTabService {
             }
         }
 
-        // Validate tempPayrollId against SkillTestDetl table if provided
+        // Validate tempPayrollId
+        // Rule: If employee already exists with this tempPayrollId, allow it (skip SkillTest check).
+        // Otherwise (new employee), tempPayrollId must exist in SkillTestDetails.
         if (tempPayrollId != null && !tempPayrollId.trim().isEmpty()) {
-            skillTestDetailsRepository.findByTempPayrollId(tempPayrollId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Temp Payroll ID not found in Skill Test Details: " + tempPayrollId + ". Please provide a valid temp payroll ID."));
+            boolean existsInEmployee = employeeRepository.findByTempPayrollId(tempPayrollId.trim()).isPresent();
+            if (!existsInEmployee) {
+                skillTestDetailsRepository.findByTempPayrollId(tempPayrollId.trim())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Temp Payroll ID not found in Skill Test Details: " + tempPayrollId
+                                + ". Please provide a valid temp payroll ID or use an existing employee's temp payroll ID."));
+            }
         }
     }
 

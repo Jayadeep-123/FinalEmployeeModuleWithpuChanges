@@ -1,8 +1,8 @@
 package com.employee.entity;
-
+ 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
+ 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -15,7 +15,7 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+ 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -44,19 +44,19 @@ public class SkillTestDetails {
     
     @Column(name = "previous_chaitanya_id", length = 50)
     private String previous_chaitanya_id;
-
+ 
     @Column(name = "first_name", length = 50)
     private String firstName;
     
     @Column(name = "last_name", length = 50)
     private String lastName;
-
+ 
     @Column(name = "dob")
     private LocalDate dob;
     
     @Column(name = "age")
     private Integer age;
-
+ 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gender_id")
     private Gender gender;
@@ -67,27 +67,27 @@ public class SkillTestDetails {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "marital_status_id")
     private MaritalStatus maritalStatus;
-
+ 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "qualification_id") 
+    @JoinColumn(name = "qualification_id")
     private Qualification qualification;
     
     @Column(name = "highest_qualification", length = 100)
     private String highestQualification;
-
+ 
     @Column(name = "total_experience")
     private Double totalExperience; // Changed from Long to Double (float8 in DDL)
-
+ 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "join_type_id") 
-    private JoiningAs joiningAs; 
-
+    @JoinColumn(name = "join_type_id")
+    private JoiningAs joiningAs;
+ 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stream_id") 
-    private Stream stream; 
-
+    @JoinColumn(name = "stream_id")
+    private Stream stream;
+ 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id") 
+    @JoinColumn(name = "subject_id")
     private Subject subject;
     
     @Column(name = "sections_to_be_handled", length = 100)
@@ -95,9 +95,9 @@ public class SkillTestDetails {
     
     @Column(name = "proposed_ctc_per_month")
     private Double proposedCtcPerMonth;
-
+ 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "emp_level_id") 
+    @JoinColumn(name = "emp_level_id")
     private EmployeeLevel employeeLevel;
     
     @Column(name = "agreed_periods_per_week")
@@ -124,11 +124,11 @@ public class SkillTestDetails {
     private LocalDateTime updatedDate;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "emp_structure_id") 
+    @JoinColumn(name = "emp_structure_id")
     private Structure empStructure;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "emp_grade_id") 
+    @JoinColumn(name = "emp_grade_id")
     private Grade empGrade;
     
     @Column(name = "email", length = 150)
@@ -141,8 +141,21 @@ public class SkillTestDetails {
     private String password;
     
     // Foreign key to sce_skill_test_approval_status table
-    @Column(name = "group_id")
-    private Integer groupId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "groupId" , referencedColumnName = "skill_test_approval_status_id")
+    private SkillTestApprovalStatus groupId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cmps_id")
+    private Campus campusId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id")
+    private City cityId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "building_id")
+    private Building buildingId;
     
     // Foreign key to sce_emp_type table
     @ManyToOne(fetch = FetchType.LAZY)
@@ -151,5 +164,6 @@ public class SkillTestDetails {
     @Column(name="created_date",insertable = false, updatable = false)
     private LocalDate joinDate;
     
-
+ 
 }
+ 

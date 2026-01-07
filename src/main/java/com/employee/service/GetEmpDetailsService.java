@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.employee.dto.AddressResponseDTO;
 import com.employee.dto.AllDocumentsDTO;
+import com.employee.dto.BankContactDTO;
 import com.employee.dto.BankInfoGetDTO;
 import com.employee.dto.CategoryInfoDTO1;
 import com.employee.dto.ChequeDetailsDto;
@@ -560,7 +561,9 @@ public class GetEmpDetailsService {
 	        return empQualificationRepository
 	                .findQualificationsByTempPayrollId(tempPayrollId);
 	    }
-	  
+
+
+
 	  
 	    
 	

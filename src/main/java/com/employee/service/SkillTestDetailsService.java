@@ -1,5 +1,5 @@
 package com.employee.service;
-
+ 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -8,15 +8,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
+ 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+ 
 import com.employee.dto.SkillTestDetailsDto;
 import com.employee.dto.SkillTestDetailsRequestDto;
 import com.employee.dto.SkillTestDetailsResultDto;
+import com.employee.entity.Building;
 import com.employee.entity.Campus;
+import com.employee.entity.City;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeLevel;
 import com.employee.entity.EmployeeType;
@@ -24,13 +26,16 @@ import com.employee.entity.Gender;
 import com.employee.entity.Grade;
 import com.employee.entity.JoiningAs;
 import com.employee.entity.Qualification;
+import com.employee.entity.SkillTestApprovalStatus;
 import com.employee.entity.SkillTestDetails;
 import com.employee.entity.SkillTestResult;
 import com.employee.entity.Stream;
 import com.employee.entity.Structure;
 import com.employee.entity.Subject;
 import com.employee.exception.ResourceNotFoundException;
+import com.employee.repository.BuildingRepository;
 import com.employee.repository.CampusRepository;
+import com.employee.repository.CityRepository;
 import com.employee.repository.EmployeeLevelRepository;
 import com.employee.repository.EmployeeRepository;
 import com.employee.repository.EmployeeTypeRepository;
@@ -38,19 +43,20 @@ import com.employee.repository.GenderRepository;
 import com.employee.repository.GradeRepository;
 import com.employee.repository.JoiningAsRepository;
 import com.employee.repository.QualificationRepository;
+import com.employee.repository.SkillTestApprovalStatusRepository;
 import com.employee.repository.SkillTestDetailsRepository;
 import com.employee.repository.SkillTestResultRepository;
 import com.employee.repository.StreamRepository;
 import com.employee.repository.StructureRepository;
 import com.employee.repository.SubjectRepository;
-
+ 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-
+ 
 @Slf4j
 @Service
 public class SkillTestDetailsService {
-
+ 
     @Autowired
     private SkillTestDetailsRepository skillTestDetailsRepository;
     @Autowired
@@ -68,9 +74,12 @@ public class SkillTestDetailsService {
     @Autowired StructureRepository structurerepository;
     @Autowired private EmployeeTypeRepository employeeTypeRepository;
     @Autowired SkillTestResultRepository skilltestresultrepository;
-
+    @Autowired private CityRepository cityRepository;
+    @Autowired private BuildingRepository buildingRepository;
+    @Autowired private SkillTestApprovalStatusRepository skillTestApprovalStatusRepository;
+ 
     private Map<String, AtomicInteger> campusCounters = new ConcurrentHashMap<>();
-
+ 
     @PostConstruct
     public void initializeCounters() {
         // ... (Counter logic remains exactly the same as before) ...
@@ -100,30 +109,30 @@ public class SkillTestDetailsService {
             campusCounters.put(baseKey, new AtomicInteger(lastValue));
         }
     }
-
+ 
     // ======================================
     // SAVE METHOD - UPDATED RETURN TYPE
     // ======================================
     @Transactional
     public SkillTestDetailsDto saveSkillTestDetails(SkillTestDetailsRequestDto requestDto, int emp_id) { // Returns Response DTO
-
+ 
         if (emp_id <= 0) {
             throw new IllegalArgumentException("Employee ID must be > 0");
         }
-
+ 
         // Validate createdBy is provided and valid (must be done early)
         if (requestDto.getCreatedBy() == null || requestDto.getCreatedBy() <= 0) {
             throw new ResourceNotFoundException("createdBy is required and must be greater than 0. Please provide the user ID who is creating this record.");
         }
-
+ 
         Employee employee = employeeRepository.findById(emp_id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
-
+ 
         Campus campus = employee.getCampus_id();
         if (campus == null) {
             throw new ResourceNotFoundException("Employee has no campus assigned");
         }
-
+ 
         // === Generate TempPayrollId ===
         String baseKey = "TEMP" + campus.getCode();
         
@@ -133,58 +142,82 @@ public class SkillTestDetailsService {
         int maxValue = 0;
         try { if (max1 != null) maxValue = Math.max(maxValue, Integer.parseInt(max1.substring(baseKey.length()))); } catch (Exception e) {}
         try { if (max2 != null) maxValue = Math.max(maxValue, Integer.parseInt(max2.substring(baseKey.length()))); } catch (Exception e) {}
-
+ 
         int nextValue = maxValue + 1;
         String generatedTempPayrollId = baseKey + String.format("%04d", nextValue);
         campusCounters.computeIfAbsent(baseKey, k -> new AtomicInteger(0)).set(nextValue);
-
+ 
         // === Aadhaar Validation ===
         if (requestDto.getAadhaarNo() != null && requestDto.getAadhaarNo() > 0) {
             String aadhaar = String.valueOf(requestDto.getAadhaarNo());
             if (!aadhaar.matches("^[0-9]{12}$")) throw new ResourceNotFoundException("Aadhaar must be exactly 12 digits");
             if (!isValidAadhaar(aadhaar)) throw new ResourceNotFoundException("Invalid Aadhaar (Verhoeff failed)");
         }
-
+ 
         // === Fetch Relations ===
         Gender gender = null;
         if (requestDto.getGenderId() != null && requestDto.getGenderId() > 0)
             gender = genderRepository.findById(requestDto.getGenderId()).orElseThrow(() -> new ResourceNotFoundException("Gender not found"));
-
+ 
         Qualification qualification = null;
         if (requestDto.getQualificationId() != null && requestDto.getQualificationId() > 0)
             qualification = qualificationRepository.findById(requestDto.getQualificationId()).orElseThrow(() -> new ResourceNotFoundException("Qualification not found"));
-
+ 
         JoiningAs joiningAs = null;
         if (requestDto.getJoiningAsId() != null && requestDto.getJoiningAsId() > 0)
             joiningAs = joiningAsRepository.findById(requestDto.getJoiningAsId()).orElseThrow(() -> new ResourceNotFoundException("JoiningAs not found"));
-
+ 
         Stream stream = null;
         if (requestDto.getStreamId() != null && requestDto.getStreamId() > 0)
             stream = streamRepository.findById(requestDto.getStreamId()).orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
-
+ 
         Subject subject = null;
         if (requestDto.getSubjectId() != null && requestDto.getSubjectId() > 0)
             subject = subjectRepository.findById(requestDto.getSubjectId()).orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
-
+ 
         EmployeeLevel employeeLevel = null;
         if (requestDto.getEmp_level_id() != null && requestDto.getEmp_level_id() > 0)
             employeeLevel = employeeLevelRepository.findById(requestDto.getEmp_level_id()).orElseThrow(() -> new ResourceNotFoundException("EmployeeLevel not found"));
-
+ 
         Grade grade = null;
         if (requestDto.getEmp_grade_id() != null && requestDto.getEmp_grade_id() > 0)
             grade = graderepository.findById(requestDto.getEmp_grade_id()).orElseThrow(() -> new ResourceNotFoundException("Grade not found"));
-
+ 
         Structure structure = null;
         if (requestDto.getEmp_structure_id() != null && requestDto.getEmp_structure_id() > 0)
             structure = structurerepository.findById(requestDto.getEmp_structure_id()).orElseThrow(() -> new ResourceNotFoundException("Structure not found"));
-
+ 
         EmployeeType employeeType = null;
         if (requestDto.getEmpTypeId() != null && requestDto.getEmpTypeId() > 0)
             employeeType = employeeTypeRepository.findById(requestDto.getEmpTypeId()).orElseThrow(() -> new ResourceNotFoundException("EmployeeType not found"));
-
+        
+        SkillTestApprovalStatus group = null;
+        if (requestDto.getGroupId() != null && requestDto.getGroupId() > 0) {
+            group = skillTestApprovalStatusRepository.findById(requestDto.getGroupId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Skill Test Approval Group not found"));
+        }
+ 
+        Campus detailCampus = null;
+        if (requestDto.getCmpsId() != null && requestDto.getCmpsId() > 0) {
+            detailCampus = campusrepository.findById(requestDto.getCmpsId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Campus not found for provided ID"));
+        }
+ 
+        City city = null;
+        if (requestDto.getCityId() != null && requestDto.getCityId() > 0) {
+            city = cityRepository.findById(requestDto.getCityId())
+                    .orElseThrow(() -> new ResourceNotFoundException("City not found"));
+        }
+ 
+        Building building = null;
+        if (requestDto.getBuildingId() != null && requestDto.getBuildingId() > 0) {
+            building = buildingRepository.findById(requestDto.getBuildingId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        }
+ 
         // === Create Entity ===
         SkillTestDetails newDetails = new SkillTestDetails();
-
+ 
         newDetails.setAadhaar_no(requestDto.getAadhaarNo());
         newDetails.setPrevious_chaitanya_id(requestDto.getPreviousChaitanyaId());
         newDetails.setFirstName(requestDto.getFirstName());
@@ -201,7 +234,7 @@ public class SkillTestDetailsService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("ddMMyyyy");
         String dobPart = requestDto.getDob().format(formatter);
         newDetails.setPassword(namePart + dobPart);
-
+ 
         // === Set Relations ===
         newDetails.setGender(gender);
         newDetails.setQualification(qualification);
@@ -213,12 +246,17 @@ public class SkillTestDetailsService {
         newDetails.setEmpStructure(structure);
         newDetails.setEmployeeType(employeeType);
         
+        newDetails.setGroupId(group);
+        newDetails.setCampusId(detailCampus);
+        newDetails.setCityId(city);
+        newDetails.setBuildingId(building);
+        
         // === Audit Fields ===
         // Set created_by from user input (Request DTO) - validation already done at method start
         newDetails.setCreatedBy(requestDto.getCreatedBy());
         newDetails.setCreatedDate(LocalDateTime.now());  
         newDetails.setIsActive(1);                       
-
+ 
         // === SAVE THE ENTITY ===
         SkillTestDetails savedDetails = skillTestDetailsRepository.save(newDetails);
         
@@ -285,16 +323,28 @@ public class SkillTestDetailsService {
             dto.setEmpTypeId(entity.getEmployeeType().getEmp_type_id());
             dto.setEmpTypeName(entity.getEmployeeType().getEmp_type());
         }
+        if (entity.getGroupId() != null) {
+            dto.setGroupId(entity.getGroupId().getSkillTestApprovalStatusId());
+        }
+        if (entity.getCampusId() != null) {
+            dto.setCampusId(entity.getCampusId().getCampusId());
+        }
+        if (entity.getCityId() != null) {
+            dto.setCityId(entity.getCityId().getCityId());
+        }
+        if (entity.getBuildingId() != null) {
+            dto.setBuildingId(entity.getBuildingId().getBuildingId());
+        }
         
         // Set audit fields
         dto.setCreatedBy(entity.getCreatedBy());
         
         return dto;
     }
-
+ 
     /**
      * Get skill test details by tempPayrollId
-     * 
+     *
      * @param tempPayrollId The temporary payroll ID
      * @return SkillTestDetailsDto containing all skill test details
      * @throws ResourceNotFoundException if skill test details not found
@@ -312,7 +362,7 @@ public class SkillTestDetailsService {
         
         return convertToDto(skillTestDetails);
     }
-
+ 
     // ... (isValidAadhaar remains the same) ...
     private boolean isValidAadhaar(String aadhaar) {
         // ... Verhoeff logic ...
@@ -328,53 +378,53 @@ public class SkillTestDetailsService {
     
     
     public List<SkillTestDetailsResultDto> get_details_of_passed_employees() {
-    	 
+    	
     			// 1. Get all results
     			List<SkillTestResult> testResults = skilltestresultrepository.findTestResultsWithIds();
-    	 
+    	
     			// Safety check for null list from Repo
     			if (testResults == null || testResults.isEmpty()) {
     				return new ArrayList<>();
     			}
-    	 
+    	
     			// 2. Filter for "PASS" and Extract IDs
     			List<Integer> passedIds = testResults.stream()
     					.filter(result -> result.getResult() != null && "PASS".equalsIgnoreCase(result.getResult()))
     					.filter(result -> result.getSkillTestDetlId() != null) // Prevent NullPointer
     					.map(result -> result.getSkillTestDetlId().getSkillTestDetlId()).collect(Collectors.toList());
-    	 
+    	
     			if (passedIds.isEmpty()) {
     				return new ArrayList<>();
     			}
-    	 
+    	
     			// 3. Fetch Details
     			List<SkillTestDetails> detailsEntities = skillTestDetailsRepository.findAllById(passedIds);
-    	 
+    	
     			// 4. Map to DTO
     			List<SkillTestDetailsResultDto> responseDtos = detailsEntities.stream().map(entity -> {
     				SkillTestDetailsResultDto dto = new SkillTestDetailsResultDto();
-    	 
+    	
     				// FIX 1: Added Space in Name
     				String fName = entity.getFirstName() != null ? entity.getFirstName() : "";
     				String lName = entity.getLastName() != null ? entity.getLastName() : "";
     				dto.setEmployeeName((fName + " " + lName).trim());
-    	 
+    	
     				dto.setTempPayrollId(entity.getTempPayrollId());
     				dto.setJoinDate(entity.getJoinDate());
-    	 
+    	
     				// FIX 2: Ensure getGenderName() exists in your Gender Entity!
     				if (entity.getGender() != null) {
     					dto.setGender(entity.getGender().getGenderName());
     				} else {
     					dto.setGender("N/A");
     				}
-    	 
+    	
     				// Note: Remarks, joinDate, leftDate are still null
     				// because they are missing from your Entity.
-    	 
+    	
     				return dto;
     			}).collect(Collectors.toList());
-    	 
+    	
     			return responseDtos;
     		}
     	    
