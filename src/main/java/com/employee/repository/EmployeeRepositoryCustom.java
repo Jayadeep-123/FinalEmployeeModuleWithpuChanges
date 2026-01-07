@@ -25,6 +25,11 @@ public interface EmployeeRepositoryCustom {
      * Dynamic advanced search method that handles a list of payroll IDs
      */
     Page<EmployeeSearchResponseDTO> searchEmployeesAdvancedListDynamic(com.employee.dto.AdvancedEmployeeListSearchRequestDTO searchRequest, Pageable pageable);
+ 
+    /**
+     * Dynamic search method for basic filters with optional payroll list
+     */
+    Page<EmployeeSearchResponseDTO> searchEmployeesListDynamic(EmployeeSearchRequestDTO searchRequest, Pageable pageable);
 }
  
  

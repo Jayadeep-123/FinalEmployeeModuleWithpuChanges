@@ -57,12 +57,14 @@ public class EmployeeSearchController {
     public ResponseEntity<?> searchEmployees(
             @RequestParam(value = "cityId", required = false) Integer cityId,
             @RequestParam(value = "employeeTypeId", required = false) Integer employeeTypeId,
-            @RequestParam(value = "payrollId", required = false) String payrollId) {
+            @RequestParam(value = "campusId", required = false) Integer campusId,
+            @RequestParam(value = "payrollId", required = true) String payrollId) {
        
         // Build search request DTO
         EmployeeSearchRequestDTO searchRequest = new EmployeeSearchRequestDTO();
         searchRequest.setCityId(cityId);
         searchRequest.setEmployeeTypeId(employeeTypeId);
+        searchRequest.setCampusId(campusId);
         searchRequest.setPayrollId(payrollId);
  
         // Automatic pagination: Always use first page, 2000 records, sorted by emp_id ascending
@@ -162,5 +164,28 @@ public class EmployeeSearchController {
  
         return ResponseEntity.ok(results);
     }
-}
  
+    /**
+     * GET endpoint for search list (payrollId is optional and can be a list)
+     * Supports basic filters: cityId, employeeTypeId, payrollId
+     */
+    @GetMapping("/list")
+    public ResponseEntity<?> searchEmployeesList(
+            @RequestParam(value = "cityId", required = false) Integer cityId,
+            @RequestParam(value = "employeeTypeId", required = false) Integer employeeTypeId,
+            @RequestParam(value = "campusId", required = false) Integer campusId,
+            @RequestParam(value = "payrollId", required = false) String payrollId) {
+       
+        EmployeeSearchRequestDTO searchRequest = new EmployeeSearchRequestDTO();
+        searchRequest.setCityId(cityId);
+        searchRequest.setEmployeeTypeId(employeeTypeId);
+        searchRequest.setCampusId(campusId);
+        searchRequest.setPayrollId(payrollId);
+ 
+        Pageable pageable = PageRequest.of(0, 2000, Sort.by(Sort.Direction.ASC, "emp_id"));
+ 
+        List<EmployeeSearchResponseDTO> results = employeeSearchService.searchEmployeesList(searchRequest, pageable);
+ 
+        return ResponseEntity.ok(results);
+    }
+}

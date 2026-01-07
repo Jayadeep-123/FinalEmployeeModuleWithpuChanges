@@ -92,4 +92,9 @@ public class CampusFlowController {
         
         return new ResponseEntity<>(businessTypes, HttpStatus.OK);
     }
+	
+	@GetMapping("/alldepartments")
+    public List<GenericDropdownDTO> getAllActiveDepartments() {
+        return campusFlowService.getActiveDepartments();
+    }
 }

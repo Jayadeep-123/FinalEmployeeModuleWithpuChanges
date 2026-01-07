@@ -85,6 +85,11 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             predicates.add(cb.equal(et_join.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
         }
        
+        // Optional: campusId
+        if (searchRequest.getCampusId() != null) {
+            predicates.add(cb.equal(c.get("campusId"), searchRequest.getCampusId()));
+        }
+       
         query.where(predicates.toArray(new Predicate[0]));
        
         // Execute query with pagination
@@ -112,7 +117,11 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         if (searchRequest.getEmployeeTypeId() != null) {
             countPredicates.add(cb.equal(countEt.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
         }
-       
+ 
+        if (searchRequest.getCampusId() != null) {
+            countPredicates.add(cb.equal(countC.get("campusId"), searchRequest.getCampusId()));
+        }
+ 
         countQuery.select(cb.count(countRoot));
         countQuery.where(countPredicates.toArray(new Predicate[0]));
         Long total = entityManager.createQuery(countQuery).getSingleResult();
@@ -373,7 +382,119 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
        
         return new org.springframework.data.domain.PageImpl<>(results, pageable, total);
     }
+ 
+    @Override
+    public Page<EmployeeSearchResponseDTO> searchEmployeesListDynamic(EmployeeSearchRequestDTO searchRequest, Pageable pageable) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+       
+        CriteriaQuery<EmployeeSearchResponseDTO> query = cb.createQuery(EmployeeSearchResponseDTO.class);
+        Root<com.employee.entity.Employee> e = query.from(com.employee.entity.Employee.class);
+       
+        // Joins
+        Join<?, ?> d = e.join("department", JoinType.LEFT);
+        Join<?, ?> c = e.join("campus_id", JoinType.LEFT);
+        Join<?, ?> city = c.join("city", JoinType.LEFT);
+        Join<?, ?> s = c.join("state", JoinType.LEFT);
+        Join<?, ?> moh = e.join("modeOfHiring_id", JoinType.LEFT);
+        Join<?, ?> et_join = e.join("employee_type_id", JoinType.LEFT);
+       
+        // SELECT clause
+        query.select(cb.construct(
+            EmployeeSearchResponseDTO.class,
+            e.get("emp_id"),
+            cb.concat(
+                cb.concat(
+                    cb.coalesce(e.get("first_name"), cb.literal("")),
+                    cb.literal(" ")
+                ),
+                cb.coalesce(e.get("last_name"), cb.literal(""))
+            ),
+            e.get("payRollId"),
+            cb.coalesce(d.get("department_name"), cb.literal("N/A")),
+            cb.coalesce(moh.get("mode_of_hiring_name"), cb.literal("N/A")),
+            e.get("tempPayrollId"),
+            s.get("stateId"),
+            cb.coalesce(s.get("stateName"), cb.literal("N/A")),
+            city.get("cityId"),
+            cb.coalesce(city.get("cityName"), cb.literal("N/A")),
+            c.get("campusId"),
+            cb.coalesce(c.get("campusName"), cb.literal("N/A")),
+            et_join.get("emp_type_id"),
+            cb.coalesce(et_join.get("emp_type"), cb.literal("N/A"))
+        ));
+       
+        // WHERE clause
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(e.get("is_active"), 1));
+       
+        // Optional: payrollId (can be comma-separated)
+        if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
+            String[] ids = searchRequest.getPayrollId().split(",");
+            if (ids.length > 1) {
+                predicates.add(e.get("payRollId").in((Object[]) ids));
+            } else {
+                predicates.add(cb.equal(e.get("payRollId"), ids[0].trim()));
+            }
+        }
+       
+        if (searchRequest.getCityId() != null) {
+            predicates.add(cb.equal(city.get("cityId"), searchRequest.getCityId()));
+        }
+       
+        if (searchRequest.getEmployeeTypeId() != null) {
+            predicates.add(cb.equal(et_join.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
+        }
+       
+        // Optional: campusId
+        if (searchRequest.getCampusId() != null) {
+            predicates.add(cb.equal(c.get("campusId"), searchRequest.getCampusId()));
+        }
+       
+        query.where(predicates.toArray(new Predicate[0]));
+       
+        // Execute query
+        TypedQuery<EmployeeSearchResponseDTO> typedQuery = entityManager.createQuery(query);
+        typedQuery.setFirstResult((int) pageable.getOffset());
+        typedQuery.setMaxResults(pageable.getPageSize());
+       
+        List<EmployeeSearchResponseDTO> results = typedQuery.getResultList();
+       
+        // Total count
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<com.employee.entity.Employee> countRoot = countQuery.from(com.employee.entity.Employee.class);
+        Join<?, ?> countC = countRoot.join("campus_id", JoinType.LEFT);
+        Join<?, ?> countCity = countC.join("city", JoinType.LEFT);
+        Join<?, ?> countEt = countRoot.join("employee_type_id", JoinType.LEFT);
+       
+        List<Predicate> countPredicates = new ArrayList<>();
+        countPredicates.add(cb.equal(countRoot.get("is_active"), 1));
+       
+        if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
+            String[] ids = searchRequest.getPayrollId().split(",");
+            if (ids.length > 1) {
+                countPredicates.add(countRoot.get("payRollId").in((Object[]) ids));
+            } else {
+                countPredicates.add(cb.equal(countRoot.get("payRollId"), ids[0].trim()));
+            }
+        }
+       
+        if (searchRequest.getCityId() != null) {
+            countPredicates.add(cb.equal(countCity.get("cityId"), searchRequest.getCityId()));
+        }
+       
+        if (searchRequest.getEmployeeTypeId() != null) {
+            countPredicates.add(cb.equal(countEt.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
+        }
+       
+        if (searchRequest.getCampusId() != null) {
+            countPredicates.add(cb.equal(countC.get("campusId"), searchRequest.getCampusId()));
+        }
+       
+        countQuery.select(cb.count(countRoot));
+        countQuery.where(countPredicates.toArray(new Predicate[0]));
+        Long total = entityManager.createQuery(countQuery).getSingleResult();
+       
+        return new org.springframework.data.domain.PageImpl<>(results, pageable, total);
+    }
 }
- 
- 
  

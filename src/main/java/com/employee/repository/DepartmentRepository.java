@@ -30,5 +30,7 @@ public interface DepartmentRepository extends JpaRepository<Department, Integer>
         @Param("empTypeId") int empTypeId, 
         @Param("isActive") Integer isActive
     );
+    
+    List<Department> findByIsActive(Integer isActive);
 
 }

@@ -44,8 +44,8 @@ public class EmployeeSearchService {
      * @return List of EmployeeSearchResponseDTO containing employee name, department, employee id, temp payroll id (max 50 records)
      */
     public List<EmployeeSearchResponseDTO> searchEmployees(EmployeeSearchRequestDTO searchRequest, Pageable pageable) {
-        logger.info("Searching employees with filters - cityId: {}, employeeTypeId: {}, payrollId: {}, page: {}, size: {}",
-                searchRequest.getCityId(), searchRequest.getEmployeeTypeId(), searchRequest.getPayrollId(),
+        logger.info("Searching employees with filters - cityId: {}, employeeTypeId: {}, campusId: {}, payrollId: {}, page: {}, size: {}",
+                searchRequest.getCityId(), searchRequest.getEmployeeTypeId(), searchRequest.getCampusId(), searchRequest.getPayrollId(),
                 pageable.getPageNumber(), pageable.getPageSize());
  
         // Validation: payrollId is REQUIRED for all searches
@@ -55,9 +55,9 @@ public class EmployeeSearchService {
         }
  
         // Validation: payrollId must be combined with at least one other filter
-        if (searchRequest.getCityId() == null && searchRequest.getEmployeeTypeId() == null) {
-            logger.warn("PayrollId must be combined with at least one other filter (cityId or employeeTypeId).");
-            throw new IllegalArgumentException("PayrollId must be combined with at least one other filter. Please provide either cityId or employeeTypeId along with payrollId.");
+        if (searchRequest.getCityId() == null && searchRequest.getEmployeeTypeId() == null && searchRequest.getCampusId() == null) {
+            logger.warn("PayrollId must be combined with at least one other filter (cityId, employeeTypeId, or campusId).");
+            throw new IllegalArgumentException("PayrollId must be combined with at least one other filter. Please provide either cityId, employeeTypeId, or campusId along with payrollId.");
         }
  
         // Use dynamic query method instead of 31 individual methods
@@ -149,7 +149,27 @@ public class EmployeeSearchService {
         return results;
     }
  
+    /**
+     * Search employees with basic filters where payrollId is optional and can be a list
+     */
+    public List<EmployeeSearchResponseDTO> searchEmployeesList(EmployeeSearchRequestDTO searchRequest, Pageable pageable) {
+        logger.info("Searching employees list with filters - cityId: {}, employeeTypeId: {}, campusId: {}, payrollId: {}, page: {}, size: {}",
+                searchRequest.getCityId(), searchRequest.getEmployeeTypeId(), searchRequest.getCampusId(), searchRequest.getPayrollId(),
+                pageable.getPageNumber(), pageable.getPageSize());
+ 
+        // Validation: At least one filter must be provided
+        boolean hasFilter = searchRequest.getCityId() != null ||
+                            searchRequest.getEmployeeTypeId() != null ||
+                            searchRequest.getCampusId() != null ||
+                            (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty());
+       
+        if (!hasFilter) {
+            logger.warn("At least one filter must be provided for list search.");
+            throw new IllegalArgumentException("At least one filter (cityId, employeeTypeId, campusId, or payrollId) must be provided.");
+        }
+ 
+        Page<EmployeeSearchResponseDTO> resultPage = employeeRepository.searchEmployeesListDynamic(searchRequest, pageable);
+       
+        return new ArrayList<>(resultPage.getContent());
+    }
 }
- 
- 
- 

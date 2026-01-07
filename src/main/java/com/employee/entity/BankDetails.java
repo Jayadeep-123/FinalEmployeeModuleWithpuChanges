@@ -71,6 +71,24 @@ public class BankDetails {
 	
 	@Column(name = "updated_date")
 	private LocalDateTime updatedDate;
+	
+	@Column(name = "bank_manager_name")
+    private String bankManagerName;
+
+    @Column(name = "bank_manager_contact_no")
+    private Long bankManagerContactNo;
+
+    @Column(name = "bank_manager_email")
+    private String bankManagerEmail;
+
+    @Column(name = "customer_relationship_officer_name")
+    private String customerRelationshipOfficerName;
+
+    @Column(name = "customer_relationship_officer_contact_no")
+    private Long customerRelationshipOfficerContactNo;
+
+    @Column(name = "customer_relationship_officer_email")
+    private String customerRelationshipOfficerEmail;
 
 	
 

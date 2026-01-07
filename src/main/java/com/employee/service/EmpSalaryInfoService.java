@@ -682,6 +682,8 @@
 // 
 
  
+ 
+ 
 package com.employee.service;
  
 import java.time.LocalDateTime;
@@ -717,10 +719,10 @@ import com.employee.repository.EmpStructureRepository;
 import com.employee.repository.EmployeeRepository;
 import com.employee.repository.EmployeeCheckListStatusRepository;
 import com.employee.repository.OrganizationRepository;
+import com.employee.repository.DecryptedSalaryInfoProjection;
 import com.employee.entity.Organization;
  
 @Service
-@Transactional
 public class EmpSalaryInfoService {
  
     private static final Logger logger = LoggerFactory.getLogger(EmpSalaryInfoService.class);
@@ -781,6 +783,7 @@ public class EmpSalaryInfoService {
      * Returns DTO with all the saved data (no entity relationships to avoid circular references)
      * @throws ResourceNotFoundException if employee status is not "Pending at DO" or "Back to DO"
      */
+    @Transactional
     public SalaryInfoDTO createSalaryInfo(SalaryInfoDTO salaryInfoDTO) {
         // Validation: Check if tempPayrollId is provided
         if (salaryInfoDTO.getTempPayrollId() == null || salaryInfoDTO.getTempPayrollId().trim().isEmpty()) {
@@ -1165,38 +1168,90 @@ public class EmpSalaryInfoService {
      * Get salary info by temp_payroll_id and return as DTO (for API response)
      */
     public SalaryInfoDTO getSalaryInfoByTempPayrollIdAsDTO(String tempPayrollId) {
-        Employee employee = employeeRepository.findByTempPayrollId(tempPayrollId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employee not found with temp_payroll_id: " + tempPayrollId));
+        logger.info("Fetching salary info for temp_payroll_id: {}", tempPayrollId);
  
-        EmpSalaryInfo empSalaryInfo = empSalaryInfoRepository.findByEmpIdAndIsActive(employee.getEmp_id(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Salary info not found for employee with temp_payroll_id: " + tempPayrollId));
-       
-        // Convert entity to DTO
         SalaryInfoDTO salaryInfoDTO = new SalaryInfoDTO();
         salaryInfoDTO.setTempPayrollId(tempPayrollId);
-        salaryInfoDTO.setMonthlyTakeHome(empSalaryInfo.getMonthlyTakeHomeAsDouble());
-        salaryInfoDTO.setCtcWords(empSalaryInfo.getCtcWordsAsString());
-        salaryInfoDTO.setYearlyCtc(empSalaryInfo.getYearlyCtcAsDouble());
-        salaryInfoDTO.setEmpStructureId(empSalaryInfo.getEmpStructure() != null ? empSalaryInfo.getEmpStructure().getEmpStructureId() : null);
-        salaryInfoDTO.setGradeId(empSalaryInfo.getGrade() != null ? empSalaryInfo.getGrade().getEmpGradeId() : null);
-        salaryInfoDTO.setCostCenterId(empSalaryInfo.getCostCenter() != null ? empSalaryInfo.getCostCenter().getCostCenterId() : null);
-        // Convert Integer to Boolean (1 = true, 0 = false, null = false)
-        salaryInfoDTO.setIsPfEligible(empSalaryInfo.getIsPfEligible() != null && empSalaryInfo.getIsPfEligible() == 1);
-        salaryInfoDTO.setIsEsiEligible(empSalaryInfo.getIsEsiEligible() != null && empSalaryInfo.getIsEsiEligible() == 1);
-       
-        // Get PF/ESI/UAN details from EmpPfDetails
-        Optional<EmpPfDetails> empPfDetailsOpt = empPfDetailsRepository.findByEmployeeId(employee.getEmp_id());
-        if (empPfDetailsOpt.isPresent()) {
-            EmpPfDetails empPfDetails = empPfDetailsOpt.get();
-            salaryInfoDTO.setPfNo(empPfDetails.getPf_no());
-            salaryInfoDTO.setPfJoinDate(empPfDetails.getPf_join_date());
-            salaryInfoDTO.setEsiNo(empPfDetails.getEsi_no());
-            salaryInfoDTO.setUanNo(empPfDetails.getUan_no());
+        Integer empId = null;
+ 
+        try {
+            // Attempt Step 1: Use native query to get decrypted salary info using fn_decrypt_sal
+            DecryptedSalaryInfoProjection projection = empSalaryInfoRepository.findDecryptedByTempPayrollId(tempPayrollId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Salary info not found for employee with temp_payroll_id: " + tempPayrollId));
+           
+            empId = projection.getEmp_id();
+           
+            // Map decrypted fields (handle null and parsing)
+            if (projection.getMonthly_take_home() != null) {
+                try {
+                    salaryInfoDTO.setMonthlyTakeHome(Double.parseDouble(projection.getMonthly_take_home()));
+                } catch (NumberFormatException e) {
+                    logger.error("Error parsing decrypted monthlyTakeHome: {}", projection.getMonthly_take_home());
+                }
+            }
+           
+            salaryInfoDTO.setCtcWords(projection.getCtc_words());
+           
+            if (projection.getYearly_ctc() != null) {
+                try {
+                    salaryInfoDTO.setYearlyCtc(Double.parseDouble(projection.getYearly_ctc()));
+                } catch (NumberFormatException e) {
+                    logger.error("Error parsing decrypted yearlyCtc: {}", projection.getYearly_ctc());
+                }
+            }
+           
+            salaryInfoDTO.setEmpStructureId(projection.getEmp_structure_id());
+            salaryInfoDTO.setGradeId(projection.getGrade_id());
+            salaryInfoDTO.setCostCenterId(projection.getCost_center_id());
+           
+            // Convert Integer to Boolean (1 = true, 0 = false)
+            salaryInfoDTO.setIsPfEligible(projection.getIs_pf_eligible() != null && projection.getIs_pf_eligible() == 1);
+            salaryInfoDTO.setIsEsiEligible(projection.getIs_esi_eligible() != null && projection.getIs_esi_eligible() == 1);
+           
+        } catch (Exception e) {
+            // Fallback: If native decryption query fails (likely due to permissions or function missing)
+            logger.warn("Decryption query failed, falling back to standard data retrieval. Error: {}", e.getMessage());
+           
+            Employee employee = employeeRepository.findByTempPayrollId(tempPayrollId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with temp_payroll_id: " + tempPayrollId));
+           
+            empId = employee.getEmp_id();
+           
+            EmpSalaryInfo empSalaryInfo = empSalaryInfoRepository.findByEmpIdAndIsActive(empId, 1)
+                    .orElseThrow(() -> new ResourceNotFoundException("Salary info not found for employee with temp_payroll_id: " + tempPayrollId));
+           
+            // Map fields using standard entity (helper methods will return null if data is encrypted/unreadable)
+            salaryInfoDTO.setMonthlyTakeHome(empSalaryInfo.getMonthlyTakeHomeAsDouble());
+            salaryInfoDTO.setCtcWords(empSalaryInfo.getCtcWordsAsString());
+            salaryInfoDTO.setYearlyCtc(empSalaryInfo.getYearlyCtcAsDouble());
+            salaryInfoDTO.setEmpStructureId(empSalaryInfo.getEmpStructure() != null ? empSalaryInfo.getEmpStructure().getEmpStructureId() : null);
+            salaryInfoDTO.setGradeId(empSalaryInfo.getGrade() != null ? empSalaryInfo.getGrade().getEmpGradeId() : null);
+            salaryInfoDTO.setCostCenterId(empSalaryInfo.getCostCenter() != null ? empSalaryInfo.getCostCenter().getCostCenterId() : null);
+            salaryInfoDTO.setIsPfEligible(empSalaryInfo.getIsPfEligible() != null && empSalaryInfo.getIsPfEligible() == 1);
+            salaryInfoDTO.setIsEsiEligible(empSalaryInfo.getIsEsiEligible() != null && empSalaryInfo.getIsEsiEligible() == 1);
         }
-       
-        salaryInfoDTO.setCheckListIds(employee.getEmp_app_check_list_detl_id());
+ 
+        // Common steps for both success and fallback (fetching other related info)
+        if (empId != null) {
+            // Step 2: Get PF/ESI/UAN details from EmpPfDetails (different table)
+            Optional<EmpPfDetails> empPfDetailsOpt = empPfDetailsRepository.findByEmployeeId(empId);
+            if (empPfDetailsOpt.isPresent()) {
+                EmpPfDetails empPfDetails = empPfDetailsOpt.get();
+                salaryInfoDTO.setPfNo(empPfDetails.getPf_no());
+                salaryInfoDTO.setPfJoinDate(empPfDetails.getPf_join_date());
+                salaryInfoDTO.setEsiNo(empPfDetails.getEsi_no());
+                salaryInfoDTO.setUanNo(empPfDetails.getUan_no());
+            }
+           
+            // Step 3: Get Checklist IDs and Org ID from Employee table
+            employeeRepository.findById(empId).ifPresent(emp -> {
+                salaryInfoDTO.setCheckListIds(emp.getEmp_app_check_list_detl_id());
+                if (emp.getOrg_id() != null) {
+                    salaryInfoDTO.setOrgId(emp.getOrg_id().getOrganizationId());
+                }
+            });
+        }
        
         return salaryInfoDTO;
     }
@@ -1212,6 +1267,7 @@ public class EmpSalaryInfoService {
      *
      * @throws ResourceNotFoundException if employee status is not "Pending at DO" or "Back to DO"
      */
+    @Transactional
     public SalaryInfoDTO forwardToCentralOffice(SalaryInfoDTO salaryInfoDTO) {
         logger.info("Forwarding employee to Central Office - temp_payroll_id: {}", salaryInfoDTO.getTempPayrollId());
         // createSalaryInfo already handles setting status to "Pending at CO" and clearing remarks
@@ -1236,6 +1292,7 @@ public class EmpSalaryInfoService {
      * @return BackToCampusDTO with the saved data
      * @throws ResourceNotFoundException if employee status is not "Pending at DO"
      */
+    @Transactional
     public BackToCampusDTO backToCampus(BackToCampusDTO backToCampusDTO) {
         // Validation: Check if tempPayrollId is provided
         if (backToCampusDTO.getTempPayrollId() == null || backToCampusDTO.getTempPayrollId().trim().isEmpty()) {

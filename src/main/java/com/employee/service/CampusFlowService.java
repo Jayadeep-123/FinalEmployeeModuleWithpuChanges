@@ -20,6 +20,7 @@ import com.employee.entity.Employee;
 import com.employee.repository.BusinessTypeRepository;
 import com.employee.repository.CampusProfileViewRepository;
 import com.employee.repository.CampusRepository;
+import com.employee.repository.DepartmentRepository;
 import com.employee.repository.EmpDetailsRepository;
 import com.employee.repository.EmpSubjectRepository;
 import com.employee.repository.EmployeeRepository;
@@ -33,6 +34,8 @@ public class CampusFlowService {
 	@Autowired private EmpDetailsRepository empDetailsRepository;
 	@Autowired private EmpSubjectRepository empSubjectRepository;
 	@Autowired private BusinessTypeRepository businessTypeRepository;
+	@Autowired private DepartmentRepository departmentRepository;
+	
 	
 	public List<BusinessType> getAllBusinessTypes() {
         return businessTypeRepository.findAll();
@@ -140,5 +143,16 @@ public List<EmployeeFullDetailsDTO> getEmployeeFullDetailsByCampusId(int campusI
         LocalDate birthDate = dob.toLocalDate();
         LocalDate currentDate = LocalDate.now();
         return Period.between(birthDate, currentDate).getYears();
+    }
+    
+    
+    public List<GenericDropdownDTO> getActiveDepartments() {
+        return departmentRepository.findByIsActive(1) // Filter for active
+                .stream()
+                .map(dept -> new GenericDropdownDTO(
+                        dept.getDepartment_id(),
+                        dept.getDepartment_name()
+                ))
+                .collect(Collectors.toList());
     }
 }
