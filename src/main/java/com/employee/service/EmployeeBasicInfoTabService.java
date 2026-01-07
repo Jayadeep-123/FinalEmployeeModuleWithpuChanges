@@ -1628,7 +1628,7 @@ public class EmployeeBasicInfoTabService {
                 }
                 empExperienceDetailsRepository.save(expToDelete);
                
-                // Deactivate associated documents
+                // Deactivate associated documents only when the experience record is being deactivated
                 deactivateExperienceDocuments(expToDelete.getEmp_exp_detl_id(), updatedBy);
             }
         }
@@ -1638,29 +1638,35 @@ public class EmployeeBasicInfoTabService {
      * Helper: Save documents for a specific experience record
      */
     private void saveEmployerDocuments(Employee employee, EmpExperienceDetails experience, List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docs, Integer createdBy, Integer updatedBy) {
-        // Deactivate existing documents for this experience record to handle updates (simple replace strategy for sub-lists)
-        deactivateExperienceDocuments(experience.getEmp_exp_detl_id(), updatedBy);
+        // REMOVED: Unconditional deactivation of existing documents.
+        // User requested that documents remain active (is_active=1) during updates.
 
         for (PreviousEmployerInfoDTO.ExperienceDocumentDTO docDTO : docs) {
-            if (docDTO.getDocPath() == null || docDTO.getDocPath().trim().isEmpty() || "string".equalsIgnoreCase(docDTO.getDocPath().trim())) {
+            String path = docDTO.getDocPath() != null ? docDTO.getDocPath().trim() : "";
+            if (path.isEmpty() || "string".equalsIgnoreCase(path)) {
+                continue;
+            }
+
+            Integer docTypeId = docDTO.getDocTypeId();
+            if (docTypeId == null) {
+                throw new ResourceNotFoundException("Document Type ID is required for experience documents");
+            }
+
+            // SMART CHECK: Only save if this documents doesn't already exist for this experience record
+            if (empDocumentsRepository.findExistingExperienceDoc(experience.getEmp_exp_detl_id(), docTypeId, path).isPresent()) {
+                logger.info("📄 Skipping duplicate document (Type: {}, Path: {}) for experience ID: {}", docTypeId, path, experience.getEmp_exp_detl_id());
                 continue;
             }
 
             EmpDocuments doc = new EmpDocuments();
             doc.setEmp_id(employee);
             doc.setEmp_exp_detl_id(experience);
-            doc.setDoc_path(docDTO.getDocPath().trim());
+            doc.setDoc_path(path);
             doc.setIs_verified(0);
             doc.setIs_active(1);
            
-            if (docDTO.getDocTypeId() != null) {
-                doc.setEmp_doc_type_id(empDocTypeRepository.findById(docDTO.getDocTypeId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Document Type not found with ID: " + docDTO.getDocTypeId())));
-            } else {
-                // Default to "Experience Certificate" or similar if type not provided?
-                // For now, let's assume docTypeId is mandatory for experience docs.
-                throw new ResourceNotFoundException("Document Type ID is required for experience documents");
-            }
+            doc.setEmp_doc_type_id(empDocTypeRepository.findById(docTypeId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Document Type not found with ID: " + docTypeId)));
 
             doc.setCreated_by(createdBy != null ? createdBy : 1);
             doc.setCreated_date(LocalDateTime.now());
@@ -1670,6 +1676,7 @@ public class EmployeeBasicInfoTabService {
             }
 
             empDocumentsRepository.save(doc);
+            logger.info("✅ Saved new document for experience ID: {}", experience.getEmp_exp_detl_id());
         }
     }
 

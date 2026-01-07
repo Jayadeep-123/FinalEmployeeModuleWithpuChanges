@@ -56,6 +56,8 @@ import com.employee.repository.QualificationDegreeRepository;
 import com.employee.repository.QualificationRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.OrientationRepository;
+import com.employee.repository.OrganizationRepository;
+import com.employee.entity.Organization;
  
 /**
  * Service for handling remaining employee onboarding tabs (5 APIs). Contains:
@@ -139,6 +141,9 @@ public class EmployeeRemainingTabService {
  
     @Autowired
     private CostCenterRepository costCenterRepository;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
  
 // ============================================================================
 // API METHODS (5 APIs)
@@ -647,7 +652,9 @@ public class EmployeeRemainingTabService {
        
         // Step 4: Update org_id if provided
         if (requestDTO.getOrgId() != null) {
-            employee.setOrg_id(requestDTO.getOrgId());
+            Organization org = organizationRepository.findById(requestDTO.getOrgId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Organization not found with ID: " + requestDTO.getOrgId()));
+            employee.setOrg_id(org);
             logger.info("Updated org_id (Company) for employee (emp_id: {}): {}", empId, requestDTO.getOrgId());
         }
        
@@ -687,7 +694,7 @@ public class EmployeeRemainingTabService {
             response.setEmpStructureId(empSalaryInfo.getEmpStructure() != null ? empSalaryInfo.getEmpStructure().getEmpStructureId() : null);
             response.setGradeId(empSalaryInfo.getGrade() != null ? empSalaryInfo.getGrade().getEmpGradeId() : null);
             response.setCostCenterId(empSalaryInfo.getCostCenter() != null ? empSalaryInfo.getCostCenter().getCostCenterId() : null);
-            response.setOrgId(employee.getOrg_id());
+            response.setOrgId(employee.getOrg_id() != null ? employee.getOrg_id().getOrganizationId() : null);
             response.setIsPfEligible(empSalaryInfo.getIsPfEligible() != null && empSalaryInfo.getIsPfEligible() == 1);
             response.setIsEsiEligible(empSalaryInfo.getIsEsiEligible() != null && empSalaryInfo.getIsEsiEligible() == 1);
            
@@ -1404,7 +1411,9 @@ public class EmployeeRemainingTabService {
  
 // Set agreement information in Employee entity (in memory only)
         if (agreementInfo.getAgreementOrgId() != null) {
-            employee.setAgreement_org_id(agreementInfo.getAgreementOrgId());
+            Organization org = organizationRepository.findById(agreementInfo.getAgreementOrgId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Agreement Organization not found with ID: " + agreementInfo.getAgreementOrgId()));
+            employee.setAgreement_org_id(org);
         }
  
         if (agreementInfo.getAgreementType() != null && !agreementInfo.getAgreementType().trim().isEmpty()) {
@@ -1743,6 +1752,3 @@ public class EmployeeRemainingTabService {
     }
  
 }
- 
- 
- 

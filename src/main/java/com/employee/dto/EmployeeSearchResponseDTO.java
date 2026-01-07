@@ -1,9 +1,9 @@
 package com.employee.dto;
-
+ 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+ 
 /**
  * DTO for Employee Search Response
  * Contains employee search result fields
@@ -18,5 +18,14 @@ public class EmployeeSearchResponseDTO {
     private String departmentName; // department name
     private String modeOfHiringName; // mode of hiring name
     private String tempPayrollId; // temp_payroll_id (kept for backward compatibility)
+   
+    // Advanced fields (ID and Names)
+    private Integer stateId;
+    private String stateName;
+    private Integer cityId;
+    private String cityName;
+    private Integer campusId;
+    private String campusName;
+    private Integer employeeTypeId;
+    private String employeeTypeName;
 }
-
