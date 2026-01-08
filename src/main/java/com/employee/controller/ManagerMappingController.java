@@ -1,5 +1,7 @@
 package com.employee.controller;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.employee.dto.ManagerMappingDTO;
 import com.employee.dto.BulkManagerMappingDTO;
-import com.employee.dto.UnmappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
+import com.employee.dto.EmployeeCampusAddressDTO;
+import com.employee.dto.ManagerMappingDTO;
+import com.employee.dto.UnmappingDTO;
 import com.employee.service.ManagerMappingService;
 
 /**
@@ -171,6 +174,16 @@ public class ManagerMappingController {
         logger.info("Successfully processed bulk unmapping for {} payrollIds", 
                    response.getPayrollIds() != null ? response.getPayrollIds().size() : 0);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    
+    @PostMapping("/batch-campus-address")
+    public ResponseEntity<List<EmployeeCampusAddressDTO>> getBatchCampusAddresses(@RequestBody List<String> payrollIds) {
+        if (payrollIds == null || payrollIds.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        List<EmployeeCampusAddressDTO> results = managerMappingService.getMultipleCampusAddresses(payrollIds);
+        return ResponseEntity.ok(results);
     }
 }
 

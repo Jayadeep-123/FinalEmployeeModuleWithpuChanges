@@ -2,13 +2,24 @@ package com.employee.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.employee.dto.BulkManagerMappingDTO;
+import com.employee.dto.BulkUnmappingDTO;
+import com.employee.dto.CampusMappingDTO;
+import com.employee.dto.EmployeeCampusAddressDTO;
+import com.employee.dto.ManagerMappingDTO;
+import com.employee.dto.UnmappingDTO;
+import com.employee.entity.Building;
+import com.employee.entity.BuildingAddress;
 import com.employee.entity.Campus;
 import com.employee.entity.Department;
 import com.employee.entity.Designation;
@@ -16,11 +27,8 @@ import com.employee.entity.Employee;
 import com.employee.entity.SharedEmployee;
 import com.employee.entity.Subject;
 import com.employee.exception.ResourceNotFoundException;
-import com.employee.dto.ManagerMappingDTO;
-import com.employee.dto.BulkManagerMappingDTO;
-import com.employee.dto.UnmappingDTO;
-import com.employee.dto.BulkUnmappingDTO;
-import com.employee.dto.CampusMappingDTO;
+import com.employee.repository.BuildingAddressRepository;
+import com.employee.repository.BuildingRepository;
 import com.employee.repository.CampusRepository;
 import com.employee.repository.CityRepository;
 import com.employee.repository.DepartmentRepository;
@@ -57,6 +65,12 @@ public class ManagerMappingService {
     
     @Autowired
     private SubjectRepository subjectRepository;
+    
+    @Autowired
+    private BuildingRepository buildingRepository;
+    
+    @Autowired
+    private BuildingAddressRepository buildingAddressRepository;
     
     /**
      * Maps employee based on payrollId and updates their details.
@@ -1036,5 +1050,135 @@ public class ManagerMappingService {
         
         return bulkUnmappingDTO;
     }
+    
+    private void mapManagers(Employee emp, EmployeeCampusAddressDTO dto) {
+        if (emp.getEmployee_manager_id() != null) {
+            dto.setManagerName(emp.getEmployee_manager_id().getFirst_name());
+            long mobile = emp.getEmployee_manager_id().getPrimary_mobile_no();
+            dto.setManagerMobileNo(mobile != 0 ? String.valueOf(mobile) : null);
+        }
+ 
+        if (emp.getEmployee_reporting_id() != null) {
+            dto.setReportingManagerName(emp.getEmployee_reporting_id().getFirst_name());
+            long rMobile = emp.getEmployee_reporting_id().getPrimary_mobile_no();
+            dto.setReportingManagerMobileNo(rMobile != 0 ? String.valueOf(rMobile) : null);
+        }
+    }
+    /**
+     * BATCH METHOD: Process multiple employees at once
+     */
+    public List<EmployeeCampusAddressDTO> getMultipleCampusAddresses(List<String> payrollIds) {
+        if (payrollIds == null || payrollIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+ 
+        // Fetch all employees in the list at once
+        List<Employee> employees = employeeRepository.findByPayRollIdIn(payrollIds);
+ 
+        return employees.stream()
+                .map(this::processSingleEmployee)
+                .collect(Collectors.toList());
+    }
+ 
+    /**
+     * SINGLE METHOD: Process one employee (Existing logic)
+     */
+    public EmployeeCampusAddressDTO getCampusAddress(String payrollId) {
+        Employee emp = employeeRepository.findByPayrollId(payrollId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + payrollId));
+        
+        return processSingleEmployee(emp);
+    }
+ 
+    /**
+     * CORE LOGIC: Converts Employee Entity to DTO
+     */
+    private EmployeeCampusAddressDTO processSingleEmployee(Employee emp) {
+    	
+    	EmployeeCampusAddressDTO dto = new EmployeeCampusAddressDTO();
+        dto.setPayrollId(emp.getPayRollId());
+        // Set it here
+   
+        
+        try {
+            // 1. Validate Campus
+            if (emp.getCampus_id() == null) {
+                throw new RuntimeException("Campus not assigned");
+            }
+ 
+            Integer campusId = emp.getCampus_id().getCampusId();
+ 
+            // 2. Fetch buildings
+            List<Building> buildings = buildingRepository.findBuildingsByCampusId(campusId);
+            if (buildings == null || buildings.isEmpty()) {
+                throw new RuntimeException("No buildings in campus");
+            }
+ 
+            // 3. Pick main building logic (Null-safe)
+            Building selectedBuilding = buildings.stream()
+                    .filter(b -> b.getIsMainBuilding() != 0 && b.getIsMainBuilding() == 1)
+                    .findFirst()
+                    .orElse(buildings.get(0));
+ 
+            // 4. Fetch address (Try specific type first, then fallback)
+            BuildingAddress buildingAddress = buildingAddressRepository.findByBuildingIdAndAddressType(
+                    selectedBuilding.getBuildingId(), "address");
+ 
+            if (buildingAddress == null) {
+                buildingAddress = buildingAddressRepository.findAddressByBuildingId(selectedBuilding.getBuildingId());
+            }
+ 
+            if (buildingAddress == null) {
+                throw new RuntimeException("No address found");
+            }
+ 
+            // 5. Build Address String
+            StringJoiner sj = new StringJoiner(", ");
+            if (buildingAddress.getPlot_no() != null) sj.add(buildingAddress.getPlot_no());
+            if (buildingAddress.getArea() != null) sj.add(buildingAddress.getArea());
+            if (buildingAddress.getStreet() != null) sj.add(buildingAddress.getStreet());
+            if (buildingAddress.getLandmark() != null) sj.add(buildingAddress.getLandmark());
+            
+            if (buildingAddress.getCity() != null && buildingAddress.getCity().getCityName() != null) {
+                sj.add(buildingAddress.getCity().getCityName());
+            }
+            
+            if (buildingAddress.getPin_code() != null) {
+                sj.add(String.valueOf(buildingAddress.getPin_code()));
+            }
+ 
+            // 6. Final Mapping
+            dto.setFullAddress(sj.toString());
+            dto.setBuildingMobileNo(buildingAddress.getMobile_no());
+            dto.setEmployeeMobileNo(String.valueOf(emp.getPrimary_mobile_no()));
+            
+            // Map Managers
+            mapManagerInfo(emp, dto);
+ 
+        } catch (Exception e) {
+            // If an individual employee fails, we mark the DTO so the batch continues
+            dto.setFullAddress("Error: " + e.getMessage());
+        }
+        
+        return dto;
+       
+    }
+ 
+    private void mapManagerInfo(Employee emp, EmployeeCampusAddressDTO dto) {
+        // Direct Manager
+        if (emp.getEmployee_manager_id() != null) {
+            dto.setManagerName(emp.getEmployee_manager_id().getFirst_name());
+            long mob = emp.getEmployee_manager_id().getPrimary_mobile_no();
+            dto.setManagerMobileNo(mob != 0 ? String.valueOf(mob) : null);
+        }
+ 
+        // Reporting Manager
+        if (emp.getEmployee_reporting_id() != null) {
+            dto.setReportingManagerName(emp.getEmployee_reporting_id().getFirst_name());
+            long rMob = emp.getEmployee_reporting_id().getPrimary_mobile_no();
+            dto.setReportingManagerMobileNo(rMob != 0 ? String.valueOf(rMob) : null);
+        }
+    }
+ 
 }
 

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.CampusContactDTO;
 import com.employee.dto.CampusDto;
+import com.employee.dto.CmpsOrientationsDTO;
 import com.employee.dto.Dgmdto;
 import com.employee.dto.GenericDropdownDTO;
 import com.employee.dto.OrganizationDTO;
@@ -459,8 +460,17 @@ public class DropDownsController {
     }
 	
 	
-	@GetMapping("/campuses/by-city")
-	public ResponseEntity<List<GenericDropdownDTO>> getCampusesByCity(@RequestParam int cityId) {
+	@GetMapping("/campuses/{cityId}")
+	public ResponseEntity<List<GenericDropdownDTO>> getCampusesByCity(@PathVariable int cityId) {
 	    return ResponseEntity.ok(empDropdownService.getCampusesByCity(cityId));
 	}
+	
+	@GetMapping("/getallOrientations/{cmpsId}")
+    public ResponseEntity<List<CmpsOrientationsDTO>> getActiveOrientationsByCampus(@PathVariable Integer cmpsId) {
+        
+        // Call the service method that returns the specific DTOs
+        List<CmpsOrientationsDTO> orientations = empDropdownService.getActiveOrientationsByCampus(cmpsId);
+        
+        return new ResponseEntity<>(orientations, HttpStatus.OK);
+    }
 }

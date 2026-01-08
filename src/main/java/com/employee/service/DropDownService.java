@@ -8,12 +8,14 @@ import org.springframework.stereotype.Service;
 
 import com.employee.dto.CampusContactDTO;
 import com.employee.dto.CampusDto;
+import com.employee.dto.CmpsOrientationsDTO;
 import com.employee.dto.Dgmdto;
 import com.employee.dto.GenericDropdownDTO;
 import com.employee.dto.OrganizationDTO;
 import com.employee.entity.Building;
 import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
+import com.employee.entity.CmpsOrientation;
 import com.employee.entity.Department;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeType;
@@ -26,6 +28,7 @@ import com.employee.repository.CampusRepository;
 import com.employee.repository.CategoryRepository;
 import com.employee.repository.CityRepository;
 import com.employee.repository.CmpsOrgRepository;
+import com.employee.repository.CmpsOrientationRepository;
 import com.employee.repository.CostCenterRepository;
 import com.employee.repository.CountryRepository;
 import com.employee.repository.DepartmentRepository;
@@ -121,6 +124,9 @@ public class DropDownService {
 	
 	@Autowired
 	RelationRepository relationRepository;
+	
+	@Autowired
+	CmpsOrientationRepository cmpsorientationRepository;
 
 	private static final int ACTIVE_STATUS = 1;
 
@@ -416,4 +422,17 @@ public List<GenericDropdownDTO> getCampusesByCity(int cityId) {
             .collect(Collectors.toList());
 }
 
+public List<CmpsOrientationsDTO> getActiveOrientationsByCampus(Integer cmpsId) {
+    
+    // 1. Fetch raw data using the Interface Projection
+    List<CmpsOrientationsDTO> projections = cmpsorientationRepository.findActiveByCmpsId(cmpsId);
+
+    // 2. Convert Projection -> DTO
+    return projections.stream().map(proj -> CmpsOrientationsDTO.builder()
+            .cmpsOrientationId(proj.getCmpsOrientationId()) // Mapping ID
+            .orientationId(proj.getOrientationId())         // Orientation ID
+            .orientationName(proj.getOrientationName())     // Orientation Name
+            .build()
+    ).collect(Collectors.toList());
+}
 }

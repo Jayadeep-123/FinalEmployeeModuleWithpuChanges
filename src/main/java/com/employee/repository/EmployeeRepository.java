@@ -221,6 +221,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
    	        """)
    	    Optional<FullBasicInfoDto> findFullEmployeeDetailsByTempPayrollId(
    	            @Param("tempPayrollId") String tempPayrollId);
+       
+       
+       List<Employee> findByPayRollIdIn(List<String> payrollIds);
 
 
 

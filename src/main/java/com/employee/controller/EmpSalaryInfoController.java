@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.BackToCampusDTO;
+import com.employee.dto.CheckListUpdateDTO;
 import com.employee.dto.SalaryInfoDTO;
 import com.employee.service.EmpSalaryInfoService;
 
@@ -29,14 +30,22 @@ public class EmpSalaryInfoController {
 	 * Returns only DTO, not the full entity
 	 */
 	@GetMapping("/by-temp-payroll-id")
-	public ResponseEntity<SalaryInfoDTO> getSalaryInfoByTempPayrollId(@RequestParam("tempPayrollId") String tempPayrollId) {
+	public ResponseEntity<SalaryInfoDTO> getSalaryInfoByTempPayrollId(
+			@RequestParam("tempPayrollId") String tempPayrollId) {
 		SalaryInfoDTO salaryInfoDTO = empSalaryInfoService.getSalaryInfoByTempPayrollIdAsDTO(tempPayrollId);
 		return new ResponseEntity<>(salaryInfoDTO, HttpStatus.OK);
 	}
+
+	/**
+	 * GET endpoint to retrieve salary info by payroll_id
+	 * Returns only DTO, not the full entity
+	 */
 	
+
 	/**
 	 * POST endpoint to forward employee to Central Office
-	 * This is the main endpoint for salary info creation/update and forwarding to central office.
+	 * This is the main endpoint for salary info creation/update and forwarding to
+	 * central office.
 	 * Called when clicking "Forward to Central Office" button.
 	 * 
 	 * Flow:
@@ -44,41 +53,45 @@ public class EmpSalaryInfoController {
 	 * 2. Saves/updates PF/ESI/UAN details (EmpPfDetails)
 	 * 3. Updates checklist IDs in Employee table
 	 * 4. Updates org_id (Company/Organization) in Employee table (if provided)
-	 * 5. Updates employee status to "Pending at CO" (when forwarding to Central Office)
+	 * 5. Updates employee status to "Pending at CO" (when forwarding to Central
+	 * Office)
 	 * 6. Clears any previous remarks
 	 * 
 	 * @param salaryInfoDTO Contains tempPayrollId, salary info, checklist IDs, etc.
 	 * @return ResponseEntity with the updated SalaryInfoDTO
 	 */
-    @PostMapping("/forward-to-central-office/{tempPayrollId}")
-    public ResponseEntity<SalaryInfoDTO> forwardToCentralOffice(
-        @RequestBody SalaryInfoDTO salaryInfoDTO,
-        @PathVariable String tempPayrollId) {
-       
-        // Ensure tempPayrollId is set in the DTO
-        // Logic to handle potential placeholder in URL (e.g. from Swagger if not filled properly)
-        if (tempPayrollId != null && !tempPayrollId.equals("{tempPayrollId}") && !tempPayrollId.trim().isEmpty()) {
-            salaryInfoDTO.setTempPayrollId(tempPayrollId);
-            System.out.println("Using tempPayrollId from PathVariable: " + tempPayrollId);
-        } else {
-            // If path variable is placeholder or empty, ensure DTO has a value from body
-            if (salaryInfoDTO.getTempPayrollId() == null || salaryInfoDTO.getTempPayrollId().trim().isEmpty()) {
-                 throw new com.employee.exception.ResourceNotFoundException("tempPayrollId is required in either path or request body.");
-            }
-            System.out.println("Using tempPayrollId from RequestBody: " + salaryInfoDTO.getTempPayrollId());
-        }
-       
-        SalaryInfoDTO result = empSalaryInfoService.forwardToCentralOffice(salaryInfoDTO);
-        return new ResponseEntity<>(result, HttpStatus.OK);
-    }
- 
-	
+	@PostMapping("/forward-to-central-office/{tempPayrollId}")
+	public ResponseEntity<SalaryInfoDTO> forwardToCentralOffice(
+			@RequestBody SalaryInfoDTO salaryInfoDTO,
+			@PathVariable String tempPayrollId) {
+
+		// Ensure tempPayrollId is set in the DTO
+		// Logic to handle potential placeholder in URL (e.g. from Swagger if not filled
+		// properly)
+		if (tempPayrollId != null && !tempPayrollId.equals("{tempPayrollId}") && !tempPayrollId.trim().isEmpty()) {
+			salaryInfoDTO.setTempPayrollId(tempPayrollId);
+			System.out.println("Using tempPayrollId from PathVariable: " + tempPayrollId);
+		} else {
+			// If path variable is placeholder or empty, ensure DTO has a value from body
+			if (salaryInfoDTO.getTempPayrollId() == null || salaryInfoDTO.getTempPayrollId().trim().isEmpty()) {
+				throw new com.employee.exception.ResourceNotFoundException(
+						"tempPayrollId is required in either path or request body.");
+			}
+			System.out.println("Using tempPayrollId from RequestBody: " + salaryInfoDTO.getTempPayrollId());
+		}
+
+		SalaryInfoDTO result = empSalaryInfoService.forwardToCentralOffice(salaryInfoDTO);
+		return new ResponseEntity<>(result, HttpStatus.OK);
+	}
+
 	/**
 	 * POST endpoint to send employee back to campus
-	 * This endpoint is called when clicking "Back to Campus" button after entering remarks
+	 * This endpoint is called when clicking "Back to Campus" button after entering
+	 * remarks
 	 * Sets emp_app_status_id to 1 and saves the remarks
 	 * 
-	 * @param backToCampusDTO Contains tempPayrollId, remarks (required), and optional checkListIds
+	 * @param backToCampusDTO Contains tempPayrollId, remarks (required), and
+	 *                        optional checkListIds
 	 * @return ResponseEntity with the updated BackToCampusDTO
 	 */
 	@PostMapping("/back-to-campus")
@@ -86,4 +99,10 @@ public class EmpSalaryInfoController {
 		BackToCampusDTO result = empSalaryInfoService.backToCampus(backToCampusDTO);
 		return new ResponseEntity<>(result, HttpStatus.OK);
 	}
+	
+	  @PostMapping("/update-checklists")
+	    public ResponseEntity<CheckListUpdateDTO> updateChecklists(@RequestBody CheckListUpdateDTO dto) {
+	        CheckListUpdateDTO result = empSalaryInfoService.updateCheckListIds(dto);
+	        return new ResponseEntity<>(result, HttpStatus.OK);
+	    }
 }

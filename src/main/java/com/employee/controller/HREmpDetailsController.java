@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,9 +27,12 @@ import com.employee.dto.EmployeeCampusInfoDTO;
 import com.employee.dto.EmployeeCurrentInfoDTO;
 import com.employee.dto.EmployeeRelationDTO;
 import com.employee.dto.BankContactDTO;
+import com.employee.dto.CheckListUpdateDTO;
 import com.employee.dto.FamilyMemberInOrgDTO;
+import com.employee.dto.SalaryInfoDTO;
 import com.employee.entity.EmpProfileView;
 import com.employee.entity.EmployeeBasicInfoView;
+import com.employee.service.EmpSalaryInfoService;
 import com.employee.service.GetEmpDetailsService;
 //import com.employee.service.EmpDocTypeService;
 import com.employee.service.HREmpDetlService;
@@ -41,6 +46,8 @@ public class HREmpDetailsController {
     HREmpDetlService hrEmpDetlService;
     @Autowired
     GetEmpDetailsService getEmpDetailsService;
+    @Autowired
+    private EmpSalaryInfoService empSalaryInfoService;
 
     // @Autowired
     // private EmpDocTypeService empDocTypeService;
@@ -212,16 +219,24 @@ public class HREmpDetailsController {
     public Optional<EmpProfileView> getProfileByPayrollId(@PathVariable String payrollId) {
         return getEmpDetailsService.getProfileByPayrollId(payrollId);
     }
-    
+
     @GetMapping("/contacts/{payrollId}")
     public ResponseEntity<List<BankContactDTO>> getBankContactsByPayrollId(@PathVariable String payrollId) {
         List<BankContactDTO> contacts = hrEmpDetlService.getBankContactsByPayrollId(payrollId);
-        
+
         if (contacts.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
-        
+
         return new ResponseEntity<>(contacts, HttpStatus.OK);
     }
+
+    @GetMapping("/salary-info/{payrollId}")
+    public ResponseEntity<SalaryInfoDTO> getSalaryInfoByPayrollId(@PathVariable String payrollId) {
+        SalaryInfoDTO salaryInfoDTO = empSalaryInfoService.getSalaryInfoByPayrollIdAsDTO(payrollId);
+        return new ResponseEntity<>(salaryInfoDTO, HttpStatus.OK);
+    }
+
+  
 
 }
