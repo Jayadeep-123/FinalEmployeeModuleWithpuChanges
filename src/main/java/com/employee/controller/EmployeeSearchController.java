@@ -48,7 +48,7 @@ public class EmployeeSearchController {
      *
      * @param cityId Optional - City ID filter (must be combined with payrollId)
      * @param employeeTypeId Optional - Employee Type ID filter (must be combined with payrollId)
-     * @param payrollId Required - Payroll ID filter (must be provided with cityId or employeeTypeId)
+     * @param payrollId Required - Payroll ID or Employee Name filter (must be provided with cityId or employeeTypeId)
      * @return ResponseEntity with List of EmployeeSearchResponseDTO containing:
      *         empId, empName, payRollId, departmentName, modeOfHiringName, tempPayrollId
      *         Maximum 50 records returned automatically
@@ -167,7 +167,10 @@ public class EmployeeSearchController {
  
     /**
      * GET endpoint for search list (payrollId is optional and can be a list)
-     * Supports basic filters: cityId, employeeTypeId, payrollId
+     * @param cityId Optional
+     * @param employeeTypeId Optional
+     * @param campusId Optional
+     * @param payrollId Optional - Single/comma-separated Payroll ID or Employee Name
      */
     @GetMapping("/list")
     public ResponseEntity<?> searchEmployeesList(

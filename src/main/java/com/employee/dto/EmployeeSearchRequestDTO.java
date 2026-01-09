@@ -1,9 +1,9 @@
 package com.employee.dto;
- 
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
- 
+
 /**
  * DTO for Employee Search Request
  * Supports flexible search with optional filters:

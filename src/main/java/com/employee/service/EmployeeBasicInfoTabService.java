@@ -1627,7 +1627,7 @@ public class EmployeeBasicInfoTabService {
                     expToDelete.setUpdated_date(LocalDateTime.now());
                 }
                 empExperienceDetailsRepository.save(expToDelete);
-               
+                
                 // Deactivate associated documents only when the experience record is being deactivated
                 deactivateExperienceDocuments(expToDelete.getEmp_exp_detl_id(), updatedBy);
             }
@@ -1638,7 +1638,7 @@ public class EmployeeBasicInfoTabService {
      * Helper: Save documents for a specific experience record
      */
     private void saveEmployerDocuments(Employee employee, EmpExperienceDetails experience, List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docs, Integer createdBy, Integer updatedBy) {
-        // REMOVED: Unconditional deactivation of existing documents.
+        // REMOVED: Unconditional deactivation of existing documents. 
         // User requested that documents remain active (is_active=1) during updates.
 
         for (PreviousEmployerInfoDTO.ExperienceDocumentDTO docDTO : docs) {
@@ -1664,7 +1664,7 @@ public class EmployeeBasicInfoTabService {
             doc.setDoc_path(path);
             doc.setIs_verified(0);
             doc.setIs_active(1);
-           
+            
             doc.setEmp_doc_type_id(empDocTypeRepository.findById(docTypeId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document Type not found with ID: " + docTypeId)));
 
@@ -1687,7 +1687,7 @@ public class EmployeeBasicInfoTabService {
         List<EmpDocuments> existingDocs = empDocumentsRepository.findAll().stream()
                 .filter(d -> d.getEmp_exp_detl_id() != null && d.getEmp_exp_detl_id().getEmp_exp_detl_id() == expId && d.getIs_active() == 1)
                 .collect(Collectors.toList());
-       
+        
         for (EmpDocuments doc : existingDocs) {
             doc.setIs_active(0);
             if (updatedBy != null) {
@@ -1942,17 +1942,10 @@ public class EmployeeBasicInfoTabService {
             }
         }
 
-        // Validate tempPayrollId
-        // Rule: If employee already exists with this tempPayrollId, allow it (skip SkillTest check).
-        // Otherwise (new employee), tempPayrollId must exist in SkillTestDetails.
+        // Validate tempPayrollId against SkillTestDetl table if provided
         if (tempPayrollId != null && !tempPayrollId.trim().isEmpty()) {
-            boolean existsInEmployee = employeeRepository.findByTempPayrollId(tempPayrollId.trim()).isPresent();
-            if (!existsInEmployee) {
-                skillTestDetailsRepository.findByTempPayrollId(tempPayrollId.trim())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Temp Payroll ID not found in Skill Test Details: " + tempPayrollId
-                                + ". Please provide a valid temp payroll ID or use an existing employee's temp payroll ID."));
-            }
+            skillTestDetailsRepository.findByTempPayrollId(tempPayrollId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Temp Payroll ID not found in Skill Test Details: " + tempPayrollId + ". Please provide a valid temp payroll ID."));
         }
     }
 
