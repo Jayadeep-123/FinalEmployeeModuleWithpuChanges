@@ -34,23 +34,23 @@ public class Employee {
 	private Date date_of_join;
 	private long primary_mobile_no;
 	@Column(name = "secondary_mobile_no")
-	private Long secondary_mobile_no; 
+	private Long secondary_mobile_no;
 	private String email;
 	private String user_name; // Optional - nullable
 	private String password; // Optional - nullable
 	private int is_active;
-	
-    // --- THIS IS THE FIX ---
+
+	// --- THIS IS THE FIX ---
 	// The conflicting 'private int cmps_id;' has been removed.
-    // The @ManyToOne mapping below is the only one needed.
-    // --- END OF FIX ---
+	// The @ManyToOne mapping below is the only one needed.
+	// --- END OF FIX ---
 
 	@Column(name = "temp_payroll_id") // Make sure this is your database column name
 	private String tempPayrollId;
-	
-	@Column(name="payroll_id")
+
+	@Column(name = "payroll_id")
 	private String payRollId;
-	
+
 	// Note: passout_year column does NOT exist in sce_emp table
 	// Marked as @Transient to prevent Hibernate from trying to map it to database
 	@Transient
@@ -79,7 +79,7 @@ public class Employee {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "designation_id")
 	private Designation designation;
-	
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "department_id")
 	private Department department;
@@ -121,8 +121,8 @@ public class Employee {
 	private ModeOfHiring modeOfHiring_id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "emp_app_status_id", nullable = false)
-    private EmployeeCheckListStatus emp_check_list_status_id; // Required NOT NULL
+	@JoinColumn(name = "emp_app_status_id", nullable = false)
+	private EmployeeCheckListStatus emp_check_list_status_id; // Required NOT NULL
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "emp_status_id", nullable = false)
@@ -141,29 +141,29 @@ public class Employee {
 
 	@Column(name = "created_date", nullable = false)
 	private LocalDateTime created_date;
-	
+
 	@Column(name = "updated_by")
 	private Integer updated_by;
 
 	@Column(name = "updated_date")
 	private LocalDateTime updated_date;
 
-    @Column(name = "notice_period")
-    private String notice_period; // Optional - nullable
+	@Column(name = "notice_period")
+	private String notice_period; // Optional - nullable
 
-    @Column(name = "emp_app_check_list_detl_id", length = 100)
-    private String emp_app_check_list_detl_id; // Optional - nullable
-    
-    @Column(name = "remarks")
+	@Column(name = "emp_app_check_list_detl_id", length = 100)
+	private String emp_app_check_list_detl_id; // Optional - nullable
+
+	@Column(name = "remarks")
 	private String remarks; // Optional - nullable, for storing rejection/back to campus remarks
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "agreement_org_id")
 	private Organization agreement_org_id; // Optional - FK to sce_campus.sce_organization
-	
-	@Column(name = "aagreement_type")
-	private String agreement_type; 
-	
+
+	@Column(name = "agreement_type")
+	private String agreement_type;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "org_id")
 	private Organization org_id; // Optional - FK to sce_campus.sce_organization
@@ -173,11 +173,10 @@ public class Employee {
 	private Building building_id; // Optional - can be null
 
 	@Range(min = 18, max = 58, message = "Age must be between 18 and 58")
-    @Column(name = "age")
-    private Integer age;// Optional - nullable
+	@Column(name = "age")
+	private Integer age;// Optional - nullable
 
 	@Column(name = "ssc_no")
 	private Long ssc_no; // SSC number - moved from EmpDocuments to Employee table
 
-	
 }

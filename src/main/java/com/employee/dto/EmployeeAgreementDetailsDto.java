@@ -8,11 +8,12 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class EmployeeAgreementDetailsDto  {
+public class EmployeeAgreementDetailsDto {
 
     // Agreement Info
     private String agreementCompany;
     private String agreementType;
+    private String agreementPath;
 
     // Cheque Info
     private int noOfCheques;

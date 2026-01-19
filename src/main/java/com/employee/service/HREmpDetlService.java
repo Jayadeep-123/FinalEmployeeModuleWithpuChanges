@@ -1026,7 +1026,6 @@ import com.employee.dto.FamilyMemberInOrgDTO;
 import com.employee.dto.BankContactDTO;
 import com.employee.dto.QualificationDetailsDto;
 import com.employee.entity.BankDetails;
-import com.employee.dto.BankContactDTO;
 import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
 import com.employee.entity.EmpChequeDetails;
@@ -1524,12 +1523,29 @@ public class HREmpDetlService {
         // 2. Fetch Cheques using correct getter emp.getEmp_id()
         List<EmpChequeDetails> cheques = empChequeDetailsRepository.findActiveChequesByEmpId(emp.getEmp_id());
 
-        // 3. Map Cheque entities to DTOs (This logic is correct)
+        // 3. Map Cheque entities to DTOs
         List<ChequeDetailsDto> chequeDtos = cheques.stream()
-                .map(chq -> new ChequeDetailsDto(
-                        chq.getChequeNo(),
-                        chq.getChequeBankName(),
-                        chq.getChequeBankIfscCode()))
+                .map(chq -> {
+                    ChequeDetailsDto d = new ChequeDetailsDto();
+                    d.setChequeNo(chq.getChequeNo());
+                    d.setChequeBank(chq.getChequeBankName());
+                    d.setIfscCode(chq.getChequeBankIfscCode());
+
+                    // Fetch path from EmpDocuments linked to this cheque via path prefix
+                    String linkPrefix = "CHEQUE_LINK_" + chq.getEmpChequeDetailsId() + "_";
+                    String searchPattern = "%" + linkPrefix + "%";
+                    empDocumentsRepository.findByEmpIdAndPathPattern(emp.getEmp_id(), searchPattern)
+                            .ifPresent(doc -> {
+                                String path = doc.getDoc_path();
+                                if (path != null && path.startsWith(linkPrefix)) {
+                                    d.setChequePath(path.substring(linkPrefix.length()));
+                                } else {
+                                    d.setChequePath(path);
+                                }
+                            });
+
+                    return d;
+                })
                 .collect(Collectors.toList());
 
         EmployeeAgreementDetailsDto response = new EmployeeAgreementDetailsDto();
@@ -1545,6 +1561,10 @@ public class HREmpDetlService {
         // 5. Set response fields using correct getters
         response.setAgreementCompany(orgName);
         response.setAgreementType(emp.getAgreement_type()); // Correctly uses emp.getAgreement_type()
+
+        // Fetch path for the agreement document
+        empDocumentsRepository.findByEmpIdAndDocName(emp.getEmp_id(), "Agreement")
+                .ifPresent(doc -> response.setAgreementPath(doc.getDoc_path()));
 
         // 6. Final DTO population
         response.setNoOfCheques(chequeDtos.size());

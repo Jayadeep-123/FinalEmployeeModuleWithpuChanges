@@ -11,4 +11,5 @@ public class ChequeDetailsDto {
     private Long chequeNo;
     private String chequeBank;
     private String ifscCode;
+    private String chequePath;
 }

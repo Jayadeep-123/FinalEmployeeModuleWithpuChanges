@@ -11,8 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,7 +25,6 @@ import com.employee.dto.EmployeeCampusInfoDTO;
 import com.employee.dto.EmployeeCurrentInfoDTO;
 import com.employee.dto.EmployeeRelationDTO;
 import com.employee.dto.BankContactDTO;
-import com.employee.dto.CheckListUpdateDTO;
 import com.employee.dto.FamilyMemberInOrgDTO;
 import com.employee.dto.SalaryInfoDTO;
 import com.employee.entity.EmpProfileView;
@@ -236,7 +233,5 @@ public class HREmpDetailsController {
         SalaryInfoDTO salaryInfoDTO = empSalaryInfoService.getSalaryInfoByPayrollIdAsDTO(payrollId);
         return new ResponseEntity<>(salaryInfoDTO, HttpStatus.OK);
     }
-
-  
 
 }
