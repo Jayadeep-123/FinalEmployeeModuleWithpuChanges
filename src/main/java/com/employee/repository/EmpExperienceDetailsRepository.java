@@ -29,4 +29,8 @@ public interface EmpExperienceDetailsRepository extends JpaRepository<EmpExperie
      */
 	@Query("SELECT e FROM EmpExperienceDetails e WHERE e.employee_id.emp_id = :empId AND e.is_active = 1")
     List<EmpExperienceDetails> findActiveByEmployeeId(@Param("empId") int empId);
+	
+	
+	@Query("SELECT e FROM EmpExperienceDetails e JOIN e.employee_id emp WHERE emp.payRollId = :payrollId")
+	List<EmpExperienceDetails> findExperienceByPayrollId(@Param("payrollId") String payrollId);
 }

@@ -10,11 +10,16 @@ import lombok.NoArgsConstructor;
 public class EmployeeCampusAddressDTO {
 	private String payrollId;
     private String fullAddress;
+    private String city;
     private String buildingMobileNo;
     private String employeeMobileNo;
     private String managerName;
     private String managerMobileNo;
     private String ReportingManagerName;
     private String reportingManagerMobileNo;
-}
+    private Integer cityId;
  
+    private Integer managerId;
+   private Integer campusId;
+    private Integer reportingManagerId;
+}

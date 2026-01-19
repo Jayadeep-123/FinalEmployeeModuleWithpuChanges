@@ -21,6 +21,7 @@ import com.employee.dto.UnmappingDTO;
 import com.employee.entity.Building;
 import com.employee.entity.BuildingAddress;
 import com.employee.entity.Campus;
+import com.employee.entity.City;
 import com.employee.entity.Department;
 import com.employee.entity.Designation;
 import com.employee.entity.Employee;
@@ -863,29 +864,26 @@ public class ManagerMappingService {
         }
         // If single campus, no SharedEmployee table update needed
 
-        // Step 8: Unmap manager if the provided managerId matches the current manager
-        // Treat 0 or null as "don't touch this field"
+        // Step 8: Unmap manager
+        // 0 means unmap regardless of who the current manager is
+        // > 0 means check for match and unmap
+        // null means do nothing
         Integer managerIdValue = unmappingDTO.getManagerId();
-        if (managerIdValue != null && managerIdValue != 0) {
-            if (employee.getEmployee_manager_id() != null &&
+        if (managerIdValue != null) {
+            if (managerIdValue == 0) {
+                // Clear manager regardless of who it is
+                employee.setEmployee_manager_id(null);
+            } else if (employee.getEmployee_manager_id() != null &&
                     employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
-                // Validate manager is from the same campus as employee
-                Employee currentManager = employee.getEmployee_manager_id();
-                if (currentManager.getCampus_id() == null
-                        || currentManager.getCampus_id().getCampusId() != employeeCampus.getCampusId()) {
-                    throw new ResourceNotFoundException(
-                            String.format(
-                                    "Cannot unmap manager: Manager with ID %d is not from the same campus as employee. Employee campus: %d, Manager campus: %s",
-                                    managerIdValue, employeeCampus.getCampusId(),
-                                    currentManager.getCampus_id() != null
-                                            ? String.valueOf(currentManager.getCampus_id().getCampusId())
-                                            : "null"));
-                }
+                // Validate and clear specific manager
                 employee.setEmployee_manager_id(null);
             } else if (employee.getEmployee_manager_id() == null) {
-                throw new ResourceNotFoundException(
-                        "Employee does not have a manager assigned to unmap");
+                // If it was already null, no error for 0, but error for specific ID (safety)
+                if (managerIdValue > 0) {
+                    throw new ResourceNotFoundException("Employee does not have a manager assigned to unmap");
+                }
             } else {
+                // Specific ID mismatch
                 throw new ResourceNotFoundException(
                         String.format("Employee's current manager ID (%d) does not match the provided managerId (%d)",
                                 employee.getEmployee_manager_id().getEmp_id(), managerIdValue));
@@ -893,30 +891,26 @@ public class ManagerMappingService {
         }
         // If managerId is null or 0, don't touch the manager field
 
-        // Step 9: Unmap reporting manager if the provided reportingManagerId matches
-        // the current reporting manager
-        // Treat 0 or null as "don't touch this field"
+        // Step 9: Unmap reporting manager
+        // 0 means unmap regardless of who the current reporting manager is
+        // > 0 means check for match and unmap
+        // null means do nothing
         Integer reportingManagerIdValue = unmappingDTO.getReportingManagerId();
-        if (reportingManagerIdValue != null && reportingManagerIdValue != 0) {
-            if (employee.getEmployee_reporting_id() != null &&
+        if (reportingManagerIdValue != null) {
+            if (reportingManagerIdValue == 0) {
+                // Clear reporting manager regardless of who it is
+                employee.setEmployee_reporting_id(null);
+            } else if (employee.getEmployee_reporting_id() != null &&
                     employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
-                // Validate reporting manager is from the same campus as employee
-                Employee currentReportingManager = employee.getEmployee_reporting_id();
-                if (currentReportingManager.getCampus_id() == null
-                        || currentReportingManager.getCampus_id().getCampusId() != employeeCampus.getCampusId()) {
-                    throw new ResourceNotFoundException(
-                            String.format(
-                                    "Cannot unmap reporting manager: Reporting Manager with ID %d is not from the same campus as employee. Employee campus: %d, Reporting Manager campus: %s",
-                                    reportingManagerIdValue, employeeCampus.getCampusId(),
-                                    currentReportingManager.getCampus_id() != null
-                                            ? String.valueOf(currentReportingManager.getCampus_id().getCampusId())
-                                            : "null"));
-                }
+                // Validate and clear specific manager
                 employee.setEmployee_reporting_id(null);
             } else if (employee.getEmployee_reporting_id() == null) {
-                throw new ResourceNotFoundException(
-                        "Employee does not have a reporting manager assigned to unmap");
+                // If it was already null, no error for 0, but error for specific ID (safety)
+                if (reportingManagerIdValue > 0) {
+                    throw new ResourceNotFoundException("Employee does not have a reporting manager assigned to unmap");
+                }
             } else {
+                // Specific ID mismatch
                 throw new ResourceNotFoundException(
                         String.format(
                                 "Employee's current reporting manager ID (%d) does not match the provided reportingManagerId (%d)",
@@ -1054,27 +1048,21 @@ public class ManagerMappingService {
                     }
                 }
 
-                // Unmap manager if the provided managerId matches the current manager
-                // Treat 0 or null as "don't touch this field"
+                // Unmap manager
+                // 0 means unmap regardless of current ID
+                // > 0 means check match for safety
                 Integer managerIdValue = bulkUnmappingDTO.getManagerId();
-                if (managerIdValue != null && managerIdValue != 0) {
-                    if (employee.getEmployee_manager_id() != null &&
+                if (managerIdValue != null) {
+                    if (managerIdValue == 0) {
+                        employee.setEmployee_manager_id(null);
+                    } else if (employee.getEmployee_manager_id() != null &&
                             employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
-                        // Validate manager is from the same campus as employee
-                        Employee currentManager = employee.getEmployee_manager_id();
-                        if (currentManager.getCampus_id() == null
-                                || currentManager.getCampus_id().getCampusId() != employeeCampus.getCampusId()) {
-                            failedPayrollIds.add(payrollId + " (manager not from same campus: employee campus=" +
-                                    employeeCampus.getCampusId() + ", manager campus=" +
-                                    (currentManager.getCampus_id() != null ? currentManager.getCampus_id().getCampusId()
-                                            : "null")
-                                    + ")");
-                            continue;
-                        }
                         employee.setEmployee_manager_id(null);
                     } else if (employee.getEmployee_manager_id() == null) {
-                        failedPayrollIds.add(payrollId + " (no manager assigned)");
-                        continue;
+                        if (managerIdValue > 0) {
+                            failedPayrollIds.add(payrollId + " (no manager assigned to unmap)");
+                            continue;
+                        }
                     } else {
                         failedPayrollIds.add(payrollId + " (manager ID mismatch: current=" +
                                 employee.getEmployee_manager_id().getEmp_id() +
@@ -1084,30 +1072,21 @@ public class ManagerMappingService {
                 }
                 // If managerId is null or 0, don't touch the manager field
 
-                // Unmap reporting manager if the provided reportingManagerId matches the
-                // current reporting manager
-                // Treat 0 or null as "don't touch this field"
+                // Unmap reporting manager
+                // 0 means unmap regardless of current ID
+                // > 0 means check match for safety
                 Integer reportingManagerIdValue = bulkUnmappingDTO.getReportingManagerId();
-                if (reportingManagerIdValue != null && reportingManagerIdValue != 0) {
-                    if (employee.getEmployee_reporting_id() != null &&
+                if (reportingManagerIdValue != null) {
+                    if (reportingManagerIdValue == 0) {
+                        employee.setEmployee_reporting_id(null);
+                    } else if (employee.getEmployee_reporting_id() != null &&
                             employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
-                        // Validate reporting manager is from the same campus as employee
-                        Employee currentReportingManager = employee.getEmployee_reporting_id();
-                        if (currentReportingManager.getCampus_id() == null || currentReportingManager.getCampus_id()
-                                .getCampusId() != employeeCampus.getCampusId()) {
-                            failedPayrollIds
-                                    .add(payrollId + " (reporting manager not from same campus: employee campus=" +
-                                            employeeCampus.getCampusId() + ", reporting manager campus=" +
-                                            (currentReportingManager.getCampus_id() != null
-                                                    ? currentReportingManager.getCampus_id().getCampusId()
-                                                    : "null")
-                                            + ")");
-                            continue;
-                        }
                         employee.setEmployee_reporting_id(null);
                     } else if (employee.getEmployee_reporting_id() == null) {
-                        failedPayrollIds.add(payrollId + " (no reporting manager assigned)");
-                        continue;
+                        if (reportingManagerIdValue > 0) {
+                            failedPayrollIds.add(payrollId + " (no reporting manager assigned to unmap)");
+                            continue;
+                        }
                     } else {
                         failedPayrollIds.add(payrollId + " (reporting manager ID mismatch: current=" +
                                 employee.getEmployee_reporting_id().getEmp_id() +
@@ -1148,20 +1127,6 @@ public class ManagerMappingService {
         return bulkUnmappingDTO;
     }
 
-    private void mapManagers(Employee emp, EmployeeCampusAddressDTO dto) {
-        if (emp.getEmployee_manager_id() != null) {
-            dto.setManagerName(emp.getEmployee_manager_id().getFirst_name());
-            long mobile = emp.getEmployee_manager_id().getPrimary_mobile_no();
-            dto.setManagerMobileNo(mobile != 0 ? String.valueOf(mobile) : null);
-        }
-
-        if (emp.getEmployee_reporting_id() != null) {
-            dto.setReportingManagerName(emp.getEmployee_reporting_id().getFirst_name());
-            long rMobile = emp.getEmployee_reporting_id().getPrimary_mobile_no();
-            dto.setReportingManagerMobileNo(rMobile != 0 ? String.valueOf(rMobile) : null);
-        }
-    }
-
     /**
      * BATCH METHOD: Process multiple employees at once
      */
@@ -1170,11 +1135,11 @@ public class ManagerMappingService {
             return Collections.emptyList();
         }
 
-        // Fetch all employees in the list at once
-        List<Employee> employees = employeeRepository.findByPayRollIdIn(payrollIds);
+        // Fetch all employees in the list at once (handles both temp and permanent IDs)
+        List<Employee> employees = employeeRepository.findAllByPayRollIdInOrTempPayrollIdIn(payrollIds);
 
         return employees.stream()
-                .map(this::processSingleEmployee)
+                .map(emp -> processSingleEmployee(emp, payrollIds))
                 .collect(Collectors.toList());
     }
 
@@ -1182,42 +1147,68 @@ public class ManagerMappingService {
      * SINGLE METHOD: Process one employee (Existing logic)
      */
     public EmployeeCampusAddressDTO getCampusAddress(String payrollId) {
-        Employee emp = employeeRepository.findByPayrollId(payrollId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + payrollId));
-
-        return processSingleEmployee(emp);
+        Employee emp = findEmployeeByPayrollId(payrollId);
+        return processSingleEmployee(emp, Collections.singletonList(payrollId));
     }
 
     /**
      * CORE LOGIC: Converts Employee Entity to DTO
      */
-    private EmployeeCampusAddressDTO processSingleEmployee(Employee emp) {
-
+    private EmployeeCampusAddressDTO processSingleEmployee(Employee emp, List<String> inputIds) {
         EmployeeCampusAddressDTO dto = new EmployeeCampusAddressDTO();
-        dto.setPayrollId(emp.getPayRollId());
-        // Set it here
 
+        // 1. Core ID and Basic Info (Populate first to be safe)
+        String displayId = emp.getPayRollId();
+        if (displayId == null || (inputIds != null && !inputIds.contains(displayId))) {
+            displayId = emp.getTempPayrollId();
+        }
+        dto.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
+
+        // 2. Populate Employee Mobile and Manager Info (Available immediately from
+        // Employee entity)
+        dto.setEmployeeMobileNo(emp.getPrimary_mobile_no() != 0 ? String.valueOf(emp.getPrimary_mobile_no()) : null);
+
+        if (emp.getEmployee_manager_id() != null) {
+            dto.setManagerId(emp.getEmployee_manager_id().getEmp_id());
+        }
+
+        if (emp.getEmployee_reporting_id() != null) {
+            dto.setReportingManagerId(emp.getEmployee_reporting_id().getEmp_id());
+        }
+
+        // Additional manager text info (names, etc.)
+        mapManagerInfo(emp, dto);
+
+        // 3. Try to fetch Campus and Address Info (Defensively)
         try {
-            // 1. Validate Campus
             if (emp.getCampus_id() == null) {
-                throw new RuntimeException("Campus not assigned");
+                dto.setFullAddress("Address: Campus not assigned");
+                return dto;
             }
 
             Integer campusId = emp.getCampus_id().getCampusId();
+            dto.setCampusId(campusId);
 
-            // 2. Fetch buildings
-            List<Building> buildings = buildingRepository.findBuildingsByCampusId(campusId);
-            if (buildings == null || buildings.isEmpty()) {
-                throw new RuntimeException("No buildings in campus");
+            City result = campusRepository.findByCampusId(campusId);
+            if (result != null) {
+                dto.setCity(result.getCityName());
+                dto.setCityId(result.getCityId());
             }
 
-            // 3. Pick main building logic (Null-safe)
+            // Fetch buildings
+            List<Building> buildings = buildingRepository.findBuildingsByCampusId(campusId);
+            if (buildings == null || buildings.isEmpty()) {
+                dto.setFullAddress("Address: No buildings found for campus");
+                return dto;
+            }
+
+            // Pick main building logic
             Building selectedBuilding = buildings.stream()
-                    .filter(b -> b.getIsMainBuilding() != 0 && b.getIsMainBuilding() == 1)
+                    .filter(b -> b.getIsMainBuilding() == 1)
                     .findFirst()
                     .orElse(buildings.get(0));
 
-            // 4. Fetch address (Try specific type first, then fallback)
+            // Fetch address
             BuildingAddress buildingAddress = buildingAddressRepository.findByBuildingIdAndAddressType(
                     selectedBuilding.getBuildingId(), "address");
 
@@ -1226,10 +1217,11 @@ public class ManagerMappingService {
             }
 
             if (buildingAddress == null) {
-                throw new RuntimeException("No address found");
+                dto.setFullAddress("Address: No address record found for building");
+                return dto;
             }
 
-            // 5. Build Address String
+            // Build Address String
             StringJoiner sj = new StringJoiner(", ");
             if (buildingAddress.getPlot_no() != null)
                 sj.add(buildingAddress.getPlot_no());
@@ -1239,46 +1231,48 @@ public class ManagerMappingService {
                 sj.add(buildingAddress.getStreet());
             if (buildingAddress.getLandmark() != null)
                 sj.add(buildingAddress.getLandmark());
-
-            if (buildingAddress.getCity() != null && buildingAddress.getCity().getCityName() != null) {
-                sj.add(buildingAddress.getCity().getCityName());
-            }
-
-            if (buildingAddress.getPin_code() != null) {
+            if (buildingAddress.getPin_code() != null)
                 sj.add(String.valueOf(buildingAddress.getPin_code()));
-            }
 
-            // 6. Final Mapping
             dto.setFullAddress(sj.toString());
             dto.setBuildingMobileNo(buildingAddress.getMobile_no());
-            dto.setEmployeeMobileNo(String.valueOf(emp.getPrimary_mobile_no()));
-
-            // Map Managers
-            mapManagerInfo(emp, dto);
 
         } catch (Exception e) {
-            // If an individual employee fails, we mark the DTO so the batch continues
-            dto.setFullAddress("Error: " + e.getMessage());
+            dto.setFullAddress("Address Error: " + e.getMessage());
         }
 
         return dto;
-
     }
 
     private void mapManagerInfo(Employee emp, EmployeeCampusAddressDTO dto) {
         // Direct Manager
         if (emp.getEmployee_manager_id() != null) {
-            dto.setManagerName(emp.getEmployee_manager_id().getFirst_name());
-            long mob = emp.getEmployee_manager_id().getPrimary_mobile_no();
+            Employee manager = emp.getEmployee_manager_id();
+            dto.setManagerId(manager.getEmp_id());
+
+            String name = manager.getFirst_name();
+            if (manager.getLast_name() != null) {
+                name += " " + manager.getLast_name();
+            }
+            dto.setManagerName(name);
+
+            long mob = manager.getPrimary_mobile_no();
             dto.setManagerMobileNo(mob != 0 ? String.valueOf(mob) : null);
         }
 
         // Reporting Manager
         if (emp.getEmployee_reporting_id() != null) {
-            dto.setReportingManagerName(emp.getEmployee_reporting_id().getFirst_name());
-            long rMob = emp.getEmployee_reporting_id().getPrimary_mobile_no();
+            Employee reportingManager = emp.getEmployee_reporting_id();
+            dto.setReportingManagerId(reportingManager.getEmp_id());
+
+            String rName = reportingManager.getFirst_name();
+            if (reportingManager.getLast_name() != null) {
+                rName += " " + reportingManager.getLast_name();
+            }
+            dto.setReportingManagerName(rName);
+
+            long rMob = reportingManager.getPrimary_mobile_no();
             dto.setReportingManagerMobileNo(rMob != 0 ? String.valueOf(rMob) : null);
         }
     }
-
 }

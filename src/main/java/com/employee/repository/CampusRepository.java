@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.employee.dto.CampusDto;
 import com.employee.dto.GenericDropdownDTO;
 import com.employee.entity.Campus;
+import com.employee.entity.City;
 
 @Repository
 public interface CampusRepository extends JpaRepository<Campus, Integer> {
@@ -57,4 +58,7 @@ public interface CampusRepository extends JpaRepository<Campus, Integer> {
     
     @Query("SELECT c FROM Campus c WHERE c.city_id = :cityId AND c.isActive = 1")
     List<Campus> findCampusesByCityId(@Param("cityId") int cityId);
+    
+    @Query("SELECT ca.city FROM Campus ca WHERE ca.campusId = :campusid")
+    City findByCampusId(@Param("campusid") int campusid);
 }

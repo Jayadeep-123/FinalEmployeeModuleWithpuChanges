@@ -1311,7 +1311,7 @@ public class EmpSalaryInfoService {
         try {
             // Attempt Step 1: Use native query to get decrypted salary info using
             // fn_decrypt_sal
-            DecryptedSalaryInfoProjection projection = empSalaryInfoRepository.findDecryptedByTempPayrollId(payrollId)
+            DecryptedSalaryInfoProjection projection = empSalaryInfoRepository.findDecryptedByPayrollId(payrollId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Salary info not found for employee with payroll_id: " + payrollId));
 

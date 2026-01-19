@@ -109,7 +109,7 @@ public class SkillTestDetails {
     private Employee referedBy;
     
     @Column(name = "is_active", nullable = false)
-    private Integer isActive = 1;
+    private Integer isActive ;
     
     @Column(name = "created_by", nullable = false)
     private Integer createdBy;
@@ -141,9 +141,16 @@ public class SkillTestDetails {
     private String password;
     
     // Foreign key to sce_skill_test_approval_status table
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "groupId" , referencedColumnName = "skill_test_approval_status_id")
+//    private SkillTestApprovalStatus groupId;
+//    
+    
+    
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "groupId" , referencedColumnName = "skill_test_approval_status_id")
-    private SkillTestApprovalStatus groupId;
+    @JoinColumn(name = "group_id") // Must match SQL column name exactly
+    private SkillTestApprovalStatus group;
+    
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cmps_id")
@@ -157,10 +164,17 @@ public class SkillTestDetails {
     @JoinColumn(name = "building_id")
     private Building buildingId;
     
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "orientation_id")
+    private Orientation orientation;
+    
     // Foreign key to sce_emp_type table
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "emp_type_id")
     private EmployeeType employeeType;
+    
+    
     @Column(name="created_date",insertable = false, updatable = false)
     private LocalDate joinDate;
     

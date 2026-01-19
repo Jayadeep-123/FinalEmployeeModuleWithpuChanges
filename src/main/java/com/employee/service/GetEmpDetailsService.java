@@ -145,6 +145,19 @@ public class GetEmpDetailsService {
 	    	return dto;
 	    }
 	    
+	    
+	    public List<EmpExperienceDetailsDTO> getExperienceByPayrollId(String payrollId) {
+	        
+	        // 1. Fetch data using the NEW repository method
+	        List<EmpExperienceDetails> experienceList =
+	                empExperienceDetailsRepo.findExperienceByPayrollId(payrollId);
+
+	        // 2. Convert to DTOs using your existing helper method
+	        return experienceList.stream()
+	                .map(this::convertToDTO)
+	                .collect(Collectors.toList());
+	    }
+	    
 	 // Change the return type from CategoryInfoDTO to CategoryInfoDTO1
 	    public List<CategoryInfoDTO1> getCategoryInfo(String TemppayrollId) {
 	        return empSubjectRepository.findCategoryInfoByPayrollId(TemppayrollId);

@@ -232,5 +232,20 @@ public class GetEmpDetailsController {
 	        return getEmpDetailsService.getQualificationsByTempPayrollId(tempPayrollId);
 	    }
 	   
+	   
+	   @GetMapping("/payroll/{payrollId}")
+	    public ResponseEntity<List<EmpExperienceDetailsDTO>> getExperienceByPayrollId(
+	            @PathVariable String payrollId) {
+	        
+	        List<EmpExperienceDetailsDTO> experienceList = 
+	        		getEmpDetailsService.getExperienceByPayrollId(payrollId);
+	        
+	        if (experienceList.isEmpty()) {
+	            return ResponseEntity.noContent().build();
+	        }
+	        
+	        return ResponseEntity.ok(experienceList);
+	    }
+	   
  
 }

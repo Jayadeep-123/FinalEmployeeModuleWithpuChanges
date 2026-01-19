@@ -246,7 +246,7 @@ public class SkillTestDetailsService {
         newDetails.setEmpStructure(structure);
         newDetails.setEmployeeType(employeeType);
         
-        newDetails.setGroupId(group);
+        newDetails.setGroup(group);
         newDetails.setCampusId(detailCampus);
         newDetails.setCityId(city);
         newDetails.setBuildingId(building);
@@ -323,8 +323,8 @@ public class SkillTestDetailsService {
             dto.setEmpTypeId(entity.getEmployeeType().getEmp_type_id());
             dto.setEmpTypeName(entity.getEmployeeType().getEmp_type());
         }
-        if (entity.getGroupId() != null) {
-            dto.setGroupId(entity.getGroupId().getSkillTestApprovalStatusId());
+        if (entity.getGroup() != null) {
+            dto.setGroupId(entity.getGroup().getSkillTestApprovalStatusId());
         }
         if (entity.getCampusId() != null) {
             dto.setCampusId(entity.getCampusId().getCampusId());
