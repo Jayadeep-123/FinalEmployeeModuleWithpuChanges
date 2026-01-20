@@ -1,5 +1,5 @@
 package com.employee.service;
- 
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -8,12 +8,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
- 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
- 
+
 import com.employee.dto.SkillTestDetailsDto;
+
 import com.employee.dto.SkillTestDetailsRequestDto;
 import com.employee.dto.SkillTestDetailsResultDto;
 import com.employee.entity.Building;
@@ -49,37 +50,55 @@ import com.employee.repository.SkillTestResultRepository;
 import com.employee.repository.StreamRepository;
 import com.employee.repository.StructureRepository;
 import com.employee.repository.SubjectRepository;
- 
+import com.employee.repository.SkillTestApprovalRepository;
+import com.employee.entity.SkillTestApproval;
+
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
- 
+
 @Slf4j
 @Service
 public class SkillTestDetailsService {
- 
+
     @Autowired
     private SkillTestDetailsRepository skillTestDetailsRepository;
     @Autowired
     CampusRepository campusrepository;
-    
+
     // ... (All other autowired repositories remain the same) ...
-    @Autowired private GenderRepository genderRepository;
-    @Autowired private QualificationRepository qualificationRepository;
-    @Autowired private JoiningAsRepository joiningAsRepository;
-    @Autowired private StreamRepository streamRepository;
-    @Autowired private SubjectRepository subjectRepository;
-    @Autowired private EmployeeLevelRepository employeeLevelRepository;
-    @Autowired private EmployeeRepository employeeRepository;
-    @Autowired GradeRepository graderepository;
-    @Autowired StructureRepository structurerepository;
-    @Autowired private EmployeeTypeRepository employeeTypeRepository;
-    @Autowired SkillTestResultRepository skilltestresultrepository;
-    @Autowired private CityRepository cityRepository;
-    @Autowired private BuildingRepository buildingRepository;
-    @Autowired private SkillTestApprovalStatusRepository skillTestApprovalStatusRepository;
- 
+    @Autowired
+    private GenderRepository genderRepository;
+    @Autowired
+    private QualificationRepository qualificationRepository;
+    @Autowired
+    private JoiningAsRepository joiningAsRepository;
+    @Autowired
+    private StreamRepository streamRepository;
+    @Autowired
+    private SubjectRepository subjectRepository;
+    @Autowired
+    private EmployeeLevelRepository employeeLevelRepository;
+    @Autowired
+    private EmployeeRepository employeeRepository;
+    @Autowired
+    GradeRepository graderepository;
+    @Autowired
+    StructureRepository structurerepository;
+    @Autowired
+    private EmployeeTypeRepository employeeTypeRepository;
+    @Autowired
+    SkillTestResultRepository skilltestresultrepository;
+    @Autowired
+    private CityRepository cityRepository;
+    @Autowired
+    private BuildingRepository buildingRepository;
+    @Autowired
+    private SkillTestApprovalStatusRepository skillTestApprovalStatusRepository;
+    @Autowired
+    private SkillTestApprovalRepository skillTestApprovalRepository;
+
     private Map<String, AtomicInteger> campusCounters = new ConcurrentHashMap<>();
- 
+
     @PostConstruct
     public void initializeCounters() {
         // ... (Counter logic remains exactly the same as before) ...
@@ -95,13 +114,15 @@ public class SkillTestDetailsService {
                     try {
                         int val = Integer.parseInt(lastIdInSkillTest.substring(baseKey.length()));
                         lastValue = Math.max(lastValue, val);
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                    }
                 }
                 if (lastIdInEmployee != null) {
                     try {
                         int val = Integer.parseInt(lastIdInEmployee.substring(baseKey.length()));
                         lastValue = Math.max(lastValue, val);
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                    }
                 }
             } catch (Exception e) {
                 log.error("Error for key {}: {}", baseKey, e.getMessage());
@@ -109,115 +130,136 @@ public class SkillTestDetailsService {
             campusCounters.put(baseKey, new AtomicInteger(lastValue));
         }
     }
- 
+
     // ======================================
     // SAVE METHOD - UPDATED RETURN TYPE
     // ======================================
     @Transactional
-    public SkillTestDetailsDto saveSkillTestDetails(SkillTestDetailsRequestDto requestDto, int emp_id) { // Returns Response DTO
- 
+    public SkillTestDetailsDto saveSkillTestDetails(SkillTestDetailsRequestDto requestDto, int emp_id) { // Returns
+                                                                                                         // Response DTO
+
         if (emp_id <= 0) {
             throw new IllegalArgumentException("Employee ID must be > 0");
         }
- 
+
         // Validate createdBy is provided and valid (must be done early)
         if (requestDto.getCreatedBy() == null || requestDto.getCreatedBy() <= 0) {
-            throw new ResourceNotFoundException("createdBy is required and must be greater than 0. Please provide the user ID who is creating this record.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required and must be greater than 0. Please provide the user ID who is creating this record.");
         }
- 
+
         Employee employee = employeeRepository.findById(emp_id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
- 
+
         Campus campus = employee.getCampus_id();
         if (campus == null) {
             throw new ResourceNotFoundException("Employee has no campus assigned");
         }
- 
+
         // === Generate TempPayrollId ===
         String baseKey = "TEMP" + campus.getCode();
-        
+
         // ... (Logic to calculate maxValue remains the same) ...
         String max1 = skillTestDetailsRepository.findMaxTempPayrollIdByKey(baseKey + "%");
         String max2 = employeeRepository.findMaxTempPayrollIdByKey(baseKey + "%");
         int maxValue = 0;
-        try { if (max1 != null) maxValue = Math.max(maxValue, Integer.parseInt(max1.substring(baseKey.length()))); } catch (Exception e) {}
-        try { if (max2 != null) maxValue = Math.max(maxValue, Integer.parseInt(max2.substring(baseKey.length()))); } catch (Exception e) {}
- 
+        try {
+            if (max1 != null)
+                maxValue = Math.max(maxValue, Integer.parseInt(max1.substring(baseKey.length())));
+        } catch (Exception e) {
+        }
+        try {
+            if (max2 != null)
+                maxValue = Math.max(maxValue, Integer.parseInt(max2.substring(baseKey.length())));
+        } catch (Exception e) {
+        }
+
         int nextValue = maxValue + 1;
         String generatedTempPayrollId = baseKey + String.format("%04d", nextValue);
         campusCounters.computeIfAbsent(baseKey, k -> new AtomicInteger(0)).set(nextValue);
- 
+
         // === Aadhaar Validation ===
         if (requestDto.getAadhaarNo() != null && requestDto.getAadhaarNo() > 0) {
             String aadhaar = String.valueOf(requestDto.getAadhaarNo());
-            if (!aadhaar.matches("^[0-9]{12}$")) throw new ResourceNotFoundException("Aadhaar must be exactly 12 digits");
-            if (!isValidAadhaar(aadhaar)) throw new ResourceNotFoundException("Invalid Aadhaar (Verhoeff failed)");
+            if (!aadhaar.matches("^[0-9]{12}$"))
+                throw new ResourceNotFoundException("Aadhaar must be exactly 12 digits");
+            if (!isValidAadhaar(aadhaar))
+                throw new ResourceNotFoundException("Invalid Aadhaar (Verhoeff failed)");
         }
- 
+
         // === Fetch Relations ===
         Gender gender = null;
         if (requestDto.getGenderId() != null && requestDto.getGenderId() > 0)
-            gender = genderRepository.findById(requestDto.getGenderId()).orElseThrow(() -> new ResourceNotFoundException("Gender not found"));
- 
+            gender = genderRepository.findById(requestDto.getGenderId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Gender not found"));
+
         Qualification qualification = null;
         if (requestDto.getQualificationId() != null && requestDto.getQualificationId() > 0)
-            qualification = qualificationRepository.findById(requestDto.getQualificationId()).orElseThrow(() -> new ResourceNotFoundException("Qualification not found"));
- 
+            qualification = qualificationRepository.findById(requestDto.getQualificationId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Qualification not found"));
+
         JoiningAs joiningAs = null;
         if (requestDto.getJoiningAsId() != null && requestDto.getJoiningAsId() > 0)
-            joiningAs = joiningAsRepository.findById(requestDto.getJoiningAsId()).orElseThrow(() -> new ResourceNotFoundException("JoiningAs not found"));
- 
+            joiningAs = joiningAsRepository.findById(requestDto.getJoiningAsId())
+                    .orElseThrow(() -> new ResourceNotFoundException("JoiningAs not found"));
+
         Stream stream = null;
         if (requestDto.getStreamId() != null && requestDto.getStreamId() > 0)
-            stream = streamRepository.findById(requestDto.getStreamId()).orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
- 
+            stream = streamRepository.findById(requestDto.getStreamId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
+
         Subject subject = null;
         if (requestDto.getSubjectId() != null && requestDto.getSubjectId() > 0)
-            subject = subjectRepository.findById(requestDto.getSubjectId()).orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
- 
+            subject = subjectRepository.findById(requestDto.getSubjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+
         EmployeeLevel employeeLevel = null;
         if (requestDto.getEmp_level_id() != null && requestDto.getEmp_level_id() > 0)
-            employeeLevel = employeeLevelRepository.findById(requestDto.getEmp_level_id()).orElseThrow(() -> new ResourceNotFoundException("EmployeeLevel not found"));
- 
+            employeeLevel = employeeLevelRepository.findById(requestDto.getEmp_level_id())
+                    .orElseThrow(() -> new ResourceNotFoundException("EmployeeLevel not found"));
+
         Grade grade = null;
         if (requestDto.getEmp_grade_id() != null && requestDto.getEmp_grade_id() > 0)
-            grade = graderepository.findById(requestDto.getEmp_grade_id()).orElseThrow(() -> new ResourceNotFoundException("Grade not found"));
- 
+            grade = graderepository.findById(requestDto.getEmp_grade_id())
+                    .orElseThrow(() -> new ResourceNotFoundException("Grade not found"));
+
         Structure structure = null;
         if (requestDto.getEmp_structure_id() != null && requestDto.getEmp_structure_id() > 0)
-            structure = structurerepository.findById(requestDto.getEmp_structure_id()).orElseThrow(() -> new ResourceNotFoundException("Structure not found"));
- 
+            structure = structurerepository.findById(requestDto.getEmp_structure_id())
+                    .orElseThrow(() -> new ResourceNotFoundException("Structure not found"));
+
         EmployeeType employeeType = null;
         if (requestDto.getEmpTypeId() != null && requestDto.getEmpTypeId() > 0)
-            employeeType = employeeTypeRepository.findById(requestDto.getEmpTypeId()).orElseThrow(() -> new ResourceNotFoundException("EmployeeType not found"));
-        
+            employeeType = employeeTypeRepository.findById(requestDto.getEmpTypeId())
+                    .orElseThrow(() -> new ResourceNotFoundException("EmployeeType not found"));
+
         SkillTestApprovalStatus group = null;
         if (requestDto.getGroupId() != null && requestDto.getGroupId() > 0) {
             group = skillTestApprovalStatusRepository.findById(requestDto.getGroupId())
                     .orElseThrow(() -> new ResourceNotFoundException("Skill Test Approval Group not found"));
         }
- 
+
         Campus detailCampus = null;
         if (requestDto.getCmpsId() != null && requestDto.getCmpsId() > 0) {
             detailCampus = campusrepository.findById(requestDto.getCmpsId())
                     .orElseThrow(() -> new ResourceNotFoundException("Campus not found for provided ID"));
         }
- 
+
         City city = null;
         if (requestDto.getCityId() != null && requestDto.getCityId() > 0) {
             city = cityRepository.findById(requestDto.getCityId())
                     .orElseThrow(() -> new ResourceNotFoundException("City not found"));
         }
- 
+
         Building building = null;
         if (requestDto.getBuildingId() != null && requestDto.getBuildingId() > 0) {
             building = buildingRepository.findById(requestDto.getBuildingId())
                     .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
         }
- 
+
         // === Create Entity ===
         SkillTestDetails newDetails = new SkillTestDetails();
- 
+
         newDetails.setAadhaar_no(requestDto.getAadhaarNo());
         newDetails.setPrevious_chaitanya_id(requestDto.getPreviousChaitanyaId());
         newDetails.setFirstName(requestDto.getFirstName());
@@ -227,14 +269,14 @@ public class SkillTestDetailsService {
         newDetails.setTotalExperience(requestDto.getTotalExperience());
         newDetails.setContact_number(requestDto.getContactNumber());
         newDetails.setTempPayrollId(generatedTempPayrollId);
-        
+
         // === Password Logic ===
         String firstName = requestDto.getFirstName();
         String namePart = (firstName == null || firstName.length() < 3) ? "emp" : firstName.substring(0, 3);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("ddMMyyyy");
         String dobPart = requestDto.getDob().format(formatter);
         newDetails.setPassword(namePart + dobPart);
- 
+
         // === Set Relations ===
         newDetails.setGender(gender);
         newDetails.setQualification(qualification);
@@ -245,37 +287,38 @@ public class SkillTestDetailsService {
         newDetails.setEmpGrade(grade);
         newDetails.setEmpStructure(structure);
         newDetails.setEmployeeType(employeeType);
-        
+
         newDetails.setGroup(group);
         newDetails.setCampusId(detailCampus);
         newDetails.setCityId(city);
         newDetails.setBuildingId(building);
-        
+
         // === Audit Fields ===
-        // Set created_by from user input (Request DTO) - validation already done at method start
+        // Set created_by from user input (Request DTO) - validation already done at
+        // method start
         newDetails.setCreatedBy(requestDto.getCreatedBy());
-        newDetails.setCreatedDate(LocalDateTime.now());  
-        newDetails.setIsActive(1);                       
- 
+        newDetails.setCreatedDate(LocalDateTime.now());
+        newDetails.setIsActive(1);
+
         // === SAVE THE ENTITY ===
         SkillTestDetails savedDetails = skillTestDetailsRepository.save(newDetails);
-        
+
         // === CONVERT ENTITY TO DTO AND RETURN ===
         return convertToDto(savedDetails);
     }
-    
+
     /**
      * Helper method to convert SkillTestDetails entity to DTO
      * This avoids serialization issues with Hibernate lazy loading
      */
     private SkillTestDetailsDto convertToDto(SkillTestDetails entity) {
         SkillTestDetailsDto dto = new SkillTestDetailsDto();
-        
+
         // Set response fields
         dto.setSkillTestDetlId(entity.getSkillTestDetlId());
         dto.setTempPayrollId(entity.getTempPayrollId());
         dto.setCreatedDate(entity.getCreatedDate());
-        
+
         // Set personal info
         dto.setAadhaarNo(entity.getAadhaar_no());
         dto.setPreviousChaitanyaId(entity.getPrevious_chaitanya_id());
@@ -285,7 +328,7 @@ public class SkillTestDetailsService {
         dto.setContactNumber(entity.getContact_number());
         dto.setEmail(entity.getEmail());
         dto.setTotalExperience(entity.getTotalExperience());
-        
+
         // Set foreign key IDs and Names from relationships
         if (entity.getGender() != null) {
             dto.setGenderId(entity.getGender().getGender_id());
@@ -335,13 +378,13 @@ public class SkillTestDetailsService {
         if (entity.getBuildingId() != null) {
             dto.setBuildingId(entity.getBuildingId().getBuildingId());
         }
-        
+
         // Set audit fields
         dto.setCreatedBy(entity.getCreatedBy());
-        
+
         return dto;
     }
- 
+
     /**
      * Get skill test details by tempPayrollId
      *
@@ -354,20 +397,25 @@ public class SkillTestDetailsService {
         if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
             throw new ResourceNotFoundException("tempPayrollId is required");
         }
-        
+
         SkillTestDetails skillTestDetails = skillTestDetailsRepository
                 .findActiveByTempPayrollId(tempPayrollId.trim())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Skill test details not found for tempPayrollId: " + tempPayrollId));
-        
+
         return convertToDto(skillTestDetails);
     }
- 
+
     // ... (isValidAadhaar remains the same) ...
     private boolean isValidAadhaar(String aadhaar) {
         // ... Verhoeff logic ...
-        int[][] D = {{0,1,2,3,4,5,6,7,8,9},{1,2,3,4,0,6,7,8,9,5},{2,3,4,0,1,7,8,9,5,6},{3,4,0,1,2,8,9,5,6,7},{4,0,1,2,3,9,5,6,7,8},{5,9,8,7,6,0,4,3,2,1},{6,5,9,8,7,1,0,4,3,2},{7,6,5,9,8,2,1,0,4,3},{8,7,6,5,9,3,2,1,0,4},{9,8,7,6,5,4,3,2,1,0}};
-        int[][] P = {{0,1,2,3,4,5,6,7,8,9},{1,5,7,6,2,8,3,0,9,4},{5,8,0,3,7,9,6,1,4,2},{8,9,1,6,0,4,3,5,2,7},{9,4,5,3,1,2,6,8,7,0},{4,2,8,6,5,7,3,9,0,1},{2,7,9,3,8,0,6,4,1,5},{7,0,4,6,9,1,3,2,5,8}};
+        int[][] D = { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, { 1, 2, 3, 4, 0, 6, 7, 8, 9, 5 },
+                { 2, 3, 4, 0, 1, 7, 8, 9, 5, 6 }, { 3, 4, 0, 1, 2, 8, 9, 5, 6, 7 }, { 4, 0, 1, 2, 3, 9, 5, 6, 7, 8 },
+                { 5, 9, 8, 7, 6, 0, 4, 3, 2, 1 }, { 6, 5, 9, 8, 7, 1, 0, 4, 3, 2 }, { 7, 6, 5, 9, 8, 2, 1, 0, 4, 3 },
+                { 8, 7, 6, 5, 9, 3, 2, 1, 0, 4 }, { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 } };
+        int[][] P = { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, { 1, 5, 7, 6, 2, 8, 3, 0, 9, 4 },
+                { 5, 8, 0, 3, 7, 9, 6, 1, 4, 2 }, { 8, 9, 1, 6, 0, 4, 3, 5, 2, 7 }, { 9, 4, 5, 3, 1, 2, 6, 8, 7, 0 },
+                { 4, 2, 8, 6, 5, 7, 3, 9, 0, 1 }, { 2, 7, 9, 3, 8, 0, 6, 4, 1, 5 }, { 7, 0, 4, 6, 9, 1, 3, 2, 5, 8 } };
         int checksum = 0;
         for (int i = 0; i < aadhaar.length(); i++) {
             int digit = aadhaar.charAt(aadhaar.length() - 1 - i) - '0';
@@ -375,57 +423,82 @@ public class SkillTestDetailsService {
         }
         return checksum == 0;
     }
-    
-    
+
     public List<SkillTestDetailsResultDto> get_details_of_passed_employees() {
-    	
-    			// 1. Get all results
-    			List<SkillTestResult> testResults = skilltestresultrepository.findTestResultsWithIds();
-    	
-    			// Safety check for null list from Repo
-    			if (testResults == null || testResults.isEmpty()) {
-    				return new ArrayList<>();
-    			}
-    	
-    			// 2. Filter for "PASS" and Extract IDs
-    			List<Integer> passedIds = testResults.stream()
-    					.filter(result -> result.getResult() != null && "PASS".equalsIgnoreCase(result.getResult()))
-    					.filter(result -> result.getSkillTestDetlId() != null) // Prevent NullPointer
-    					.map(result -> result.getSkillTestDetlId().getSkillTestDetlId()).collect(Collectors.toList());
-    	
-    			if (passedIds.isEmpty()) {
-    				return new ArrayList<>();
-    			}
-    	
-    			// 3. Fetch Details
-    			List<SkillTestDetails> detailsEntities = skillTestDetailsRepository.findAllById(passedIds);
-    	
-    			// 4. Map to DTO
-    			List<SkillTestDetailsResultDto> responseDtos = detailsEntities.stream().map(entity -> {
-    				SkillTestDetailsResultDto dto = new SkillTestDetailsResultDto();
-    	
-    				// FIX 1: Added Space in Name
-    				String fName = entity.getFirstName() != null ? entity.getFirstName() : "";
-    				String lName = entity.getLastName() != null ? entity.getLastName() : "";
-    				dto.setEmployeeName((fName + " " + lName).trim());
-    	
-    				dto.setTempPayrollId(entity.getTempPayrollId());
-    				dto.setJoinDate(entity.getJoinDate());
-    	
-    				// FIX 2: Ensure getGenderName() exists in your Gender Entity!
-    				if (entity.getGender() != null) {
-    					dto.setGender(entity.getGender().getGenderName());
-    				} else {
-    					dto.setGender("N/A");
-    				}
-    	
-    				// Note: Remarks, joinDate, leftDate are still null
-    				// because they are missing from your Entity.
-    	
-    				return dto;
-    			}).collect(Collectors.toList());
-    	
-    			return responseDtos;
-    		}
-    	    
+
+        // 1. Get all results
+        List<SkillTestResult> testResults = skilltestresultrepository.findTestResultsWithIds();
+
+        // Safety check for null list from Repo
+        if (testResults == null || testResults.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 2. Filter & Map directly from SkillTestResult
+        return testResults.stream()
+                .filter(result -> result.getSkillTestApprovalStatus() != null &&
+                        result.getSkillTestApprovalStatus().getStatusName() != null &&
+                        result.getSkillTestApprovalStatus().getStatusName().trim().toLowerCase()
+                                .startsWith("skill test approv"))
+                .filter(result -> result.getSkillTestDetlId() != null) // Prevent NullPointer
+                .map(result -> {
+                    SkillTestDetailsResultDto dto = new SkillTestDetailsResultDto();
+                    SkillTestDetails entity = result.getSkillTestDetlId();
+
+                    // FIX 1: Added Space in Name
+                    String fName = entity.getFirstName() != null ? entity.getFirstName() : "";
+                    String lName = entity.getLastName() != null ? entity.getLastName() : "";
+                    dto.setEmployeeName((fName + " " + lName).trim());
+
+                    dto.setTempPayrollId(entity.getTempPayrollId());
+                    dto.setJoinDate(entity.getJoinDate());
+
+                    // FIX 2: Ensure getGenderName() exists in your Gender Entity!
+                    if (entity.getCityId() != null) {
+                        dto.setCity(entity.getCityId().getCityName());
+                    } else {
+                        dto.setCity("N/A");
+                    }
+
+                    if (entity.getCampusId() != null) {
+                        dto.setCampus(entity.getCampusId().getCampusName());
+                    } else {
+                        dto.setCampus("N/A");
+                    }
+
+                    // Populate Employee Number (from Employee entity if available, else
+                    // previous_chaitanya_id as fallback)
+                    if (entity.getEmpId() != null && entity.getEmpId().getPayRollId() != null) {
+                        dto.setEmployeeNumber(entity.getEmpId().getPayRollId());
+                    } else {
+                        dto.setEmployeeNumber(
+                                entity.getPrevious_chaitanya_id() != null ? entity.getPrevious_chaitanya_id() : "N/A");
+                    }
+
+                    // Populate Status FROM SKILL TEST RESULT, NOT SKILL TEST DETAILS
+                    if (result.getSkillTestApprovalStatus() != null) {
+                        dto.setStatus(result.getSkillTestApprovalStatus().getStatusName());
+                    } else {
+                        dto.setStatus("N/A");
+                    }
+
+                    dto.setContactNumber(entity.getContact_number());
+                    dto.setTotalExperience(entity.getTotalExperience());
+
+                    if (entity.getGender() != null) {
+                        dto.setGender(entity.getGender().getGenderName());
+                    } else {
+                        dto.setGender("N/A");
+                    }
+
+                    return dto;
+                }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public SkillTestApproval getApprovalDetailsByTempPayrollId(String tempPayrollId) {
+        return skillTestApprovalRepository.findByTempEmployeeId(tempPayrollId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Approval details not found for tempPayrollId: " + tempPayrollId));
+    }
 }

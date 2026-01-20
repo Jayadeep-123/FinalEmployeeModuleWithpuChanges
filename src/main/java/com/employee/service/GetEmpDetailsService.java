@@ -39,7 +39,7 @@ import com.employee.entity.EmpQualification;
 import com.employee.entity.EmpaddressInfo;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeOnboardingView;
-import com.employee.entity.SkillTestApprovalView;
+import com.employee.entity.SkillTestApproval;
 import com.employee.exception.ResourceNotFoundException;
 import com.employee.repository.*;
 
@@ -327,7 +327,7 @@ public class GetEmpDetailsService {
 		return dto;
 	}
 
-	public Optional<SkillTestApprovalView> getSkillTestApprovalDetails(String tempEmployeeId) {
+	public Optional<SkillTestApproval> getSkillTestApprovalDetails(String tempEmployeeId) {
 		// Just call the built-in findById method from the JpaRepository
 		return skillTestApprovalRepository.findById(tempEmployeeId);
 	}

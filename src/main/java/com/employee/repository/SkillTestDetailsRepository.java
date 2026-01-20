@@ -7,10 +7,29 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import com.employee.entity.SkillTestDetails;
+import com.employee.dto.SkillTestDashboardDto;
 
 @Repository
 public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetails, Integer> {
+
+    @Query("SELECT new com.employee.dto.SkillTestDashboardDto(" +
+            "COALESCE(d.firstName, '') || ' ' || COALESCE(d.lastName, ''), " +
+            "e.payRollId, " +
+            "d.tempPayrollId, " +
+            "d.joinDate, " +
+            "c.cityName, " +
+            "ca.campusName, " +
+            "g.genderName, " +
+            "s.statusName) " +
+            "FROM SkillTestDetails d " +
+            "LEFT JOIN d.empId e " +
+            "LEFT JOIN d.cityId c " +
+            "LEFT JOIN d.campusId ca " +
+            "LEFT JOIN d.gender g " +
+            "LEFT JOIN d.group s")
+    List<SkillTestDashboardDto> getSkillTestDashboardDetails();
 
     @Query("SELECT MAX(s.tempPayrollId) FROM SkillTestDetails s WHERE s.tempPayrollId LIKE :keyPrefix")
     String findMaxTempPayrollIdByKey(@Param("keyPrefix") String keyPrefix);
@@ -21,9 +40,8 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
     // FIX: Changed aadhaarNo from String to Long
     @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo AND std.contact_number = :contactNumber")
     Optional<SkillTestDetails> findByAadhaarNoAndContactNumber(
-        @Param("aadhaarNo") Long aadhaarNo, 
-        @Param("contactNumber") Long contactNumber
-    );
+            @Param("aadhaarNo") Long aadhaarNo,
+            @Param("contactNumber") Long contactNumber);
 
     // FIX: Changed aadhaarNo from String to Long
     @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo")

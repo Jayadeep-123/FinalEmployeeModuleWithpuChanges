@@ -77,6 +77,11 @@ public class HREmpDetailsController {
         return hrEmpDetlService.getReferenceDetails(payrollId);
     }
 
+    @GetMapping("/hired-by/{payrollId}")
+    public EmployeeRelationDTO getHiredByDetails(@PathVariable String payrollId) {
+        return hrEmpDetlService.getHiredByDetails(payrollId);
+    }
+
     @GetMapping("/reporting-manager/{payrollId}")
     public EmployeeRelationDTO getReportingManagerDetails(@PathVariable String payrollId) {
         return hrEmpDetlService.getReportingManagerDetails(payrollId);

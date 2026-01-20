@@ -47,11 +47,11 @@ public class SkillTestResult {
     @Column(name = "total_marks", nullable = false)
     private int totalMarks;
 
-    @Column(name = "result", nullable = false, length = 30)
-    private String result;
+    @ManyToOne
+    @JoinColumn(name = "skill_test_approval_status_id")
+    private SkillTestApprovalStatus skillTestApprovalStatus;
 
     @Column(name = "is_active", nullable = false)
     private int isActive = 1;
-
 
 }

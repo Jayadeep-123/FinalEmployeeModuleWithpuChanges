@@ -1176,6 +1176,15 @@ public class HREmpDetlService {
         return mapToDTO(reference);
     }
 
+    // 🔹 Hired By Details
+    public EmployeeRelationDTO getHiredByDetails(String payrollId) {
+        Employee employee = employeeRepository.findByPayRollId(payrollId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        Employee hiredBy = employee.getEmployee_hired();
+        return mapToDTO(hiredBy);
+    }
+
     // 🔹 Reporting Manager Details
     public EmployeeRelationDTO getReportingManagerDetails(String payrollId) {
         Employee employee = employeeRepository.findByPayRollId(payrollId)

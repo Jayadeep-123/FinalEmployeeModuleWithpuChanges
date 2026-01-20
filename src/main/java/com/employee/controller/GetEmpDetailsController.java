@@ -29,7 +29,7 @@ import com.employee.dto.ReferenceDTO;
 import com.employee.dto.WorkingInfoDTO;
 import com.employee.entity.EmpOnboardingStatusView;
 import com.employee.entity.EmployeeOnboardingView;
-import com.employee.entity.SkillTestApprovalView;
+import com.employee.entity.SkillTestApproval;
 import com.employee.service.GetEmpDetailsService;
 
 @RestController
@@ -138,9 +138,9 @@ public class GetEmpDetailsController {
 	}
 
 	@GetMapping("/approval-details/{tempEmployeeId}")
-	public ResponseEntity<SkillTestApprovalView> getDetails(@PathVariable String tempEmployeeId) {
+	public ResponseEntity<SkillTestApproval> getDetails(@PathVariable String tempEmployeeId) {
 
-		Optional<SkillTestApprovalView> details = getEmpDetailsService.getSkillTestApprovalDetails(tempEmployeeId);
+		Optional<SkillTestApproval> details = getEmpDetailsService.getSkillTestApprovalDetails(tempEmployeeId);
 
 		// This is a clean way to return 200 OK if the data exists,
 		// or 404 Not Found if it doesn't.
