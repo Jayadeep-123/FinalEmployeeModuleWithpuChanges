@@ -28,7 +28,6 @@ import com.employee.dto.QualificationInfoDTO;
 import com.employee.dto.ReferenceDTO;
 import com.employee.dto.WorkingInfoDTO;
 import com.employee.entity.EmpOnboardingStatusView;
-import com.employee.entity.EmpProfileView;
 import com.employee.entity.EmployeeOnboardingView;
 import com.employee.entity.SkillTestApprovalView;
 import com.employee.service.GetEmpDetailsService;

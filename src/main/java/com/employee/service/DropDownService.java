@@ -1,5 +1,6 @@
 package com.employee.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,6 @@ import com.employee.dto.OrganizationDTO;
 import com.employee.entity.Building;
 import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
-import com.employee.entity.CmpsOrientation;
 import com.employee.entity.Department;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeType;
@@ -47,6 +47,7 @@ import com.employee.repository.OccupationRepository;
 import com.employee.repository.OrgBankBranchRepository;
 import com.employee.repository.OrgBankRepository;
 import com.employee.repository.OrganizationRepository;
+import com.employee.repository.OrientationGroupRepository;
 import com.employee.repository.OrientationRepository;
 import com.employee.repository.QualificationDegreeRepository;
 import com.employee.repository.QualificationRepository;
@@ -121,12 +122,15 @@ public class DropDownService {
 	EmpAppCheckListDetlRepository empAppCheckListDetlRepository;
 	@Autowired
 	EmpDocTypeRepository empDocTypeRepository;
-	
+
 	@Autowired
 	RelationRepository relationRepository;
-	
+
 	@Autowired
 	CmpsOrientationRepository cmpsorientationRepository;
+
+	@Autowired
+	OrientationGroupRepository orientationGroupRepository;
 
 	private static final int ACTIVE_STATUS = 1;
 
@@ -212,8 +216,8 @@ public class DropDownService {
 				.map(d -> new GenericDropdownDTO(d.getQualification_degree_id(), d.getDegree_name()))
 				.collect(Collectors.toList());
 	}
-	
-	public List<Relation> getAll(){
+
+	public List<Relation> getAll() {
 		return relationRepository.findAll();
 	}
 
@@ -252,15 +256,15 @@ public class DropDownService {
 	}
 
 	public List<OrganizationDTO> getOrganizationsWithPayrollDetails() {
-	    // 1. Fetch active orgs with valid payroll data
-	    return organizationRepo.findByIsActiveAndPayrollCodeIsNotNullAndPayrollMaxNoIsNotNull(1)
-	            .stream()
-	            // 2. Map Entity fields to your new simple DTO
-	            .map(org -> new OrganizationDTO(
-	                    org.getOrganizationId(),  // Entity field
-	                    org.getOrganizationName() // Entity field
-	            ))
-	            .collect(Collectors.toList());
+		// 1. Fetch active orgs with valid payroll data
+		return organizationRepo.findByIsActiveAndPayrollCodeIsNotNullAndPayrollMaxNoIsNotNull(1)
+				.stream()
+				// 2. Map Entity fields to your new simple DTO
+				.map(org -> new OrganizationDTO(
+						org.getOrganizationId(), // Entity field
+						org.getOrganizationName() // Entity field
+				))
+				.collect(Collectors.toList());
 	}
 
 	public List<GenericDropdownDTO> getOrganizationsByCampusId(int campusId) {
@@ -356,11 +360,30 @@ public class DropDownService {
 				.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName())).collect(Collectors.toList());
 	}
 
-	public List<GenericDropdownDTO> getActiveEmployeesByCampusId(Integer campusId) {
-		return employeeRepository.findActiveEmployeesByCampusId(campusId).stream()
-				.map(emp -> new GenericDropdownDTO(emp.getEmp_id(), emp.getFirst_name() + " " + emp.getLast_name()))
-				.collect(Collectors.toList());
-	}
+//	public List<GenericDropdownDTO> getAllEmployeesByCampusId(Integer campusId) {
+//
+//		// 1. Change the repository call to the one that fetches ALL (Active + Inactive)
+//		List<Employee> employees = employeeRepository.findAllEmployeesByCampusId(campusId);
+//
+//		// 2. Safety check (optional, but good practice)
+//		if (employees == null || employees.isEmpty()) {
+//			return new ArrayList<>();
+//		}
+//
+//		return employees.stream()
+//				.map(emp -> {
+//					// 3. (Optional Tip) visually distinguish Inactive users in the dropdown
+//					String fullName = emp.getFirst_name() + " " + emp.getLast_name();
+//
+//					// // Assuming you have a 'status' field. If not, remove this if-block.
+//					// if (emp.getStatus() != null && !emp.getStatus().equalsIgnoreCase("Active")) {
+//					// fullName += " (Inactive)";
+//					// }
+//
+//					return new GenericDropdownDTO(emp.getEmp_id(), fullName);
+//				})
+//				.collect(Collectors.toList());
+//	}
 
 	public List<GenericDropdownDTO> getCitiesByDistrictId(Integer districtId) {
 		return cityRepository.findByDistrictId(districtId).stream()
@@ -410,29 +433,46 @@ public class DropDownService {
 		}).collect(Collectors.toList());
 		return resultdata != null ? resultdata : null;
 	}
-	
-	
-public List<GenericDropdownDTO> getCampusesByCity(int cityId) {
-    // Call the new repository method
-    List<Campus> campuses = campusRepository.findCampusesByCityId(cityId);
-    
-    // Convert to GenericDropdownDTO
-    return campuses.stream()
-            .map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName()))
-            .collect(Collectors.toList());
-}
 
-public List<CmpsOrientationsDTO> getActiveOrientationsByCampus(Integer cmpsId) {
-    
-    // 1. Fetch raw data using the Interface Projection
-    List<CmpsOrientationsDTO> projections = cmpsorientationRepository.findActiveByCmpsId(cmpsId);
+	public List<GenericDropdownDTO> getCampusesByCity(int cityId) {
+		// Call the new repository method
+		List<Campus> campuses = campusRepository.findCampusesByCityId(cityId);
 
-    // 2. Convert Projection -> DTO
-    return projections.stream().map(proj -> CmpsOrientationsDTO.builder()
-            .cmpsOrientationId(proj.getCmpsOrientationId()) // Mapping ID
-            .orientationId(proj.getOrientationId())         // Orientation ID
-            .orientationName(proj.getOrientationName())     // Orientation Name
-            .build()
-    ).collect(Collectors.toList());
-}
+		// Convert to GenericDropdownDTO
+		return campuses.stream()
+				.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName()))
+				.collect(Collectors.toList());
+	}
+
+	public List<CmpsOrientationsDTO> getActiveOrientationsByCampus(Integer cmpsId) {
+
+		// 1. Fetch raw data using the Interface Projection
+		List<CmpsOrientationsDTO> projections = cmpsorientationRepository.findActiveByCmpsId(cmpsId);
+
+		// 2. Convert Projection -> DTO
+		return projections.stream().map(proj -> CmpsOrientationsDTO.builder()
+				.cmpsOrientationId(proj.getCmpsOrientationId()) // Mapping ID
+				.orientationId(proj.getOrientationId()) // Orientation ID
+				.orientationName(proj.getOrientationName()) // Orientation Name
+				.build()).collect(Collectors.toList());
+	}
+
+	public List<GenericDropdownDTO> getAllGroups() {
+		return orientationGroupRepository.findByIsActive(ACTIVE_STATUS).stream()
+				.map(g -> new GenericDropdownDTO(g.getGroupId(), g.getGroupName()))
+				.collect(Collectors.toList());
+	}
+
+	public List<GenericDropdownDTO> getAllEmployeesByCampusId(Integer campusId) {
+		return employeeRepository.findAllEmployeesByCampusId(campusId).stream()
+				.map(emp -> new GenericDropdownDTO(emp.getEmp_id(), emp.getFirst_name() + " "
+						+ emp.getLast_name()))
+				.collect(Collectors.toList());
+	}
+
+	public List<GenericDropdownDTO> getActiveEmployeesWithPayrollByCampusId(Integer campusId) {
+		return employeeRepository.findActiveEmployeesWithPayrollByCampusId(campusId).stream()
+				.map(emp -> new GenericDropdownDTO(emp.getEmp_id(), emp.getFirst_name() + " " + emp.getLast_name()))
+				.collect(Collectors.toList());
+	}
 }

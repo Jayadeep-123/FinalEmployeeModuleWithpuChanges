@@ -161,7 +161,7 @@ public class Employee {
 	@JoinColumn(name = "agreement_org_id")
 	private Organization agreement_org_id; // Optional - FK to sce_campus.sce_organization
 
-	@Column(name = "agreement_type")
+	@Column(name = "aagreement_type")
 	private String agreement_type;
 
 	@ManyToOne(fetch = FetchType.LAZY)

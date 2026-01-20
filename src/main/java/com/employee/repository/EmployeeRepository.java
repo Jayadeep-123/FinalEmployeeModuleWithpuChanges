@@ -70,6 +70,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
             + "WHERE e.campus_id.campusId = :campusId AND e.is_active = 1")
     List<Employee> findActiveEmployeesByCampusId(@Param("campusId") int campusId);
 
+    @Query("SELECT e FROM Employee e "
+            + "LEFT JOIN FETCH e.designation d "
+            + "LEFT JOIN FETCH e.gender g "
+            + "WHERE e.campus_id.campusId = :campusId")
+    List<Employee> findAllEmployeesByCampusId(@Param("campusId") Integer campusId);
+
+    @Query("SELECT e FROM Employee e "
+            + "LEFT JOIN FETCH e.designation d "
+            + "LEFT JOIN FETCH e.gender g "
+            + "WHERE e.campus_id.campusId = :campusId AND e.is_active = 1 AND e.payRollId IS NOT NULL")
+    List<Employee> findActiveEmployeesWithPayrollByCampusId(@Param("campusId") Integer campusId);
+
     @Query("SELECT e FROM Employee e WHERE e.primary_mobile_no = :mobileNo AND e.emp_id != :empId")
     Optional<Employee> findByPrimary_mobile_noExcludingEmpId(@Param("mobileNo") Long mobileNo,
             @Param("empId") Integer empId);

@@ -1994,15 +1994,17 @@ public class EmployeeRemainingTabService {
         // Try to find "Cheque" document type
         EmpDocType docType = empDocTypeRepository.findByDocName("Cheque")
                 .orElseGet(() -> {
-                    // Fallback search by part of name
+                    // Fallback search by part of name (case-insensitive)
                     return empDocTypeRepository.findAll().stream()
-                            .filter(dt -> dt.getDoc_name() != null && (dt.getDoc_name().equalsIgnoreCase("Cheque")
-                                    || dt.getDoc_name().contains("Cheque")))
+                            .filter(dt -> dt.getDoc_name() != null &&
+                                    (dt.getDoc_name().equalsIgnoreCase("Cheque") ||
+                                            dt.getDoc_name().toLowerCase().contains("cheque")))
                             .findFirst().orElse(null);
                 });
 
         if (docType == null) {
-            logger.warn("Document Type 'Cheque' not found in database. Cannot save cheque path for Cheque ID: {}",
+            logger.warn(
+                    "❌ WARNING: Document Type 'Cheque' not found in database. Cannot save document for Cheque ID: {}",
                     chequeEntity.getEmpChequeDetailsId());
             return;
         }
@@ -2014,7 +2016,6 @@ public class EmployeeRemainingTabService {
                 .orElse(new EmpDocuments());
 
         doc.setEmp_id(employee);
-        // Relationship removed to fix 500 error; linking via path prefix
         doc.setEmp_doc_type_id(docType);
 
         String cleanPath = docPath.trim();
@@ -2027,19 +2028,26 @@ public class EmployeeRemainingTabService {
         doc.setIs_active(1);
         doc.setIs_verified(0);
 
+        // Ensure mandatory audit fields are always populated
         if (doc.getEmp_doc_id() == 0) {
-            if (createdBy != null && createdBy > 0)
+            if (createdBy != null && createdBy > 0) {
                 doc.setCreated_by(createdBy);
+            } else {
+                doc.setCreated_by(1); // Default system user
+            }
             doc.setCreated_date(LocalDateTime.now());
         } else {
-            if (updatedBy != null && updatedBy > 0)
+            if (updatedBy != null && updatedBy > 0) {
                 doc.setUpdated_by(updatedBy);
+            } else {
+                doc.setUpdated_by(1); // Default system user
+            }
             doc.setUpdated_date(LocalDateTime.now());
         }
 
         empDocumentsRepository.save(doc);
-        logger.info("Saved cheque document for Cheque ID: {} using prefix {} at path: {}",
-                chequeEntity.getEmpChequeDetailsId(), linkPrefix, doc.getDoc_path());
+        logger.info("✅ Saved cheque document for Cheque ID: {} at path: {}",
+                chequeEntity.getEmpChequeDetailsId(), doc.getDoc_path());
     }
 
     /**

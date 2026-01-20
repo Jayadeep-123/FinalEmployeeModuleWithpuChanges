@@ -209,15 +209,15 @@ public class DropDownsController {
 		return ResponseEntity.ok(costCenters);
 	}
 
-	@GetMapping("/organizations/active") 
-    public ResponseEntity<List<OrganizationDTO>> getOrganizationsWithPayroll() {
-        List<OrganizationDTO> orgs = empDropdownService.getOrganizationsWithPayrollDetails();
-        
-        if (orgs.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
-        return new ResponseEntity<>(orgs, HttpStatus.OK);
-    }
+	@GetMapping("/organizations/active")
+	public ResponseEntity<List<OrganizationDTO>> getOrganizationsWithPayroll() {
+		List<OrganizationDTO> orgs = empDropdownService.getOrganizationsWithPayrollDetails();
+
+		if (orgs.isEmpty()) {
+			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		}
+		return new ResponseEntity<>(orgs, HttpStatus.OK);
+	}
 
 	@GetMapping("/{campusId}/organizations")
 	public ResponseEntity<?> getOrganizations(@PathVariable int campusId) {
@@ -399,15 +399,18 @@ public class DropDownsController {
 	}
 
 	@GetMapping("/employees/campus/{campusId}")
-	public ResponseEntity<?> getActiveEmployeesByCampusId(@PathVariable Integer campusId) {
-		List<GenericDropdownDTO> employees = empDropdownService.getActiveEmployeesByCampusId(campusId);
+	public ResponseEntity<?> getAllEmployeesByCampusId(@PathVariable Integer campusId) {
+	    
+	    // 1. Call the updated Service method (getAll...)
+	    List<GenericDropdownDTO> employees = empDropdownService.getAllEmployeesByCampusId(campusId);
 
-		if (employees == null || employees.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("No active employees found for campus ID: " + campusId);
-		}
+	    // 2. Update the error message (remove the word "active")
+	    if (employees == null || employees.isEmpty()) {
+	        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+	                .body("No employees found for campus ID: " + campusId);
+	    }
 
-		return ResponseEntity.ok(employees);
+	    return ResponseEntity.ok(employees);
 	}
 
 	@GetMapping("/cities/district/{districtId}")
@@ -444,7 +447,8 @@ public class DropDownsController {
 	}
 
 	@GetMapping("/campus/building/details/{cmpsid}/{buildingid}")
-	public ResponseEntity<?> getthebuildingdetaals( @PathVariable(required = false) Integer cmpsid,@PathVariable(required = false) Integer buildingid) {
+	public ResponseEntity<?> getthebuildingdetaals(@PathVariable(required = false) Integer cmpsid,
+			@PathVariable(required = false) Integer buildingid) {
 		List<Dgmdto> orientations = empDropdownService.getBuildingDataBasedOnMainBuilding(cmpsid, buildingid);
 		if (orientations == null || orientations.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No members found");
@@ -452,25 +456,58 @@ public class DropDownsController {
 		}
 		return ResponseEntity.ok(orientations);
 	}
-	
+
 	@GetMapping("/getAll/Relations")
-    public ResponseEntity<List<Relation>> getAllRelations() {
-        List<Relation> relations = empDropdownService.getAll();
-        return new ResponseEntity<>(relations, HttpStatus.OK);
-    }
-	
-	
+	public ResponseEntity<List<Relation>> getAllRelations() {
+		List<Relation> relations = empDropdownService.getAll();
+		return new ResponseEntity<>(relations, HttpStatus.OK);
+	}
+
 	@GetMapping("/campuses/{cityId}")
 	public ResponseEntity<List<GenericDropdownDTO>> getCampusesByCity(@PathVariable int cityId) {
-	    return ResponseEntity.ok(empDropdownService.getCampusesByCity(cityId));
+		return ResponseEntity.ok(empDropdownService.getCampusesByCity(cityId));
 	}
-	
+
 	@GetMapping("/getallOrientations/{cmpsId}")
-    public ResponseEntity<List<CmpsOrientationsDTO>> getActiveOrientationsByCampus(@PathVariable Integer cmpsId) {
-        
-        // Call the service method that returns the specific DTOs
-        List<CmpsOrientationsDTO> orientations = empDropdownService.getActiveOrientationsByCampus(cmpsId);
-        
-        return new ResponseEntity<>(orientations, HttpStatus.OK);
-    }
+	public ResponseEntity<List<CmpsOrientationsDTO>> getActiveOrientationsByCampus(@PathVariable Integer cmpsId) {
+
+		// Call the service method that returns the specific DTOs
+		List<CmpsOrientationsDTO> orientations = empDropdownService.getActiveOrientationsByCampus(cmpsId);
+
+		return new ResponseEntity<>(orientations, HttpStatus.OK);
+	}
+
+	@GetMapping("/orientation-groups")
+	public ResponseEntity<?> getAllOrientationGroups() {
+		List<GenericDropdownDTO> groups = empDropdownService.getAllGroups();
+
+		if (groups == null || groups.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No active orientation groups found");
+		}
+
+		return ResponseEntity.ok(groups);
+	}
+//
+//@GetMapping("/employees/all/campus/{campusId}")
+//public ResponseEntity<?> getAllEmployeesByCampusId(@PathVariable Integer campusId) {
+//List<GenericDropdownDTO> employees = empDropdownService.getAllEmployeesByCampusId(campusId);
+//
+//if (employees == null || employees.isEmpty()) {
+//return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//.body("No employees found for campus ID: " + campusId);
+//}
+//
+//return ResponseEntity.ok(employees);
+//}
+@GetMapping("/employees/active-with-payroll/campus/{campusId}")
+public ResponseEntity<?> getActiveEmployeesWithPayrollByCampusId(@PathVariable Integer campusId) {
+List<GenericDropdownDTO> employees = empDropdownService.getActiveEmployeesWithPayrollByCampusId(campusId);
+
+if (employees == null || employees.isEmpty()) {
+return ResponseEntity.status(HttpStatus.NOT_FOUND)
+.body("No active employees with payroll found for campus ID: " + campusId);
+}
+
+return ResponseEntity.ok(employees);
+}
 }
