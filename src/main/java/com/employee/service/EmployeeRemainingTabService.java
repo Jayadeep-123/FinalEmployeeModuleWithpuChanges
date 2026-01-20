@@ -1691,7 +1691,12 @@ public class EmployeeRemainingTabService {
 
                     // Save/Update associated document if path is provided
                     if (chequeDTO.getChequePath() != null) {
-                        saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(), createdBy, updatedBy);
+                        EmpDocuments savedDoc = saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(), createdBy, updatedBy);
+                        if (savedDoc != null) {
+                            // Set emp_doc_id in cheque details table
+                            saved.setEmpDocId(savedDoc);
+                            empChequeDetailsRepository.save(saved);
+                        }
                     }
                 } else {
                     // Create new cheque
@@ -1717,7 +1722,12 @@ public class EmployeeRemainingTabService {
 
                     // Save associated document if path is provided
                     if (chequeDTO.getChequePath() != null) {
-                        saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(), createdBy, updatedBy);
+                        EmpDocuments savedDoc = saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(), createdBy, updatedBy);
+                        if (savedDoc != null) {
+                            // Set emp_doc_id in cheque details table
+                            saved.setEmpDocId(savedDoc);
+                            empChequeDetailsRepository.save(saved);
+                        }
                     }
                 }
             }
@@ -1983,30 +1993,31 @@ public class EmployeeRemainingTabService {
 
     /**
      * Helper: Save or update Cheque document in EmpDocuments table
+     * Returns the saved EmpDocuments entity so that emp_doc_id can be set on the cheque entity
      */
-    private void saveOrUpdateChequeDocument(EmpChequeDetails chequeEntity, Employee employee, String docPath,
+    private EmpDocuments saveOrUpdateChequeDocument(EmpChequeDetails chequeEntity, Employee employee, String docPath,
             Integer createdBy, Integer updatedBy) {
         if (docPath == null || docPath.trim().isEmpty() || "string".equalsIgnoreCase(docPath.trim())) {
             deactivateChequeDocument(chequeEntity, updatedBy);
-            return;
+            return null;
         }
 
-        // Try to find "Cheque" document type
-        EmpDocType docType = empDocTypeRepository.findByDocName("Cheque")
+        // Try to find "Employee_Cheque" document type
+        EmpDocType docType = empDocTypeRepository.findByDocName("Employee_Cheque")
                 .orElseGet(() -> {
                     // Fallback search by part of name (case-insensitive)
                     return empDocTypeRepository.findAll().stream()
                             .filter(dt -> dt.getDoc_name() != null &&
-                                    (dt.getDoc_name().equalsIgnoreCase("Cheque") ||
-                                            dt.getDoc_name().toLowerCase().contains("cheque")))
+                                    (dt.getDoc_name().equalsIgnoreCase("Employee_Cheque") ||
+                                            dt.getDoc_name().toLowerCase().contains("employee_cheque")))
                             .findFirst().orElse(null);
                 });
 
         if (docType == null) {
             logger.warn(
-                    "❌ WARNING: Document Type 'Cheque' not found in database. Cannot save document for Cheque ID: {}",
+                    "❌ WARNING: Document Type 'Employee_Cheque' not found in database. Cannot save document for Cheque ID: {}",
                     chequeEntity.getEmpChequeDetailsId());
-            return;
+            return null;
         }
 
         String linkPrefix = "CHEQUE_LINK_" + chequeEntity.getEmpChequeDetailsId() + "_";
@@ -2045,9 +2056,10 @@ public class EmployeeRemainingTabService {
             doc.setUpdated_date(LocalDateTime.now());
         }
 
-        empDocumentsRepository.save(doc);
-        logger.info("✅ Saved cheque document for Cheque ID: {} at path: {}",
-                chequeEntity.getEmpChequeDetailsId(), doc.getDoc_path());
+        EmpDocuments savedDoc = empDocumentsRepository.save(doc);
+        logger.info("✅ Saved cheque document for Cheque ID: {} at path: {} with emp_doc_id: {}",
+                chequeEntity.getEmpChequeDetailsId(), savedDoc.getDoc_path(), savedDoc.getEmp_doc_id());
+        return savedDoc;
     }
 
     /**
@@ -2066,6 +2078,13 @@ public class EmployeeRemainingTabService {
                     logger.info("Deactivated document for Cheque ID: {} (prefix match)",
                             chequeEntity.getEmpChequeDetailsId());
                 });
+        
+        // Clear emp_doc_id from cheque entity when document is deactivated
+        if (chequeEntity.getEmpDocId() != null) {
+            chequeEntity.setEmpDocId(null);
+            empChequeDetailsRepository.save(chequeEntity);
+            logger.info("Cleared emp_doc_id for Cheque ID: {}", chequeEntity.getEmpChequeDetailsId());
+        }
     }
 
     /**

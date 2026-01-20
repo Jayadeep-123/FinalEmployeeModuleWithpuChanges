@@ -27,6 +27,7 @@ import com.employee.dto.ManagerDTO;
 import com.employee.dto.QualificationDetailsDto;
 import com.employee.dto.QualificationInfoDTO;
 import com.employee.dto.ReferenceDTO;
+import com.employee.dto.SameInstituteEmployeesDTO;
 import com.employee.dto.WorkingInfoDTO;
 import com.employee.entity.BankDetails;
 import com.employee.entity.EmpChequeDetails;
@@ -610,6 +611,84 @@ public class GetEmpDetailsService {
 
 		return empQualificationRepository
 				.findQualificationsByTempPayrollId(tempPayrollId);
+	}
+
+	/**
+	 * Get employees with same institute based on highest qualification
+	 * 
+	 * @param payrollId Payroll ID of the employee
+	 * @return SameInstituteEmployeesDTO containing institute, qualification info, and list of employees (minimum 4)
+	 */
+	public SameInstituteEmployeesDTO getEmployeesWithSameInstitute(String payrollId) {
+		// 1. Find employee by payrollId
+		Employee employee = employeeRepo.findByPayRollId(payrollId)
+				.orElseThrow(() -> new ResourceNotFoundException("Employee not found with payrollId: " + payrollId));
+
+		// 2. Get the highest qualification_id from Employee
+		if (employee.getQualification_id() == null) {
+			throw new ResourceNotFoundException("Employee does not have a highest qualification set");
+		}
+
+		Integer qualificationId = employee.getQualification_id().getQualification_id();
+		String qualificationName = employee.getQualification_id().getQualification_name();
+
+		// 3. Find the EmpQualification record for that employee with that qualification_id to get the institute
+		List<EmpQualification> empQualifications = empQualificationRepository.findByEmpIdAndIsActive(employee.getEmp_id());
+		
+		EmpQualification highestQualification = empQualifications.stream()
+				.filter(eq -> eq.getQualification_id() != null 
+						&& eq.getQualification_id().getQualification_id() == qualificationId)
+				.findFirst()
+				.orElseThrow(() -> new ResourceNotFoundException(
+						"Qualification record not found for employee with qualification_id: " + qualificationId));
+
+		if (highestQualification.getInstitute() == null || highestQualification.getInstitute().trim().isEmpty()) {
+			throw new ResourceNotFoundException("Employee does not have an institute set for the highest qualification");
+		}
+
+		String institute = highestQualification.getInstitute().trim();
+
+		// 4. Find minimum 4 employees with the same institute and same qualification_id
+		List<Employee> employeesWithSameInstitute = empQualificationRepository
+				.findEmployeesByInstituteAndQualification(institute, qualificationId, employee.getEmp_id());
+
+		// Return minimum 4 employees if available, otherwise return all available
+		// If there are 4 or more, return first 4; if less than 4, return all
+		int limitCount = employeesWithSameInstitute.size() >= 4 ? 4 : employeesWithSameInstitute.size();
+		List<Employee> limitedEmployees = employeesWithSameInstitute.stream()
+				.limit(limitCount)
+				.collect(Collectors.toList());
+
+		// 5. Map to DTO
+		SameInstituteEmployeesDTO dto = new SameInstituteEmployeesDTO();
+		dto.setInstitute(institute);
+		dto.setQualificationId(qualificationId);
+		dto.setQualificationName(qualificationName);
+
+		List<SameInstituteEmployeesDTO.EmployeeInfo> employeeInfoList = limitedEmployees.stream()
+				.map(emp -> {
+					SameInstituteEmployeesDTO.EmployeeInfo info = new SameInstituteEmployeesDTO.EmployeeInfo();
+					info.setEmpId(emp.getEmp_id());
+					info.setFirstName(emp.getFirst_name());
+					info.setLastName(emp.getLast_name());
+					info.setPayrollId(emp.getPayRollId());
+					info.setTempPayrollId(emp.getTempPayrollId());
+					info.setEmail(emp.getEmail());
+					info.setPrimaryMobileNo(emp.getPrimary_mobile_no());
+					
+					// Set designation information
+					if (emp.getDesignation() != null) {
+						info.setDesignationId(emp.getDesignation().getDesignation_id());
+						info.setDesignationName(emp.getDesignation().getDesignation_name());
+					}
+					
+					return info;
+				})
+				.collect(Collectors.toList());
+
+		dto.setEmployees(employeeInfoList);
+
+		return dto;
 	}
 
 }

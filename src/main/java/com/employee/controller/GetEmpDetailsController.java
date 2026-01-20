@@ -26,6 +26,7 @@ import com.employee.dto.ManagerDTO;
 import com.employee.dto.QualificationDetailsDto;
 import com.employee.dto.QualificationInfoDTO;
 import com.employee.dto.ReferenceDTO;
+import com.employee.dto.SameInstituteEmployeesDTO;
 import com.employee.dto.WorkingInfoDTO;
 import com.employee.entity.EmpOnboardingStatusView;
 import com.employee.entity.EmployeeOnboardingView;
@@ -242,6 +243,23 @@ public class GetEmpDetailsController {
 		}
 
 		return ResponseEntity.ok(experienceList);
+	}
+
+	/**
+	 * Get employees with same institute based on highest qualification
+	 * 
+	 * @param payrollId Payroll ID of the employee
+	 * @return SameInstituteEmployeesDTO containing institute, qualification info, and list of employees (minimum 4)
+	 */
+	@GetMapping("/same-institute/{payrollId}")
+	public ResponseEntity<SameInstituteEmployeesDTO> getEmployeesWithSameInstitute(
+			@PathVariable String payrollId) {
+		try {
+			SameInstituteEmployeesDTO result = getEmpDetailsService.getEmployeesWithSameInstitute(payrollId);
+			return ResponseEntity.ok(result);
+		} catch (RuntimeException e) {
+			return ResponseEntity.notFound().build();
+		}
 	}
 
 }

@@ -105,6 +105,26 @@ public interface EmpQualificationRepository extends JpaRepository<EmpQualificati
            "WHERE eq.emp_id.emp_id = :empId AND eq.is_active = 1")
     List<EmpQualification> findByEmpIdAndIsActive(@Param("empId") Integer empId);
 
+    /**
+     * Find employees with same institute and qualification_id
+     * Excludes the current employee (by empId)
+     * Returns minimum 4 employees (or all if less than 4)
+     * Fetches designation to avoid lazy loading issues
+     */
+    @Query("SELECT DISTINCT e FROM EmpQualification eq " +
+           "JOIN eq.emp_id e " +
+           "LEFT JOIN FETCH e.designation " +
+           "WHERE eq.institute = :institute " +
+           "AND eq.qualification_id.qualification_id = :qualificationId " +
+           "AND eq.is_active = 1 " +
+           "AND e.is_active = 1 " +
+           "AND e.emp_id != :excludeEmpId " +
+           "ORDER BY e.first_name, e.last_name")
+    List<Employee> findEmployeesByInstituteAndQualification(
+            @Param("institute") String institute,
+            @Param("qualificationId") Integer qualificationId,
+            @Param("excludeEmpId") Integer excludeEmpId);
+
 }
 
 

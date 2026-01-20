@@ -54,4 +54,8 @@ public class EmpChequeDetails {
 
 	@Column(name = "updated_date")
 	private LocalDateTime updatedDate; // Optional - nullable
+
+	@ManyToOne
+	@JoinColumn(name = "emp_doc_id", nullable = true)
+	private EmpDocuments empDocId; // Optional - Foreign key to EmpDocuments
 }
