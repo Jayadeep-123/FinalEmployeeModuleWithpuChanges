@@ -17,6 +17,7 @@ import com.employee.dto.SkillTestDetailsDto;
 
 import com.employee.dto.SkillTestDetailsRequestDto;
 import com.employee.dto.SkillTestDetailsResultDto;
+import com.employee.dto.SkillTestResultDTO;
 import com.employee.entity.Building;
 import com.employee.entity.Campus;
 import com.employee.entity.City;
@@ -500,5 +501,14 @@ public class SkillTestDetailsService {
         return skillTestApprovalRepository.findByTempEmployeeId(tempPayrollId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Approval details not found for tempPayrollId: " + tempPayrollId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SkillTestResultDTO> getSkillTestResultsByPayrollId(String tempPayrollId) {
+        if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
+            throw new ResourceNotFoundException("tempPayrollId is required");
+        }
+        log.info("Fetching skill test results for tempPayrollId: {}", tempPayrollId);
+        return skilltestresultrepository.findSkillTestDetailsByPayrollId(tempPayrollId.trim());
     }
 }

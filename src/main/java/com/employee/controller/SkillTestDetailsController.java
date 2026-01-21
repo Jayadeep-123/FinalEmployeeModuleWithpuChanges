@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.employee.dto.SkillTestDetailsDto;
 import com.employee.dto.SkillTestDetailsRequestDto;
 import com.employee.dto.SkillTestDetailsResultDto;
+import com.employee.dto.SkillTestResultDTO;
 
 import com.employee.service.SkillTestDetailsService;
 import com.employee.entity.SkillTestApproval;
@@ -84,5 +85,14 @@ public class SkillTestDetailsController {
         log.info("Fetching approval details for tempPayrollId: {}", tempPayrollId);
         SkillTestApproval approvalDetails = skillTestDetailsService.getApprovalDetailsByTempPayrollId(tempPayrollId);
         return ResponseEntity.ok(approvalDetails);
+    }
+
+    @GetMapping("/results/{tempPayrollId}")
+    public ResponseEntity<List<SkillTestResultDTO>> getSkillTestResultsByTempPayrollId(
+            @PathVariable("tempPayrollId") String tempPayrollId) {
+        log.info("Fetching skill test results for tempPayrollId: {}", tempPayrollId);
+        List<SkillTestResultDTO> results = skillTestDetailsService
+                .getSkillTestResultsByPayrollId(tempPayrollId);
+        return ResponseEntity.ok(results);
     }
 }
