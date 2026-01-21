@@ -71,6 +71,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         // Build WHERE clause dynamically
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(e.get("is_active"), 1));
+        predicates.add(cb.isNotNull(e.get("payRollId"))); // Only show employees with generated payroll ID
 
         // Combined Search: payrollId OR First Name OR Last Name
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
@@ -117,6 +118,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         
         List<Predicate> countPredicates = new ArrayList<>();
         countPredicates.add(cb.equal(countRoot.get("is_active"), 1));
+        countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
 
         // Combined Search: payrollId OR First Name OR Last Name
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
@@ -192,6 +194,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         // Build WHERE clause
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(e.get("is_active"), 1)); // Only active employees
+        predicates.add(cb.isNotNull(e.get("payRollId"))); // Only show employees with generated payroll ID
         
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
             String[] ids = searchRequest.getPayrollId().split(",");
@@ -242,6 +245,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         
         List<Predicate> countPredicates = new ArrayList<>();
         countPredicates.add(cb.equal(countRoot.get("is_active"), 1));
+        countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
         
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
             String[] ids = searchRequest.getPayrollId().split(",");
@@ -310,6 +314,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         // Build WHERE clause dynamically
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(e.get("is_active"), 1)); // Always required: is_active = 1
+        predicates.add(cb.isNotNull(e.get("payRollId"))); // Only show employees with generated payroll ID
         
         // Optional: payrollId (can be comma-separated)
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
@@ -363,6 +368,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         
         List<Predicate> countPredicates = new ArrayList<>();
         countPredicates.add(cb.equal(countRoot.get("is_active"), 1));
+        countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
         
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
             String[] ids = searchRequest.getPayrollId().split(",");
@@ -446,6 +452,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         // WHERE clause
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(e.get("is_active"), 1));
+        predicates.add(cb.isNotNull(e.get("payRollId"))); // Only show employees with generated payroll ID
         
         // Combined Search: Multiple Payroll IDs OR (Single ID OR Name)
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
@@ -499,6 +506,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         
         List<Predicate> countPredicates = new ArrayList<>();
         countPredicates.add(cb.equal(countRoot.get("is_active"), 1));
+        countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
         
         // Combined Search: Multiple Payroll IDs OR (Single ID OR Name)
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
