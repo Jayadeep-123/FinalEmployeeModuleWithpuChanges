@@ -15,13 +15,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PreviousEmployerInfoDTO {
-	
+
 	private List<EmployerDetailsDTO> previousEmployers; // Can have multiple employers
-	
+
 	// Audit fields - passed from frontend
 	private Integer createdBy; // User ID who created the employee record
 	private Integer updatedBy; // User ID who updated the employee record
-	
+
 	@Data
 	@NoArgsConstructor
 	@AllArgsConstructor
@@ -32,7 +32,7 @@ public class PreviousEmployerInfoDTO {
 		private Date toDate; // date_of_leave
 		private String leavingReason;
 		private String companyAddressLine1;
-		private String companyAddressLine2; // Will be combined into company_addr
+
 		private String natureOfDuties;
 		private Integer grossSalaryPerMonth; // gross_salary
 		private Integer ctc; // Cost to Company
@@ -48,4 +48,3 @@ public class PreviousEmployerInfoDTO {
 		private String description;
 	}
 }
-

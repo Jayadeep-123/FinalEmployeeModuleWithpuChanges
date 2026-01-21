@@ -62,7 +62,8 @@ import com.employee.repository.QualificationRepository;
 /**
  * Service for handling Basic Info related tabs (4 APIs).
  * Contains: Basic Info, Address Info, Family Info, Previous Employer Info
- * * This service is completely independent and does not use EmployeeEntityPreparationService.
+ * * This service is completely independent and does not use
+ * EmployeeEntityPreparationService.
  * All helper methods are implemented directly within this service.
  */
 @Service
@@ -73,7 +74,7 @@ public class EmployeeBasicInfoTabService {
 
     @Autowired
     private EmployeeRepository employeeRepository;
-   
+
     @Autowired
     private QualificationRepository qualificationRepository;
 
@@ -172,6 +173,7 @@ public class EmployeeBasicInfoTabService {
      * API 1: Save Basic Info (Tab 1)
      * Creates or updates Employee, EmpDetails, and EmpPfDetails
      * * @param basicInfo Basic Info DTO (contains empId and tempPayrollId)
+     * 
      * @return Saved BasicInfoDTO with empId
      */
     public BasicInfoDTO saveBasicInfo(BasicInfoDTO basicInfo) {
@@ -198,7 +200,7 @@ public class EmployeeBasicInfoTabService {
             if (employee.getIs_active() != 1) {
                 throw new ResourceNotFoundException(
                         "Cannot update employee with ID: " + empId +
-                        ". Employee is inactive (is_active = 0). Only active employees can be updated.");
+                                ". Employee is inactive (is_active = 0). Only active employees can be updated.");
             }
             isUpdate = true;
             logger.info("UPDATE MODE: Updating existing active employee (emp_id: {})", empId);
@@ -210,7 +212,7 @@ public class EmployeeBasicInfoTabService {
                 if (employee.getIs_active() != 1) {
                     throw new ResourceNotFoundException(
                             "Cannot update employee with tempPayrollId: " + tempPayrollId +
-                            ". Employee is inactive (is_active = 0). Only active employees can be updated.");
+                                    ". Employee is inactive (is_active = 0). Only active employees can be updated.");
                 }
                 isUpdate = true;
                 logger.info("UPDATE MODE: Found existing active employee by tempPayrollId: {}", tempPayrollId);
@@ -247,7 +249,8 @@ public class EmployeeBasicInfoTabService {
             EmpDetails empDetails = prepareEmpDetailsEntity(basicInfo, employee);
             EmpPfDetails empPfDetails = prepareEmpPfDetailsEntity(basicInfo, employee);
 
-            // Step 4: Validate ALL prepared entities BEFORE saving (prevents emp_id sequence consumption on failure)
+            // Step 4: Validate ALL prepared entities BEFORE saving (prevents emp_id
+            // sequence consumption on failure)
             validatePreparedEntities(employee, empDetails, empPfDetails);
             validateEntityConstraints(employee, empDetails, empPfDetails);
 
@@ -273,7 +276,8 @@ public class EmployeeBasicInfoTabService {
 
         } catch (Exception e) {
             if (employee != null && employee.getEmp_id() > 0) {
-                logger.error("❌ ERROR: Basic Info save failed AFTER ID consumption. Employee ID {} was consumed but transaction rolled back. Root cause: {}",
+                logger.error(
+                        "❌ ERROR: Basic Info save failed AFTER ID consumption. Employee ID {} was consumed but transaction rolled back. Root cause: {}",
                         employee.getEmp_id(), e.getMessage(), e);
             } else {
                 logger.error("❌ ERROR: Basic Info save failed DURING PREPARATION. NO ID consumed. Error: {}",
@@ -286,6 +290,7 @@ public class EmployeeBasicInfoTabService {
     /**
      * API 2: Save Address Info (Tab 2)
      * * @param tempPayrollId Temp Payroll ID
+     * 
      * @param addressInfo Address Info DTO
      * @return Saved AddressInfoDTO object
      */
@@ -311,7 +316,7 @@ public class EmployeeBasicInfoTabService {
 
             logger.info("✅ Saved {} address records for emp_id: {} (tempPayrollId: {})",
                     count, employee.getEmp_id(), tempPayrollId);
-           
+
             // Return the saved DTO object
             return addressInfo;
 
@@ -324,6 +329,7 @@ public class EmployeeBasicInfoTabService {
     /**
      * API 3: Save Family Info (Tab 3)
      * * @param tempPayrollId Temp Payroll ID
+     * 
      * @param familyInfo Family Info DTO
      * @return Saved FamilyInfoDTO object
      */
@@ -350,7 +356,7 @@ public class EmployeeBasicInfoTabService {
 
             logger.info("✅ Saved {} family member records for emp_id: {} (tempPayrollId: {})",
                     count, employee.getEmp_id(), tempPayrollId);
-           
+
             // Return the saved DTO object
             return familyInfo;
 
@@ -363,17 +369,20 @@ public class EmployeeBasicInfoTabService {
     /**
      * API 4: Save Previous Employer Info (Tab 4)
      * * @param tempPayrollId Temp Payroll ID
+     * 
      * @param previousEmployerInfo Previous Employer Info DTO
      * @return Saved PreviousEmployerInfoDTO object
      */
-    public PreviousEmployerInfoDTO savePreviousEmployerInfo(String tempPayrollId, PreviousEmployerInfoDTO previousEmployerInfo) {
+    public PreviousEmployerInfoDTO savePreviousEmployerInfo(String tempPayrollId,
+            PreviousEmployerInfoDTO previousEmployerInfo) {
         logger.info("Saving Previous Employer Info for tempPayrollId: {}", tempPayrollId);
 
         try {
             // Step 1: Validate DTO data BEFORE any database operations
             validatePreviousEmployerInfo(previousEmployerInfo);
         } catch (Exception e) {
-            logger.error("❌ ERROR: Previous Employer Info validation failed. NO data saved. Error: {}", e.getMessage(), e);
+            logger.error("❌ ERROR: Previous Employer Info validation failed. NO data saved. Error: {}", e.getMessage(),
+                    e);
             throw e;
         }
 
@@ -388,7 +397,7 @@ public class EmployeeBasicInfoTabService {
 
             logger.info("✅ Saved {} experience records for emp_id: {} (tempPayrollId: {})",
                     count, employee.getEmp_id(), tempPayrollId);
-           
+
             // Return the saved DTO object
             return previousEmployerInfo;
 
@@ -487,7 +496,8 @@ public class EmployeeBasicInfoTabService {
             employee.setTempPayrollId(basicInfo.getTempPayrollId());
         }
 
-        // Set created_by only if provided from frontend, otherwise leave as null (entity default will handle)
+        // Set created_by only if provided from frontend, otherwise leave as null
+        // (entity default will handle)
         if (basicInfo.getCreatedBy() != null && basicInfo.getCreatedBy() > 0) {
             employee.setCreated_by(basicInfo.getCreatedBy());
         }
@@ -495,16 +505,19 @@ public class EmployeeBasicInfoTabService {
         employee.setCreated_date(LocalDateTime.now());
         if (basicInfo.getCampusId() != null) {
             employee.setCampus_id(campusRepository.findByCampusIdAndIsActive(basicInfo.getCampusId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + basicInfo.getCampusId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Campus not found with ID: " + basicInfo.getCampusId())));
         }
 
         // Update building_id - optional field
         if (basicInfo.getBuildingId() != null && basicInfo.getBuildingId() > 0) {
             Building building = buildingRepository.findById(basicInfo.getBuildingId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Building not found with ID: " + basicInfo.getBuildingId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Building not found with ID: " + basicInfo.getBuildingId()));
             // Validate building is active
             if (building.getIsActive() != 1) {
-                throw new ResourceNotFoundException("Building with ID: " + basicInfo.getBuildingId() + " is not active");
+                throw new ResourceNotFoundException(
+                        "Building with ID: " + basicInfo.getBuildingId() + " is not active");
             }
             employee.setBuilding_id(building);
         } else if (basicInfo.getBuildingId() != null && basicInfo.getBuildingId() == 0) {
@@ -519,7 +532,8 @@ public class EmployeeBasicInfoTabService {
         }
 
         // Note: designationId and departmentId are now handled in CategoryInfoDTO only
-        // Removed from BasicInfoDTO to avoid conflicts - these should be set via saveCategoryInfo API
+        // Removed from BasicInfoDTO to avoid conflicts - these should be set via
+        // saveCategoryInfo API
 
         if (basicInfo.getCategoryId() != null) {
             employee.setCategory(categoryRepository.findByIdAndIsActive(basicInfo.getCategoryId(), 1)
@@ -533,7 +547,8 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getQualificationId() != null) {
             employee.setQualification_id(qualificationRepository.findById(basicInfo.getQualificationId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Qualification not found with ID: " + basicInfo.getQualificationId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Qualification not found with ID: " + basicInfo.getQualificationId())));
         }
 
         if (basicInfo.getEmpWorkModeId() != null) {
@@ -562,8 +577,9 @@ public class EmployeeBasicInfoTabService {
                 if (basicInfo.getContractEndDate() != null) {
                     employee.setContract_end_date(basicInfo.getContractEndDate());
                 } else {
-                    java.sql.Date startDate = basicInfo.getContractStartDate() != null ?
-                            basicInfo.getContractStartDate() : basicInfo.getDateOfJoin();
+                    java.sql.Date startDate = basicInfo.getContractStartDate() != null
+                            ? basicInfo.getContractStartDate()
+                            : basicInfo.getDateOfJoin();
                     if (startDate != null) {
                         long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
                         java.util.Date endDateUtil = new java.util.Date(startDate.getTime() + oneYearInMillis);
@@ -581,28 +597,33 @@ public class EmployeeBasicInfoTabService {
         // Handle reference employees
         if (basicInfo.getReferenceEmpId() != null && basicInfo.getReferenceEmpId() > 0) {
             employee.setEmployee_reference(employeeRepository.findByIdAndIs_active(basicInfo.getReferenceEmpId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Reference Employee not found with ID: " + basicInfo.getReferenceEmpId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Reference Employee not found with ID: " + basicInfo.getReferenceEmpId())));
         } else {
             employee.setEmployee_reference(null);
         }
 
         if (basicInfo.getHiredByEmpId() != null && basicInfo.getHiredByEmpId() > 0) {
             employee.setEmployee_hired(employeeRepository.findByIdAndIs_active(basicInfo.getHiredByEmpId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Hired By Employee not found with ID: " + basicInfo.getHiredByEmpId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Hired By Employee not found with ID: " + basicInfo.getHiredByEmpId())));
         } else {
             employee.setEmployee_hired(null);
         }
 
         if (basicInfo.getManagerId() != null && basicInfo.getManagerId() > 0) {
             employee.setEmployee_manager_id(employeeRepository.findByIdAndIs_active(basicInfo.getManagerId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Manager not found with ID: " + basicInfo.getManagerId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Manager not found with ID: " + basicInfo.getManagerId())));
         } else {
             employee.setEmployee_manager_id(null);
         }
 
         if (basicInfo.getReportingManagerId() != null && basicInfo.getReportingManagerId() > 0) {
-            employee.setEmployee_reporting_id(employeeRepository.findByIdAndIs_active(basicInfo.getReportingManagerId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Reporting Manager not found with ID: " + basicInfo.getReportingManagerId())));
+            employee.setEmployee_reporting_id(employeeRepository
+                    .findByIdAndIs_active(basicInfo.getReportingManagerId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Reporting Manager not found with ID: " + basicInfo.getReportingManagerId())));
         } else {
             employee.setEmployee_reporting_id(null);
         }
@@ -622,11 +643,13 @@ public class EmployeeBasicInfoTabService {
             employee.setEmployee_replaceby_id(null);
         }
 
-        // Handle preChaitanyaId: if entered, must be an inactive employee (is_active = 0), if not entered, set to null
+        // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
+        // 0), if not entered, set to null
         if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
             Employee preChaitanyaEmp = employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId() + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
+                            "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
+                                    + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
             employee.setPre_chaitanya_id(String.valueOf(preChaitanyaEmp.getEmp_id()));
         } else {
             employee.setPre_chaitanya_id(null);
@@ -634,7 +657,8 @@ public class EmployeeBasicInfoTabService {
 
         // Set emp_status_id from EmployeeStatus - always use "Current"
         EmployeeStatus employeeStatus = employeeStatusRepository.findByStatusNameAndIsActive("Current", 1)
-                .orElseThrow(() -> new ResourceNotFoundException("Active EmployeeStatus with name 'Current' not found"));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Active EmployeeStatus with name 'Current' not found"));
         employee.setEmp_status_id(employeeStatus);
 
         return employee;
@@ -690,16 +714,19 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getCampusId() != null) {
             employee.setCampus_id(campusRepository.findByCampusIdAndIsActive(basicInfo.getCampusId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + basicInfo.getCampusId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Campus not found with ID: " + basicInfo.getCampusId())));
         }
 
         // Update building_id - optional field
         if (basicInfo.getBuildingId() != null && basicInfo.getBuildingId() > 0) {
             Building building = buildingRepository.findById(basicInfo.getBuildingId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Building not found with ID: " + basicInfo.getBuildingId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Building not found with ID: " + basicInfo.getBuildingId()));
             // Validate building is active
             if (building.getIsActive() != 1) {
-                throw new ResourceNotFoundException("Building with ID: " + basicInfo.getBuildingId() + " is not active");
+                throw new ResourceNotFoundException(
+                        "Building with ID: " + basicInfo.getBuildingId() + " is not active");
             }
             employee.setBuilding_id(building);
         } else if (basicInfo.getBuildingId() != null && basicInfo.getBuildingId() == 0) {
@@ -714,7 +741,8 @@ public class EmployeeBasicInfoTabService {
         }
 
         // Note: designationId and departmentId are now handled in CategoryInfoDTO only
-        // Removed from BasicInfoDTO to avoid conflicts - these should be set via saveCategoryInfo API
+        // Removed from BasicInfoDTO to avoid conflicts - these should be set via
+        // saveCategoryInfo API
 
         if (basicInfo.getCategoryId() != null) {
             employee.setCategory(categoryRepository.findByIdAndIsActive(basicInfo.getCategoryId(), 1)
@@ -728,7 +756,8 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getQualificationId() != null) {
             employee.setQualification_id(qualificationRepository.findById(basicInfo.getQualificationId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Qualification not found with ID: " + basicInfo.getQualificationId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Qualification not found with ID: " + basicInfo.getQualificationId())));
         }
 
         if (basicInfo.getEmpWorkModeId() != null) {
@@ -745,12 +774,14 @@ public class EmployeeBasicInfoTabService {
                     throw new ResourceNotFoundException(
                             "replacedByEmpId is required when joinTypeId is 3 (Replacement). Please provide a valid replacement employee ID.");
                 }
-                employee.setEmployee_replaceby_id(employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+                employee.setEmployee_replaceby_id(employeeRepository
+                        .findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
             } else if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
-                employee.setEmployee_replaceby_id(employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
-                        .orElse(null));
+                employee.setEmployee_replaceby_id(
+                        employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+                                .orElse(null));
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
@@ -765,8 +796,9 @@ public class EmployeeBasicInfoTabService {
                 if (basicInfo.getContractEndDate() != null) {
                     employee.setContract_end_date(basicInfo.getContractEndDate());
                 } else {
-                    java.sql.Date startDate = basicInfo.getContractStartDate() != null ?
-                            basicInfo.getContractStartDate() : basicInfo.getDateOfJoin();
+                    java.sql.Date startDate = basicInfo.getContractStartDate() != null
+                            ? basicInfo.getContractStartDate()
+                            : basicInfo.getDateOfJoin();
                     if (startDate != null) {
                         long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
                         java.util.Date endDateUtil = new java.util.Date(startDate.getTime() + oneYearInMillis);
@@ -783,37 +815,44 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getReferenceEmpId() != null && basicInfo.getReferenceEmpId() > 0) {
             employee.setEmployee_reference(employeeRepository.findByIdAndIs_active(basicInfo.getReferenceEmpId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Reference Employee not found with ID: " + basicInfo.getReferenceEmpId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Reference Employee not found with ID: " + basicInfo.getReferenceEmpId())));
         } else {
             employee.setEmployee_reference(null);
         }
 
         if (basicInfo.getHiredByEmpId() != null && basicInfo.getHiredByEmpId() > 0) {
             employee.setEmployee_hired(employeeRepository.findByIdAndIs_active(basicInfo.getHiredByEmpId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Hired By Employee not found with ID: " + basicInfo.getHiredByEmpId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Hired By Employee not found with ID: " + basicInfo.getHiredByEmpId())));
         } else {
             employee.setEmployee_hired(null);
         }
 
         if (basicInfo.getManagerId() != null && basicInfo.getManagerId() > 0) {
             employee.setEmployee_manager_id(employeeRepository.findByIdAndIs_active(basicInfo.getManagerId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Manager not found with ID: " + basicInfo.getManagerId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Manager not found with ID: " + basicInfo.getManagerId())));
         } else {
             employee.setEmployee_manager_id(null);
         }
 
         if (basicInfo.getReportingManagerId() != null && basicInfo.getReportingManagerId() > 0) {
-            employee.setEmployee_reporting_id(employeeRepository.findByIdAndIs_active(basicInfo.getReportingManagerId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Reporting Manager not found with ID: " + basicInfo.getReportingManagerId())));
+            employee.setEmployee_reporting_id(employeeRepository
+                    .findByIdAndIs_active(basicInfo.getReportingManagerId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Reporting Manager not found with ID: " + basicInfo.getReportingManagerId())));
         } else {
             employee.setEmployee_reporting_id(null);
         }
 
-        // Handle preChaitanyaId: if entered, must be an inactive employee (is_active = 0), if not entered, set to null
+        // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
+        // 0), if not entered, set to null
         if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
             Employee preChaitanyaEmp = employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId() + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
+                            "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
+                                    + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
             employee.setPre_chaitanya_id(String.valueOf(preChaitanyaEmp.getEmp_id()));
         } else {
             employee.setPre_chaitanya_id(null);
@@ -821,7 +860,8 @@ public class EmployeeBasicInfoTabService {
 
         // Set emp_status_id from EmployeeStatus - always use "Current"
         EmployeeStatus employeeStatus = employeeStatusRepository.findByStatusNameAndIsActive("Current", 1)
-                .orElseThrow(() -> new ResourceNotFoundException("Active EmployeeStatus with name 'Current' not found"));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Active EmployeeStatus with name 'Current' not found"));
         employee.setEmp_status_id(employeeStatus);
 
         logger.info("✅ Completed updating employee entity (emp_id: {})", employee.getEmp_id());
@@ -844,15 +884,16 @@ public class EmployeeBasicInfoTabService {
      */
     private Employee findEmployeeByTempPayrollId(String tempPayrollId) {
         Employee employee = employeeRepository.findByTempPayrollId(tempPayrollId.trim())
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with tempPayrollId: " + tempPayrollId));
-       
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Employee not found with tempPayrollId: " + tempPayrollId));
+
         // Validate that employee is active before allowing updates
         if (employee.getIs_active() != 1) {
             throw new ResourceNotFoundException(
                     "Cannot update employee with tempPayrollId: " + tempPayrollId +
-                    ". Employee is inactive (is_active = 0). Only active employees can be updated.");
+                            ". Employee is inactive (is_active = 0). Only active employees can be updated.");
         }
-       
+
         logger.info("Found active employee with emp_id: {} for tempPayrollId: {}", employee.getEmp_id(), tempPayrollId);
         return employee;
     }
@@ -860,7 +901,6 @@ public class EmployeeBasicInfoTabService {
     // ============================================================================
     // HELPER METHODS - EmpDetails Operations
     // ============================================================================
-
 
     /**
      * Helper: Prepare EmpDetails entity WITHOUT saving
@@ -877,13 +917,15 @@ public class EmployeeBasicInfoTabService {
         empDetails.setPersonal_email(basicInfo.getEmail());
 
         if (basicInfo.getEmergencyPhNo() == null || basicInfo.getEmergencyPhNo().trim().isEmpty()) {
-            throw new ResourceNotFoundException("Emergency contact phone number (emergencyPhNo) is required (NOT NULL column)");
+            throw new ResourceNotFoundException(
+                    "Emergency contact phone number (emergencyPhNo) is required (NOT NULL column)");
         }
         empDetails.setEmergency_ph_no(basicInfo.getEmergencyPhNo().trim());
 
         if (basicInfo.getEmergencyRelationId() != null && basicInfo.getEmergencyRelationId() > 0) {
             empDetails.setRelation_id(relationRepository.findById(basicInfo.getEmergencyRelationId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Emergency Relation not found with ID: " + basicInfo.getEmergencyRelationId())));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Emergency Relation not found with ID: " + basicInfo.getEmergencyRelationId())));
         } else {
             empDetails.setRelation_id(null);
         }
@@ -899,32 +941,36 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("BloodGroup ID is required (NOT NULL column)");
         }
         empDetails.setBloodGroup_id(bloodGroupRepository.findByIdAndIsActive(basicInfo.getBloodGroupId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException("Active BloodGroup not found with ID: " + basicInfo.getBloodGroupId())));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Active BloodGroup not found with ID: " + basicInfo.getBloodGroupId())));
 
         if (basicInfo.getCasteId() == null) {
             throw new ResourceNotFoundException("Caste ID is required (NOT NULL column)");
         }
         empDetails.setCaste_id(casteRepository.findById(basicInfo.getCasteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Caste not found with ID: " + basicInfo.getCasteId())));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Caste not found with ID: " + basicInfo.getCasteId())));
 
         if (basicInfo.getReligionId() == null) {
             throw new ResourceNotFoundException("Religion ID is required (NOT NULL column)");
         }
         empDetails.setReligion_id(relegionRepository.findById(basicInfo.getReligionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Religion not found with ID: " + basicInfo.getReligionId())));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Religion not found with ID: " + basicInfo.getReligionId())));
 
         if (basicInfo.getMaritalStatusId() == null) {
             throw new ResourceNotFoundException("MaritalStatus ID is required (NOT NULL column)");
         }
         empDetails.setMarital_status_id(maritalStatusRepository.findByIdAndIsActive(basicInfo.getMaritalStatusId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException("Active MaritalStatus not found with ID: " + basicInfo.getMaritalStatusId())));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Active MaritalStatus not found with ID: " + basicInfo.getMaritalStatusId())));
 
         // Required fields with @NotNull constraint - must always be set
         if (basicInfo.getFatherName() == null || basicInfo.getFatherName().trim().isEmpty()) {
             throw new ResourceNotFoundException("Father Name is required (NOT NULL column)");
         }
         empDetails.setFatherName(basicInfo.getFatherName().trim());
-       
+
         if (basicInfo.getUanNo() == null) {
             throw new ResourceNotFoundException("UAN Number is required (NOT NULL column)");
         }
@@ -934,7 +980,8 @@ public class EmployeeBasicInfoTabService {
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         Integer createdBy = basicInfo.getCreatedBy();
         if (createdBy == null || createdBy <= 0) {
-            throw new ResourceNotFoundException("createdBy is required (NOT NULL column). Please provide createdBy in BasicInfoDTO.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required (NOT NULL column). Please provide createdBy in BasicInfoDTO.");
         }
         empDetails.setCreated_by(createdBy);
         empDetails.setCreated_date(LocalDateTime.now());
@@ -990,12 +1037,12 @@ public class EmployeeBasicInfoTabService {
     // HELPER METHODS - EmpPfDetails Operations
     // ============================================================================
 
-
     /**
      * Helper: Prepare EmpPfDetails entity WITHOUT saving
      */
     private EmpPfDetails prepareEmpPfDetailsEntity(BasicInfoDTO basicInfo, Employee employee) {
-        if (basicInfo == null) return null;
+        if (basicInfo == null)
+            return null;
 
         if (basicInfo.getPreUanNum() == null && basicInfo.getPreEsiNum() == null) {
             return null;
@@ -1011,7 +1058,8 @@ public class EmployeeBasicInfoTabService {
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         Integer createdBy = basicInfo.getCreatedBy();
         if (createdBy == null || createdBy <= 0) {
-            throw new ResourceNotFoundException("createdBy is required (NOT NULL column). Please provide createdBy in BasicInfoDTO.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required (NOT NULL column). Please provide createdBy in BasicInfoDTO.");
         }
         empPfDetails.setCreated_by(createdBy);
         empPfDetails.setCreated_date(LocalDateTime.now());
@@ -1026,7 +1074,8 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Save Address Entities
      */
-    private int saveAddressEntities(Employee employee, AddressInfoDTO addressInfo, Integer createdBy, Integer updatedBy) {
+    private int saveAddressEntities(Employee employee, AddressInfoDTO addressInfo, Integer createdBy,
+            Integer updatedBy) {
         List<EmpaddressInfo> addressEntities = prepareAddressEntities(addressInfo, employee, createdBy);
         updateOrCreateAddressEntities(addressEntities, employee, addressInfo, updatedBy);
         return addressEntities.size();
@@ -1036,28 +1085,34 @@ public class EmployeeBasicInfoTabService {
      * Helper: Prepare Address entities WITHOUT saving
      * Logic:
      * - If addresses are same: Create 1 record with is_per_and_curr = 1
-     * - If addresses are different: Create 2 records with is_per_and_curr = 0 for both
+     * - If addresses are different: Create 2 records with is_per_and_curr = 0 for
+     * both
      */
-    private List<EmpaddressInfo> prepareAddressEntities(AddressInfoDTO addressInfo, Employee employee, Integer createdBy) {
+    private List<EmpaddressInfo> prepareAddressEntities(AddressInfoDTO addressInfo, Employee employee,
+            Integer createdBy) {
         List<EmpaddressInfo> addressList = new ArrayList<>();
 
-        if (addressInfo == null) return addressList;
+        if (addressInfo == null)
+            return addressList;
 
         boolean addressesAreSame = Boolean.TRUE.equals(addressInfo.getPermanentAddressSameAsCurrent());
 
         if (addressInfo.getCurrentAddress() != null) {
             if (addressesAreSame) {
                 // Addresses are same: Create 1 record with is_per_and_curr = 1
-                EmpaddressInfo currentAddr = createAddressEntity(addressInfo.getCurrentAddress(), employee, "CURR", createdBy, 1);
+                EmpaddressInfo currentAddr = createAddressEntity(addressInfo.getCurrentAddress(), employee, "CURR",
+                        createdBy, 1);
                 addressList.add(currentAddr);
             } else {
                 // Addresses are different: Create current address with is_per_and_curr = 0
-                EmpaddressInfo currentAddr = createAddressEntity(addressInfo.getCurrentAddress(), employee, "CURR", createdBy, 0);
+                EmpaddressInfo currentAddr = createAddressEntity(addressInfo.getCurrentAddress(), employee, "CURR",
+                        createdBy, 0);
                 addressList.add(currentAddr);
-               
+
                 // Create permanent address with is_per_and_curr = 0
                 if (addressInfo.getPermanentAddress() != null) {
-                    EmpaddressInfo permanentAddr = createAddressEntity(addressInfo.getPermanentAddress(), employee, "PERM", createdBy, 0);
+                    EmpaddressInfo permanentAddr = createAddressEntity(addressInfo.getPermanentAddress(), employee,
+                            "PERM", createdBy, 0);
                     addressList.add(permanentAddr);
                 }
             }
@@ -1068,24 +1123,28 @@ public class EmployeeBasicInfoTabService {
 
     /**
      * Helper: Create Address entity
-     * @param isPerAndCurr 1 if permanent and current addresses are same, 0 if different
+     * 
+     * @param isPerAndCurr 1 if permanent and current addresses are same, 0 if
+     *                     different
      */
-    private EmpaddressInfo createAddressEntity(AddressInfoDTO.AddressDTO addressDTO, Employee employee, String addressType, Integer createdBy, Integer isPerAndCurr) {
+    private EmpaddressInfo createAddressEntity(AddressInfoDTO.AddressDTO addressDTO, Employee employee,
+            String addressType, Integer createdBy, Integer isPerAndCurr) {
         EmpaddressInfo address = new EmpaddressInfo();
         address.setAddrs_type(addressType);
         address.setHouse_no(addressDTO.getAddressLine1());
-        address.setLandmark(addressDTO.getAddressLine2() + " " + (addressDTO.getAddressLine3() != null ? addressDTO.getAddressLine3() : ""));
+        address.setLandmark(addressDTO.getAddressLine2() + " "
+                + (addressDTO.getAddressLine3() != null ? addressDTO.getAddressLine3() : ""));
         address.setPostal_code(addressDTO.getPin());
-       
+
         if (addressDTO.getPhoneNumber() != null && !addressDTO.getPhoneNumber().trim().isEmpty()) {
             try {
                 address.setEmrg_contact_no(Long.parseLong(addressDTO.getPhoneNumber().trim()));
             } catch (NumberFormatException e) {
-                 logger.warn("Invalid phone number format for address: {}", addressDTO.getPhoneNumber());
-                 // Optionally throw exception or ignore
+                logger.warn("Invalid phone number format for address: {}", addressDTO.getPhoneNumber());
+                // Optionally throw exception or ignore
             }
         }
-       
+
         address.setIs_active(1);
         address.setEmp_id(employee);
         address.setIs_per_and_curr(isPerAndCurr);
@@ -1114,7 +1173,8 @@ public class EmployeeBasicInfoTabService {
         // Set created_by and created_date (required NOT NULL columns)
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         if (createdBy == null || createdBy <= 0) {
-            throw new ResourceNotFoundException("createdBy is required (NOT NULL column). Please provide createdBy in AddressInfoDTO.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required (NOT NULL column). Please provide createdBy in AddressInfoDTO.");
         }
         address.setCreated_by(createdBy);
         address.setCreated_date(LocalDateTime.now());
@@ -1125,11 +1185,13 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Update or create Address entities
      */
-    private void updateOrCreateAddressEntities(List<EmpaddressInfo> newAddresses, Employee employee, AddressInfoDTO addressInfo, Integer updatedBy) {
+    private void updateOrCreateAddressEntities(List<EmpaddressInfo> newAddresses, Employee employee,
+            AddressInfoDTO addressInfo, Integer updatedBy) {
         int empId = employee.getEmp_id();
 
         List<EmpaddressInfo> existingAddresses = empaddressInfoRepository.findAll().stream()
-                .filter(addr -> addr.getEmp_id() != null && addr.getEmp_id().getEmp_id() == empId && addr.getIs_active() == 1)
+                .filter(addr -> addr.getEmp_id() != null && addr.getEmp_id().getEmp_id() == empId
+                        && addr.getIs_active() == 1)
                 .collect(Collectors.toList());
 
         for (EmpaddressInfo newAddr : newAddresses) {
@@ -1212,7 +1274,8 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Prepare Family entities WITHOUT saving
      */
-    private List<EmpFamilyDetails> prepareFamilyEntities(FamilyInfoDTO familyInfo, Employee employee, Integer createdBy) {
+    private List<EmpFamilyDetails> prepareFamilyEntities(FamilyInfoDTO familyInfo, Employee employee,
+            Integer createdBy) {
         List<EmpFamilyDetails> familyList = new ArrayList<>();
 
         if (familyInfo == null || familyInfo.getFamilyMembers() == null || familyInfo.getFamilyMembers().isEmpty()) {
@@ -1237,41 +1300,50 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Create Family Member entity
      */
-    private EmpFamilyDetails createFamilyMemberEntity(FamilyInfoDTO.FamilyMemberDTO memberDTO, Employee employee, Integer createdBy) {
+    private EmpFamilyDetails createFamilyMemberEntity(FamilyInfoDTO.FamilyMemberDTO memberDTO, Employee employee,
+            Integer createdBy) {
         EmpFamilyDetails familyMember = new EmpFamilyDetails();
 
         familyMember.setEmp_id(employee);
-       
+
         // Full Name and Aadhaar (Updated)
         familyMember.setFullName(memberDTO.getFullName());
         familyMember.setAdhaarNo(memberDTO.getAdhaarNo());
-       
+
         familyMember.setIs_late(memberDTO.getIsLate() != null && memberDTO.getIsLate() ? "Y" : "N");
-       
-        // Handle occupation: If occupationId is provided, check if it exists in Occupation table
-        // If exists, use occupation_name from table; otherwise use occupation string from frontend
+
+        // Handle occupation: If occupationId is provided, check if it exists in
+        // Occupation table
+        // If exists, use occupation_name from table; otherwise use occupation string
+        // from frontend
         String occupationToStore = null;
         if (memberDTO.getOccupationId() != null && memberDTO.getOccupationId() > 0) {
-            Optional<com.employee.entity.Occupation> occupationOpt = occupationRepository.findById(memberDTO.getOccupationId());
-            if (occupationOpt.isPresent() && occupationOpt.get().getIsActive() != null && occupationOpt.get().getIsActive() == 1) {
+            Optional<com.employee.entity.Occupation> occupationOpt = occupationRepository
+                    .findById(memberDTO.getOccupationId());
+            if (occupationOpt.isPresent() && occupationOpt.get().getIsActive() != null
+                    && occupationOpt.get().getIsActive() == 1) {
                 // Occupation ID exists and is active, use occupation_name from table
                 occupationToStore = occupationOpt.get().getOccupation_name();
-                logger.debug("Using occupation_name '{}' from Occupation table for occupationId: {}", occupationToStore, memberDTO.getOccupationId());
+                logger.debug("Using occupation_name '{}' from Occupation table for occupationId: {}", occupationToStore,
+                        memberDTO.getOccupationId());
             } else {
-                // Occupation ID provided but not found or inactive, use occupation string from frontend
+                // Occupation ID provided but not found or inactive, use occupation string from
+                // frontend
                 occupationToStore = memberDTO.getOccupation();
-                logger.debug("Occupation ID {} not found or inactive, using occupation string from frontend: {}", memberDTO.getOccupationId(), occupationToStore);
+                logger.debug("Occupation ID {} not found or inactive, using occupation string from frontend: {}",
+                        memberDTO.getOccupationId(), occupationToStore);
             }
         } else {
             // No occupationId provided (Others case), use occupation string from frontend
             occupationToStore = memberDTO.getOccupation();
             logger.debug("No occupationId provided, using occupation string from frontend: {}", occupationToStore);
         }
-       
+
         if (occupationToStore == null || occupationToStore.trim().isEmpty()) {
-            throw new ResourceNotFoundException("Occupation is required (NOT NULL column). Please provide either occupationId or occupation name.");
+            throw new ResourceNotFoundException(
+                    "Occupation is required (NOT NULL column). Please provide either occupationId or occupation name.");
         }
-       
+
         familyMember.setOccupation(occupationToStore);
         familyMember.setNationality(memberDTO.getNationality());
         familyMember.setIs_active(1);
@@ -1309,7 +1381,8 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("BloodGroup ID is required (NOT NULL column)");
         }
         familyMember.setBlood_group_id(bloodGroupRepository.findByIdAndIsActive(memberDTO.getBloodGroupId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException("Active BloodGroup not found with ID: " + memberDTO.getBloodGroupId())));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Active BloodGroup not found with ID: " + memberDTO.getBloodGroupId())));
 
         Integer isSriChaitanyaEmpValue = 0;
         if (memberDTO.getIsSriChaitanyaEmp() != null) {
@@ -1349,7 +1422,8 @@ public class EmployeeBasicInfoTabService {
         // Set created_by and created_date (required NOT NULL columns)
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         if (createdBy == null || createdBy <= 0) {
-            throw new ResourceNotFoundException("createdBy is required (NOT NULL column). Please provide createdBy in FamilyInfoDTO.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required (NOT NULL column). Please provide createdBy in FamilyInfoDTO.");
         }
         familyMember.setCreated_by(createdBy);
         familyMember.setCreated_date(LocalDateTime.now());
@@ -1364,7 +1438,8 @@ public class EmployeeBasicInfoTabService {
         int empId = employee.getEmp_id();
 
         List<EmpFamilyDetails> existingFamily = empFamilyDetailsRepository.findAll().stream()
-                .filter(fam -> fam.getEmp_id() != null && fam.getEmp_id().getEmp_id() == empId && fam.getIs_active() == 1)
+                .filter(fam -> fam.getEmp_id() != null && fam.getEmp_id().getEmp_id() == empId
+                        && fam.getIs_active() == 1)
                 .collect(Collectors.toList());
 
         int maxSize = Math.max(newFamily.size(), existingFamily.size());
@@ -1403,9 +1478,9 @@ public class EmployeeBasicInfoTabService {
      */
     private void updateFamilyFields(EmpFamilyDetails target, EmpFamilyDetails source) {
         // Full Name and Aadhaar (Updated)
-    target.setFullName(source.getFullName());
-    target.setAdhaarNo(source.getAdhaarNo());
-   
+        target.setFullName(source.getFullName());
+        target.setAdhaarNo(source.getAdhaarNo());
+
         target.setDate_of_birth(source.getDate_of_birth());
         target.setGender_id(source.getGender_id());
         target.setRelation_id(source.getRelation_id());
@@ -1438,7 +1513,8 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Create Family Group Photo document entity
      */
-    private EmpDocuments createFamilyGroupPhotoDocument(FamilyInfoDTO familyInfo, Employee employee, Integer createdBy) {
+    private EmpDocuments createFamilyGroupPhotoDocument(FamilyInfoDTO familyInfo, Employee employee,
+            Integer createdBy) {
         EmpDocuments doc = new EmpDocuments();
         doc.setEmp_id(employee);
         doc.setDoc_path(familyInfo.getFamilyGroupPhotoPath().trim());
@@ -1447,12 +1523,14 @@ public class EmployeeBasicInfoTabService {
 
         // Always use "Family Group Photo" document type as requested
         doc.setEmp_doc_type_id(empDocTypeRepository.findByDocNameAndIsActive("Family Group Photo", 1)
-                .orElseThrow(() -> new ResourceNotFoundException("Family Group Photo document type not found or inactive")));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Family Group Photo document type not found or inactive")));
 
         // Set created_by and created_date (required NOT NULL columns)
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         if (createdBy == null || createdBy <= 0) {
-            throw new ResourceNotFoundException("createdBy is required (NOT NULL column). Please provide createdBy in FamilyInfoDTO.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required (NOT NULL column). Please provide createdBy in FamilyInfoDTO.");
         }
         doc.setCreated_by(createdBy);
         doc.setCreated_date(LocalDateTime.now());
@@ -1467,16 +1545,21 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Save Experience Entities
      */
-    private int saveExperienceEntities(Employee employee, PreviousEmployerInfoDTO previousEmployerInfo, Integer createdBy, Integer updatedBy) {
-        List<EmpExperienceDetails> experienceEntities = prepareExperienceEntities(previousEmployerInfo, employee, createdBy);
-        updateOrCreateExperienceEntities(experienceEntities, employee, previousEmployerInfo, updatedBy); // Pass DTO to handle documents
+    private int saveExperienceEntities(Employee employee, PreviousEmployerInfoDTO previousEmployerInfo,
+            Integer createdBy, Integer updatedBy) {
+        List<EmpExperienceDetails> experienceEntities = prepareExperienceEntities(previousEmployerInfo, employee,
+                createdBy);
+        updateOrCreateExperienceEntities(experienceEntities, employee, previousEmployerInfo, updatedBy); // Pass DTO to
+                                                                                                         // handle
+                                                                                                         // documents
         return experienceEntities.size();
     }
 
     /**
      * Helper: Prepare Experience entities WITHOUT saving
      */
-    private List<EmpExperienceDetails> prepareExperienceEntities(PreviousEmployerInfoDTO previousEmployerInfo, Employee employee, Integer createdBy) {
+    private List<EmpExperienceDetails> prepareExperienceEntities(PreviousEmployerInfoDTO previousEmployerInfo,
+            Employee employee, Integer createdBy) {
         List<EmpExperienceDetails> experienceList = new ArrayList<>();
 
         if (previousEmployerInfo == null || previousEmployerInfo.getPreviousEmployers() == null
@@ -1497,7 +1580,8 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Create Experience entity
      */
-    private EmpExperienceDetails createExperienceEntity(PreviousEmployerInfoDTO.EmployerDetailsDTO employerDTO, Employee employee, Integer createdBy) {
+    private EmpExperienceDetails createExperienceEntity(PreviousEmployerInfoDTO.EmployerDetailsDTO employerDTO,
+            Employee employee, Integer createdBy) {
         EmpExperienceDetails experience = new EmpExperienceDetails();
         experience.setEmployee_id(employee);
 
@@ -1553,10 +1637,9 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("Nature of Duties is required (NOT NULL column)");
         }
 
-        String companyAddress = employerDTO.getCompanyAddressLine1() != null ? employerDTO.getCompanyAddressLine1() : "";
-        if (employerDTO.getCompanyAddressLine2() != null) {
-            companyAddress += " " + employerDTO.getCompanyAddressLine2();
-        }
+        String companyAddress = employerDTO.getCompanyAddressLine1() != null ? employerDTO.getCompanyAddressLine1()
+                : "";
+
         if (companyAddress.trim().isEmpty()) {
             throw new ResourceNotFoundException("Company Address is required (NOT NULL column)");
         }
@@ -1566,13 +1649,15 @@ public class EmployeeBasicInfoTabService {
         }
         experience.setCompany_addr(trimmedAddress);
 
-        experience.setGross_salary(employerDTO.getGrossSalaryPerMonth() != null ? employerDTO.getGrossSalaryPerMonth() : 0);
+        experience.setGross_salary(
+                employerDTO.getGrossSalaryPerMonth() != null ? employerDTO.getGrossSalaryPerMonth() : 0);
         experience.setIs_active(1);
 
         // Set created_by and created_date (required NOT NULL columns)
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         if (createdBy == null || createdBy <= 0) {
-            throw new ResourceNotFoundException("createdBy is required (NOT NULL column). Please provide createdBy in PreviousEmployerInfoDTO.");
+            throw new ResourceNotFoundException(
+                    "createdBy is required (NOT NULL column). Please provide createdBy in PreviousEmployerInfoDTO.");
         }
         experience.setCreated_by(createdBy);
         experience.setCreated_date(LocalDateTime.now());
@@ -1586,12 +1671,14 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Update or create Experience entities and their associated documents
      */
-    private void updateOrCreateExperienceEntities(List<EmpExperienceDetails> newExperience, Employee employee, PreviousEmployerInfoDTO dto, Integer updatedBy) {
+    private void updateOrCreateExperienceEntities(List<EmpExperienceDetails> newExperience, Employee employee,
+            PreviousEmployerInfoDTO dto, Integer updatedBy) {
         int empId = employee.getEmp_id();
         Integer createdBy = dto.getCreatedBy();
 
         List<EmpExperienceDetails> existingExperience = empExperienceDetailsRepository.findAll().stream()
-                .filter(exp -> exp.getEmployee_id() != null && exp.getEmployee_id().getEmp_id() == empId && exp.getIs_active() == 1)
+                .filter(exp -> exp.getEmployee_id() != null && exp.getEmployee_id().getEmp_id() == empId
+                        && exp.getIs_active() == 1)
                 .collect(Collectors.toList());
 
         int maxSize = Math.max(newExperience.size(), existingExperience.size());
@@ -1617,7 +1704,8 @@ public class EmployeeBasicInfoTabService {
 
                 // Handle documents for this employer
                 if (dto.getPreviousEmployers().get(i).getDocuments() != null) {
-                    saveEmployerDocuments(employee, savedExp, dto.getPreviousEmployers().get(i).getDocuments(), createdBy, updatedBy);
+                    saveEmployerDocuments(employee, savedExp, dto.getPreviousEmployers().get(i).getDocuments(),
+                            createdBy, updatedBy);
                 }
             } else if (i < existingExperience.size()) {
                 EmpExperienceDetails expToDelete = existingExperience.get(i);
@@ -1627,8 +1715,9 @@ public class EmployeeBasicInfoTabService {
                     expToDelete.setUpdated_date(LocalDateTime.now());
                 }
                 empExperienceDetailsRepository.save(expToDelete);
-                
-                // Deactivate associated documents only when the experience record is being deactivated
+
+                // Deactivate associated documents only when the experience record is being
+                // deactivated
                 deactivateExperienceDocuments(expToDelete.getEmp_exp_detl_id(), updatedBy);
             }
         }
@@ -1637,8 +1726,9 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Save documents for a specific experience record
      */
-    private void saveEmployerDocuments(Employee employee, EmpExperienceDetails experience, List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docs, Integer createdBy, Integer updatedBy) {
-        // REMOVED: Unconditional deactivation of existing documents. 
+    private void saveEmployerDocuments(Employee employee, EmpExperienceDetails experience,
+            List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docs, Integer createdBy, Integer updatedBy) {
+        // REMOVED: Unconditional deactivation of existing documents.
         // User requested that documents remain active (is_active=1) during updates.
 
         for (PreviousEmployerInfoDTO.ExperienceDocumentDTO docDTO : docs) {
@@ -1652,9 +1742,12 @@ public class EmployeeBasicInfoTabService {
                 throw new ResourceNotFoundException("Document Type ID is required for experience documents");
             }
 
-            // SMART CHECK: Only save if this documents doesn't already exist for this experience record
-            if (empDocumentsRepository.findExistingExperienceDoc(experience.getEmp_exp_detl_id(), docTypeId, path).isPresent()) {
-                logger.info("📄 Skipping duplicate document (Type: {}, Path: {}) for experience ID: {}", docTypeId, path, experience.getEmp_exp_detl_id());
+            // SMART CHECK: Only save if this documents doesn't already exist for this
+            // experience record
+            if (empDocumentsRepository.findExistingExperienceDoc(experience.getEmp_exp_detl_id(), docTypeId, path)
+                    .isPresent()) {
+                logger.info("📄 Skipping duplicate document (Type: {}, Path: {}) for experience ID: {}", docTypeId,
+                        path, experience.getEmp_exp_detl_id());
                 continue;
             }
 
@@ -1664,7 +1757,7 @@ public class EmployeeBasicInfoTabService {
             doc.setDoc_path(path);
             doc.setIs_verified(0);
             doc.setIs_active(1);
-            
+
             doc.setEmp_doc_type_id(empDocTypeRepository.findById(docTypeId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document Type not found with ID: " + docTypeId)));
 
@@ -1685,9 +1778,10 @@ public class EmployeeBasicInfoTabService {
      */
     private void deactivateExperienceDocuments(int expId, Integer updatedBy) {
         List<EmpDocuments> existingDocs = empDocumentsRepository.findAll().stream()
-                .filter(d -> d.getEmp_exp_detl_id() != null && d.getEmp_exp_detl_id().getEmp_exp_detl_id() == expId && d.getIs_active() == 1)
+                .filter(d -> d.getEmp_exp_detl_id() != null && d.getEmp_exp_detl_id().getEmp_exp_detl_id() == expId
+                        && d.getIs_active() == 1)
                 .collect(Collectors.toList());
-        
+
         for (EmpDocuments doc : existingDocs) {
             doc.setIs_active(0);
             if (updatedBy != null) {
@@ -1758,8 +1852,10 @@ public class EmployeeBasicInfoTabService {
     }
 
     /**
-     * Helper: Validate entity constraints BEFORE saving to prevent emp_id sequence consumption on failure
-     * This checks all @NotNull, @Min, @Max constraints that would cause ConstraintViolationException
+     * Helper: Validate entity constraints BEFORE saving to prevent emp_id sequence
+     * consumption on failure
+     * This checks all @NotNull, @Min, @Max constraints that would cause
+     * ConstraintViolationException
      */
     private void validateEntityConstraints(Employee employee, EmpDetails empDetails, EmpPfDetails empPfDetails) {
         // Validate Employee entity constraints
@@ -1790,7 +1886,8 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("EmpDetails uanNo is required (@NotNull constraint)");
         }
         if (empDetails.getUanNo() < 100000000000L || empDetails.getUanNo() > 999999999999L) {
-            throw new ResourceNotFoundException("EmpDetails uanNo must be between 100000000000 and 999999999999 (@Min/@Max constraint)");
+            throw new ResourceNotFoundException(
+                    "EmpDetails uanNo must be between 100000000000 and 999999999999 (@Min/@Max constraint)");
         }
 
         // Validate EmpPfDetails entity constraints (if present)
@@ -1842,7 +1939,8 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getGenderId() != null) {
             genderRepository.findById(basicInfo.getGenderId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Gender not found with ID: " + basicInfo.getGenderId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Gender not found with ID: " + basicInfo.getGenderId()));
         } else {
             throw new ResourceNotFoundException("Gender ID is required (NOT NULL column)");
         }
@@ -1852,66 +1950,82 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getCategoryId() != null) {
             categoryRepository.findById(basicInfo.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + basicInfo.getCategoryId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Category not found with ID: " + basicInfo.getCategoryId()));
         } else {
             throw new ResourceNotFoundException("Category ID is required (NOT NULL column)");
         }
 
         if (basicInfo.getReferenceEmpId() != null && basicInfo.getReferenceEmpId() > 0) {
             employeeRepository.findByIdAndIs_active(basicInfo.getReferenceEmpId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Reference Employee not found with ID: " + basicInfo.getReferenceEmpId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Reference Employee not found with ID: " + basicInfo.getReferenceEmpId()));
         }
 
         if (basicInfo.getHiredByEmpId() != null && basicInfo.getHiredByEmpId() > 0) {
             employeeRepository.findByIdAndIs_active(basicInfo.getHiredByEmpId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Hired By Employee not found with ID: " + basicInfo.getHiredByEmpId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Hired By Employee not found with ID: " + basicInfo.getHiredByEmpId()));
         }
 
         if (basicInfo.getManagerId() != null && basicInfo.getManagerId() > 0) {
             employeeRepository.findByIdAndIs_active(basicInfo.getManagerId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Manager not found with ID: " + basicInfo.getManagerId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Manager not found with ID: " + basicInfo.getManagerId()));
         }
 
         if (basicInfo.getReportingManagerId() != null && basicInfo.getReportingManagerId() > 0) {
             employeeRepository.findByIdAndIs_active(basicInfo.getReportingManagerId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Reporting Manager not found with ID: " + basicInfo.getReportingManagerId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Reporting Manager not found with ID: " + basicInfo.getReportingManagerId()));
         }
 
         if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
             employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
-                    .orElseThrow(() -> new ResourceNotFoundException("Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId() + ". Only inactive employees (is_active = 0) can be used as replacement."));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId()
+                                    + ". Only inactive employees (is_active = 0) can be used as replacement."));
         }
 
-        // Validate preChaitanyaId: if entered, must be an inactive employee (is_active = 0)
+        // Validate preChaitanyaId: if entered, must be an inactive employee (is_active
+        // = 0)
         if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
             employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
-                    .orElseThrow(() -> new ResourceNotFoundException("Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId() + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
+                    .orElseThrow(() -> new ResourceNotFoundException("Previous Chaitanya Employee not found with ID: "
+                            + basicInfo.getPreChaitanyaId()
+                            + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
         }
 
         if (basicInfo.getCampusId() != null && basicInfo.getCampusId() > 0) {
             campusRepository.findByCampusIdAndIsActive(basicInfo.getCampusId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + basicInfo.getCampusId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Campus not found with ID: " + basicInfo.getCampusId()));
         }
 
         if (basicInfo.getEmpTypeId() != null) {
             employeeTypeRepository.findById(basicInfo.getEmpTypeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee Type not found with ID: " + basicInfo.getEmpTypeId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Employee Type not found with ID: " + basicInfo.getEmpTypeId()));
         }
 
-        // Note: qualificationId is now passed from BasicInfoDTO (not from qualification tab's isHighest)
+        // Note: qualificationId is now passed from BasicInfoDTO (not from qualification
+        // tab's isHighest)
         if (basicInfo.getQualificationId() != null) {
             qualificationRepository.findById(basicInfo.getQualificationId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Qualification not found with ID: " + basicInfo.getQualificationId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Qualification not found with ID: " + basicInfo.getQualificationId()));
         }
 
         if (basicInfo.getEmpWorkModeId() != null) {
             workingModeRepository.findById(basicInfo.getEmpWorkModeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Working Mode not found with ID: " + basicInfo.getEmpWorkModeId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Working Mode not found with ID: " + basicInfo.getEmpWorkModeId()));
         }
 
         if (basicInfo.getJoinTypeId() != null) {
             joiningAsRepository.findById(basicInfo.getJoinTypeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Join Type not found with ID: " + basicInfo.getJoinTypeId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Join Type not found with ID: " + basicInfo.getJoinTypeId()));
 
             if (basicInfo.getJoinTypeId() == 3) {
                 if (basicInfo.getReplacedByEmpId() == null || basicInfo.getReplacedByEmpId() <= 0) {
@@ -1923,29 +2037,33 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getModeOfHiringId() != null) {
             modeOfHiringRepository.findById(basicInfo.getModeOfHiringId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Mode of Hiring not found with ID: " + basicInfo.getModeOfHiringId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Mode of Hiring not found with ID: " + basicInfo.getModeOfHiringId()));
         }
 
         // Validate Aadhaar Number format IF provided (optional field)
         // CHANGED: Validation now supports Long type (removed .trim())
         if (basicInfo.getAdhaarNo() != null && basicInfo.getAdhaarNo() > 0) {
             String aadhar = String.valueOf(basicInfo.getAdhaarNo());
-           
+
             // Layer 1: Format validation - must be exactly 12 numeric digits
             if (!aadhar.matches("^[0-9]{12}$")) {
-                throw new ResourceNotFoundException("Aadhaar must be exactly 12 numeric digits. Please remove any spaces, dashes, or special characters.");
+                throw new ResourceNotFoundException(
+                        "Aadhaar must be exactly 12 numeric digits. Please remove any spaces, dashes, or special characters.");
             }
-           
+
             // Layer 2: Verhoeff algorithm validation - checks mathematical validity
             if (!isValidAadhaar(aadhar)) {
-                throw new ResourceNotFoundException("Invalid Aadhaar number format. Please verify the Aadhaar number and try again.");
+                throw new ResourceNotFoundException(
+                        "Invalid Aadhaar number format. Please verify the Aadhaar number and try again.");
             }
         }
 
         // Validate tempPayrollId against SkillTestDetl table if provided
         if (tempPayrollId != null && !tempPayrollId.trim().isEmpty()) {
             skillTestDetailsRepository.findByTempPayrollId(tempPayrollId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Temp Payroll ID not found in Skill Test Details: " + tempPayrollId + ". Please provide a valid temp payroll ID."));
+                    .orElseThrow(() -> new ResourceNotFoundException("Temp Payroll ID not found in Skill Test Details: "
+                            + tempPayrollId + ". Please provide a valid temp payroll ID."));
         }
     }
 
@@ -1960,43 +2078,55 @@ public class EmployeeBasicInfoTabService {
         if (addressInfo.getCurrentAddress() != null) {
             if (addressInfo.getCurrentAddress().getCityId() != null) {
                 cityRepository.findById(addressInfo.getCurrentAddress().getCityId())
-                        .orElseThrow(() -> new ResourceNotFoundException("City not found with ID: " + addressInfo.getCurrentAddress().getCityId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "City not found with ID: " + addressInfo.getCurrentAddress().getCityId()));
             }
             if (addressInfo.getCurrentAddress().getStateId() != null) {
                 stateRepository.findById(addressInfo.getCurrentAddress().getStateId())
-                        .orElseThrow(() -> new ResourceNotFoundException("State not found with ID: " + addressInfo.getCurrentAddress().getStateId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "State not found with ID: " + addressInfo.getCurrentAddress().getStateId()));
             }
             if (addressInfo.getCurrentAddress().getCountryId() != null) {
                 countryRepository.findById(addressInfo.getCurrentAddress().getCountryId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Country not found with ID: " + addressInfo.getCurrentAddress().getCountryId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Country not found with ID: " + addressInfo.getCurrentAddress().getCountryId()));
             }
-            if (addressInfo.getCurrentAddress().getPin() != null && addressInfo.getCurrentAddress().getPin().length() > 10) {
+            if (addressInfo.getCurrentAddress().getPin() != null
+                    && addressInfo.getCurrentAddress().getPin().length() > 10) {
                 throw new ResourceNotFoundException("PIN code cannot exceed 10 characters");
             }
-            if (addressInfo.getCurrentAddress().getName() != null && addressInfo.getCurrentAddress().getName().length() > 50) {
+            if (addressInfo.getCurrentAddress().getName() != null
+                    && addressInfo.getCurrentAddress().getName().length() > 50) {
                 throw new ResourceNotFoundException("Address name cannot exceed 50 characters");
             }
         }
 
         // Only validate permanent address if permanentAddressSameAsCurrent is NOT true
-        // If permanentAddressSameAsCurrent = true, permanent address is ignored (can be null/empty)
-        if (!Boolean.TRUE.equals(addressInfo.getPermanentAddressSameAsCurrent()) && addressInfo.getPermanentAddress() != null) {
+        // If permanentAddressSameAsCurrent = true, permanent address is ignored (can be
+        // null/empty)
+        if (!Boolean.TRUE.equals(addressInfo.getPermanentAddressSameAsCurrent())
+                && addressInfo.getPermanentAddress() != null) {
             if (addressInfo.getPermanentAddress().getCityId() != null) {
                 cityRepository.findById(addressInfo.getPermanentAddress().getCityId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Permanent Address City not found with ID: " + addressInfo.getPermanentAddress().getCityId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Permanent Address City not found with ID: "
+                                + addressInfo.getPermanentAddress().getCityId()));
             }
             if (addressInfo.getPermanentAddress().getStateId() != null) {
                 stateRepository.findById(addressInfo.getPermanentAddress().getStateId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Permanent Address State not found with ID: " + addressInfo.getPermanentAddress().getStateId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Permanent Address State not found with ID: "
+                                + addressInfo.getPermanentAddress().getStateId()));
             }
             if (addressInfo.getPermanentAddress().getCountryId() != null) {
                 countryRepository.findById(addressInfo.getPermanentAddress().getCountryId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Permanent Address Country not found with ID: " + addressInfo.getPermanentAddress().getCountryId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Permanent Address Country not found with ID: "
+                                + addressInfo.getPermanentAddress().getCountryId()));
             }
-            if (addressInfo.getPermanentAddress().getPin() != null && addressInfo.getPermanentAddress().getPin().length() > 10) {
+            if (addressInfo.getPermanentAddress().getPin() != null
+                    && addressInfo.getPermanentAddress().getPin().length() > 10) {
                 throw new ResourceNotFoundException("PIN code cannot exceed 10 characters");
             }
-            if (addressInfo.getPermanentAddress().getName() != null && addressInfo.getPermanentAddress().getName().length() > 50) {
+            if (addressInfo.getPermanentAddress().getName() != null
+                    && addressInfo.getPermanentAddress().getName().length() > 50) {
                 throw new ResourceNotFoundException("Address name cannot exceed 50 characters");
             }
         }
@@ -2014,12 +2144,14 @@ public class EmployeeBasicInfoTabService {
         if (familyInfo.getFamilyGroupPhotoPath() != null && !familyInfo.getFamilyGroupPhotoPath().trim().isEmpty()
                 && !"string".equalsIgnoreCase(familyInfo.getFamilyGroupPhotoPath().trim())) {
             empDocTypeRepository.findByDocNameAndIsActive("Family Group Photo", 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Family Group Photo document type not found or inactive."));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Family Group Photo document type not found or inactive."));
         }
 
         if (familyInfo.getFamilyMembers() != null) {
             for (FamilyInfoDTO.FamilyMemberDTO member : familyInfo.getFamilyMembers()) {
-                if (member == null) continue;
+                if (member == null)
+                    continue;
 
                 // Skip validation for "junk" family members (e.g., from Swagger default values)
                 if (member.getFullName() == null || member.getFullName().trim().isEmpty()
@@ -2027,51 +2159,64 @@ public class EmployeeBasicInfoTabService {
                     continue;
                 }
 
-                // 1. Validate Full Name (Already checked above, but kept for consistency if needed)
+                // 1. Validate Full Name (Already checked above, but kept for consistency if
+                // needed)
                 if (member.getFullName() == null || member.getFullName().trim().isEmpty()) {
                     throw new ResourceNotFoundException("Full Name is required for all family members.");
                 }
 
                 // 2. Relation Validation
                 if (member.getRelationId() == null) {
-                    throw new ResourceNotFoundException("Relation ID is required for family member: " + member.getFullName());
+                    throw new ResourceNotFoundException(
+                            "Relation ID is required for family member: " + member.getFullName());
                 }
 
                 relationRepository.findById(member.getRelationId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Relation not found with ID: " + member.getRelationId() + " for family member: " + member.getFullName()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Relation not found with ID: "
+                                + member.getRelationId() + " for family member: " + member.getFullName()));
 
-                // 3. Gender Validation: For Father (1) and Mother (2), gender is auto-set by backend
+                // 3. Gender Validation: For Father (1) and Mother (2), gender is auto-set by
+                // backend
                 if (member.getRelationId() != 1 && member.getRelationId() != 2) {
                     if (member.getGenderId() == null) {
-                        throw new ResourceNotFoundException("Gender ID is required for family member: " + member.getFullName() +
-                                " (relationId: " + member.getRelationId() + "). Gender is only auto-set for Father and Mother.");
+                        throw new ResourceNotFoundException(
+                                "Gender ID is required for family member: " + member.getFullName() +
+                                        " (relationId: " + member.getRelationId()
+                                        + "). Gender is only auto-set for Father and Mother.");
                     }
                     genderRepository.findById(member.getGenderId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Gender not found with ID: " + member.getGenderId() + " for family member: " + member.getFullName()));
+                            .orElseThrow(() -> new ResourceNotFoundException("Gender not found with ID: "
+                                    + member.getGenderId() + " for family member: " + member.getFullName()));
                 }
 
                 // 4. Blood Group Validation
                 if (member.getBloodGroupId() == null) {
-                    throw new ResourceNotFoundException("Blood Group ID is required for family member: " + member.getFullName());
+                    throw new ResourceNotFoundException(
+                            "Blood Group ID is required for family member: " + member.getFullName());
                 }
                 bloodGroupRepository.findByIdAndIsActive(member.getBloodGroupId(), 1)
-                        .orElseThrow(() -> new ResourceNotFoundException("Active Blood Group not found with ID: " + member.getBloodGroupId() + " for family member: " + member.getFullName()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Active Blood Group not found with ID: "
+                                + member.getBloodGroupId() + " for family member: " + member.getFullName()));
 
                 // 5. Nationality Validation
                 if (member.getNationality() == null || member.getNationality().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Nationality is required for family member: " + member.getFullName());
+                    throw new ResourceNotFoundException(
+                            "Nationality is required for family member: " + member.getFullName());
                 }
 
                 // 6. Occupation Validation
                 if (member.getOccupation() == null || member.getOccupation().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Occupation is required for family member: " + member.getFullName());
+                    throw new ResourceNotFoundException(
+                            "Occupation is required for family member: " + member.getFullName());
                 }
                 if (member.getAdhaarNo() == null) {
-                    throw new ResourceNotFoundException("Aadhaar Number is required for family member: " + member.getFullName());
+                    throw new ResourceNotFoundException(
+                            "Aadhaar Number is required for family member: " + member.getFullName());
                 }
             }
         }
     }
+
     /**
      * Helper: Validate Previous Employer Info DTO
      */
@@ -2082,7 +2227,8 @@ public class EmployeeBasicInfoTabService {
 
         if (previousEmployerInfo.getPreviousEmployers() != null) {
             for (PreviousEmployerInfoDTO.EmployerDetailsDTO employer : previousEmployerInfo.getPreviousEmployers()) {
-                if (employer == null) continue;
+                if (employer == null)
+                    continue;
 
                 if (employer.getCompanyName() == null || employer.getCompanyName().trim().isEmpty()) {
                     throw new ResourceNotFoundException("Company Name is required for previous employer");
@@ -2091,34 +2237,39 @@ public class EmployeeBasicInfoTabService {
                     throw new ResourceNotFoundException("Company Name cannot exceed 50 characters");
                 }
                 if (employer.getFromDate() == null) {
-                    throw new ResourceNotFoundException("From Date is required for previous employer: " + employer.getCompanyName());
+                    throw new ResourceNotFoundException(
+                            "From Date is required for previous employer: " + employer.getCompanyName());
                 }
                 if (employer.getToDate() == null) {
-                    throw new ResourceNotFoundException("To Date is required for previous employer: " + employer.getCompanyName());
+                    throw new ResourceNotFoundException(
+                            "To Date is required for previous employer: " + employer.getCompanyName());
                 }
                 if (employer.getDesignation() == null || employer.getDesignation().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Designation is required for previous employer: " + employer.getCompanyName());
+                    throw new ResourceNotFoundException(
+                            "Designation is required for previous employer: " + employer.getCompanyName());
                 }
                 if (employer.getDesignation().length() > 50) {
                     throw new ResourceNotFoundException("Designation cannot exceed 50 characters");
                 }
                 if (employer.getLeavingReason() == null || employer.getLeavingReason().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Leaving Reason is required for previous employer: " + employer.getCompanyName());
+                    throw new ResourceNotFoundException(
+                            "Leaving Reason is required for previous employer: " + employer.getCompanyName());
                 }
                 if (employer.getLeavingReason().length() > 50) {
                     throw new ResourceNotFoundException("Leaving Reason cannot exceed 50 characters");
                 }
                 if (employer.getNatureOfDuties() == null || employer.getNatureOfDuties().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Nature of Duties is required for previous employer: " + employer.getCompanyName());
+                    throw new ResourceNotFoundException(
+                            "Nature of Duties is required for previous employer: " + employer.getCompanyName());
                 }
                 if (employer.getNatureOfDuties().length() > 50) {
                     throw new ResourceNotFoundException("Nature of Duties cannot exceed 50 characters");
                 }
                 if (employer.getCompanyAddressLine1() == null || employer.getCompanyAddressLine1().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Company Address Line 1 is required for previous employer: " + employer.getCompanyName());
+                    throw new ResourceNotFoundException(
+                            "Company Address Line 1 is required for previous employer: " + employer.getCompanyName());
                 }
-                String companyAddress = employer.getCompanyAddressLine1() +
-                        (employer.getCompanyAddressLine2() != null ? " " + employer.getCompanyAddressLine2() : "");
+                String companyAddress = employer.getCompanyAddressLine1();
                 if (companyAddress.trim().length() > 50) {
                     throw new ResourceNotFoundException("Company Address cannot exceed 50 characters");
                 }
@@ -2126,14 +2277,19 @@ public class EmployeeBasicInfoTabService {
                 // Validate documents for this employer
                 if (employer.getDocuments() != null) {
                     for (PreviousEmployerInfoDTO.ExperienceDocumentDTO doc : employer.getDocuments()) {
-                        if (doc.getDocPath() == null || doc.getDocPath().trim().isEmpty() || "string".equalsIgnoreCase(doc.getDocPath().trim())) {
+                        if (doc.getDocPath() == null || doc.getDocPath().trim().isEmpty()
+                                || "string".equalsIgnoreCase(doc.getDocPath().trim())) {
                             continue;
                         }
                         if (doc.getDocTypeId() == null) {
-                            throw new ResourceNotFoundException("Document Type ID is required for documents of company: " + employer.getCompanyName());
+                            throw new ResourceNotFoundException(
+                                    "Document Type ID is required for documents of company: "
+                                            + employer.getCompanyName());
                         }
                         empDocTypeRepository.findById(doc.getDocTypeId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Document Type with ID " + doc.getDocTypeId() + " not found or inactive for company: " + employer.getCompanyName()));
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                        "Document Type with ID " + doc.getDocTypeId()
+                                                + " not found or inactive for company: " + employer.getCompanyName()));
                     }
                 }
             }
@@ -2142,8 +2298,10 @@ public class EmployeeBasicInfoTabService {
 
     /**
      * Validate Aadhaar number using Verhoeff algorithm
-     * This algorithm checks the mathematical validity of the Aadhaar number structure
+     * This algorithm checks the mathematical validity of the Aadhaar number
+     * structure
      * * @param aadhaar 12-digit Aadhaar number
+     * 
      * @return true if Aadhaar format is valid, false otherwise
      */
     private boolean isValidAadhaar(String aadhaar) {
@@ -2154,28 +2312,28 @@ public class EmployeeBasicInfoTabService {
 
         // Verhoeff multiplication table
         int[][] multiplicationTable = {
-            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-            {1, 2, 3, 4, 0, 6, 7, 8, 9, 5},
-            {2, 3, 4, 0, 1, 7, 8, 9, 5, 6},
-            {3, 4, 0, 1, 2, 8, 9, 5, 6, 7},
-            {4, 0, 1, 2, 3, 9, 5, 6, 7, 8},
-            {5, 9, 8, 7, 6, 0, 4, 3, 2, 1},
-            {6, 5, 9, 8, 7, 1, 0, 4, 3, 2},
-            {7, 6, 5, 9, 8, 2, 1, 0, 4, 3},
-            {8, 7, 6, 5, 9, 3, 2, 1, 0, 4},
-            {9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+                { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+                { 1, 2, 3, 4, 0, 6, 7, 8, 9, 5 },
+                { 2, 3, 4, 0, 1, 7, 8, 9, 5, 6 },
+                { 3, 4, 0, 1, 2, 8, 9, 5, 6, 7 },
+                { 4, 0, 1, 2, 3, 9, 5, 6, 7, 8 },
+                { 5, 9, 8, 7, 6, 0, 4, 3, 2, 1 },
+                { 6, 5, 9, 8, 7, 1, 0, 4, 3, 2 },
+                { 7, 6, 5, 9, 8, 2, 1, 0, 4, 3 },
+                { 8, 7, 6, 5, 9, 3, 2, 1, 0, 4 },
+                { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 }
         };
 
         // Verhoeff permutation table
         int[][] permutationTable = {
-            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-            {1, 5, 7, 6, 2, 8, 3, 0, 9, 4},
-            {5, 8, 0, 3, 7, 9, 6, 1, 4, 2},
-            {8, 9, 1, 6, 0, 4, 3, 5, 2, 7},
-            {9, 4, 5, 3, 1, 2, 6, 8, 7, 0},
-            {4, 2, 8, 6, 5, 7, 3, 9, 0, 1},
-            {2, 7, 9, 3, 8, 0, 6, 4, 1, 5},
-            {7, 0, 4, 6, 9, 1, 3, 2, 5, 8}
+                { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+                { 1, 5, 7, 6, 2, 8, 3, 0, 9, 4 },
+                { 5, 8, 0, 3, 7, 9, 6, 1, 4, 2 },
+                { 8, 9, 1, 6, 0, 4, 3, 5, 2, 7 },
+                { 9, 4, 5, 3, 1, 2, 6, 8, 7, 0 },
+                { 4, 2, 8, 6, 5, 7, 3, 9, 0, 1 },
+                { 2, 7, 9, 3, 8, 0, 6, 4, 1, 5 },
+                { 7, 0, 4, 6, 9, 1, 3, 2, 5, 8 }
         };
 
         int check = 0;

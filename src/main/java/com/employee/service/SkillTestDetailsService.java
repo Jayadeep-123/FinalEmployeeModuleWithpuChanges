@@ -28,7 +28,7 @@ import com.employee.entity.Gender;
 import com.employee.entity.Grade;
 import com.employee.entity.JoiningAs;
 import com.employee.entity.Qualification;
-import com.employee.entity.SkillTestApprovalStatus;
+
 import com.employee.entity.SkillTestDetails;
 import com.employee.entity.SkillTestResult;
 import com.employee.entity.Stream;
@@ -53,6 +53,9 @@ import com.employee.repository.StructureRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.SkillTestApprovalRepository;
 import com.employee.entity.SkillTestApproval;
+
+import com.employee.entity.OrientationGroup;
+import com.employee.repository.OrientationGroupRepository;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +100,8 @@ public class SkillTestDetailsService {
     private SkillTestApprovalStatusRepository skillTestApprovalStatusRepository;
     @Autowired
     private SkillTestApprovalRepository skillTestApprovalRepository;
+    @Autowired
+    private OrientationGroupRepository orientationGroupRepository;
 
     private Map<String, AtomicInteger> campusCounters = new ConcurrentHashMap<>();
 
@@ -234,10 +239,10 @@ public class SkillTestDetailsService {
             employeeType = employeeTypeRepository.findById(requestDto.getEmpTypeId())
                     .orElseThrow(() -> new ResourceNotFoundException("EmployeeType not found"));
 
-        SkillTestApprovalStatus group = null;
+        OrientationGroup group = null;
         if (requestDto.getGroupId() != null && requestDto.getGroupId() > 0) {
-            group = skillTestApprovalStatusRepository.findById(requestDto.getGroupId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Skill Test Approval Group not found"));
+            group = orientationGroupRepository.findById(requestDto.getGroupId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Orientation Group not found"));
         }
 
         Campus detailCampus = null;
@@ -289,10 +294,10 @@ public class SkillTestDetailsService {
         newDetails.setEmpStructure(structure);
         newDetails.setEmployeeType(employeeType);
 
-        newDetails.setGroup(group);
-        newDetails.setCampusId(detailCampus);
-        newDetails.setCityId(city);
-        newDetails.setBuildingId(building);
+        newDetails.setOrientationGroup(group);
+        newDetails.setCampus(detailCampus);
+        newDetails.setCity(city);
+        newDetails.setBuilding(building);
 
         // === Audit Fields ===
         // Set created_by from user input (Request DTO) - validation already done at
@@ -367,17 +372,17 @@ public class SkillTestDetailsService {
             dto.setEmpTypeId(entity.getEmployeeType().getEmp_type_id());
             dto.setEmpTypeName(entity.getEmployeeType().getEmp_type());
         }
-        if (entity.getGroup() != null) {
-            dto.setGroupId(entity.getGroup().getSkillTestApprovalStatusId());
+        if (entity.getOrientationGroup() != null) {
+            dto.setGroupId(entity.getOrientationGroup().getGroupId());
         }
-        if (entity.getCampusId() != null) {
-            dto.setCampusId(entity.getCampusId().getCampusId());
+        if (entity.getCampus() != null) {
+            dto.setCampusId(entity.getCampus().getCampusId());
         }
-        if (entity.getCityId() != null) {
-            dto.setCityId(entity.getCityId().getCityId());
+        if (entity.getCity() != null) {
+            dto.setCityId(entity.getCity().getCityId());
         }
-        if (entity.getBuildingId() != null) {
-            dto.setBuildingId(entity.getBuildingId().getBuildingId());
+        if (entity.getBuilding() != null) {
+            dto.setBuildingId(entity.getBuilding().getBuildingId());
         }
 
         // Set audit fields
@@ -455,14 +460,14 @@ public class SkillTestDetailsService {
                     dto.setJoinDate(entity.getJoinDate());
 
                     // FIX 2: Ensure getGenderName() exists in your Gender Entity!
-                    if (entity.getCityId() != null) {
-                        dto.setCity(entity.getCityId().getCityName());
+                    if (entity.getCity() != null) {
+                        dto.setCity(entity.getCity().getCityName());
                     } else {
                         dto.setCity("N/A");
                     }
 
-                    if (entity.getCampusId() != null) {
-                        dto.setCampus(entity.getCampusId().getCampusName());
+                    if (entity.getCampus() != null) {
+                        dto.setCampus(entity.getCampus().getCampusName());
                     } else {
                         dto.setCampus("N/A");
                     }

@@ -14,49 +14,49 @@ import com.employee.dto.SkillTestDashboardDto;
 @Repository
 public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetails, Integer> {
 
-    @Query("SELECT new com.employee.dto.SkillTestDashboardDto(" +
-            "COALESCE(d.firstName, '') || ' ' || COALESCE(d.lastName, ''), " +
-            "e.payRollId, " +
-            "d.tempPayrollId, " +
-            "d.joinDate, " +
-            "c.cityName, " +
-            "ca.campusName, " +
-            "g.genderName, " +
-            "s.statusName) " +
-            "FROM SkillTestDetails d " +
-            "LEFT JOIN d.empId e " +
-            "LEFT JOIN d.cityId c " +
-            "LEFT JOIN d.campusId ca " +
-            "LEFT JOIN d.gender g " +
-            "LEFT JOIN d.group s")
-    List<SkillTestDashboardDto> getSkillTestDashboardDetails();
+        @Query("SELECT new com.employee.dto.SkillTestDashboardDto(" +
+                        "COALESCE(d.firstName, '') || ' ' || COALESCE(d.lastName, ''), " +
+                        "e.payRollId, " +
+                        "d.tempPayrollId, " +
+                        "d.joinDate, " +
+                        "c.cityName, " +
+                        "ca.campusName, " +
+                        "g.genderName, " +
+                        "s.groupName) " +
+                        "FROM SkillTestDetails d " +
+                        "LEFT JOIN d.empId e " +
+                        "LEFT JOIN d.city c " +
+                        "LEFT JOIN d.campus ca " +
+                        "LEFT JOIN d.gender g " +
+                        "LEFT JOIN d.orientationGroup s")
+        List<SkillTestDashboardDto> getSkillTestDashboardDetails();
 
-    @Query("SELECT MAX(s.tempPayrollId) FROM SkillTestDetails s WHERE s.tempPayrollId LIKE :keyPrefix")
-    String findMaxTempPayrollIdByKey(@Param("keyPrefix") String keyPrefix);
+        @Query("SELECT MAX(s.tempPayrollId) FROM SkillTestDetails s WHERE s.tempPayrollId LIKE :keyPrefix")
+        String findMaxTempPayrollIdByKey(@Param("keyPrefix") String keyPrefix);
 
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId")
-    Optional<SkillTestDetails> findByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId")
+        Optional<SkillTestDetails> findByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
 
-    // FIX: Changed aadhaarNo from String to Long
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo AND std.contact_number = :contactNumber")
-    Optional<SkillTestDetails> findByAadhaarNoAndContactNumber(
-            @Param("aadhaarNo") Long aadhaarNo,
-            @Param("contactNumber") Long contactNumber);
+        // FIX: Changed aadhaarNo from String to Long
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo AND std.contact_number = :contactNumber")
+        Optional<SkillTestDetails> findByAadhaarNoAndContactNumber(
+                        @Param("aadhaarNo") Long aadhaarNo,
+                        @Param("contactNumber") Long contactNumber);
 
-    // FIX: Changed aadhaarNo from String to Long
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo")
-    Optional<SkillTestDetails> findByAadhaarNo(@Param("aadhaarNo") Long aadhaarNo);
+        // FIX: Changed aadhaarNo from String to Long
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo")
+        Optional<SkillTestDetails> findByAadhaarNo(@Param("aadhaarNo") Long aadhaarNo);
 
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.contact_number = :contactNumber")
-    Optional<SkillTestDetails> findByContactNumber(@Param("contactNumber") Long contactNumber);
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.contact_number = :contactNumber")
+        Optional<SkillTestDetails> findByContactNumber(@Param("contactNumber") Long contactNumber);
 
-    // FIX: Changed aadhaarNo from String to Long
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo AND std.isActive = 1")
-    Optional<SkillTestDetails> findActiveByAadhaarNo(@Param("aadhaarNo") Long aadhaarNo);
+        // FIX: Changed aadhaarNo from String to Long
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo AND std.isActive = 1")
+        Optional<SkillTestDetails> findActiveByAadhaarNo(@Param("aadhaarNo") Long aadhaarNo);
 
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.contact_number = :contactNumber AND std.isActive = 1")
-    Optional<SkillTestDetails> findActiveByContactNumber(@Param("contactNumber") Long contactNumber);
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.contact_number = :contactNumber AND std.isActive = 1")
+        Optional<SkillTestDetails> findActiveByContactNumber(@Param("contactNumber") Long contactNumber);
 
-    @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId AND std.isActive = 1")
-    Optional<SkillTestDetails> findActiveByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId AND std.isActive = 1")
+        Optional<SkillTestDetails> findActiveByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
 }
