@@ -13,6 +13,7 @@ public class AddressResponseDTO {
     private String landmark;
     private String postalCode;
     private String cityName;
+    private String districtName;
     private String stateName;
     private String countryName;
     private Long emrg_contact_no;

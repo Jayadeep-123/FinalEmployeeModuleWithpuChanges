@@ -17,6 +17,7 @@ import com.employee.dto.BasicInfoDTO;
 import com.employee.dto.FamilyInfoDTO;
 import com.employee.dto.PreviousEmployerInfoDTO;
 import com.employee.entity.Building;
+import com.employee.entity.District;
 import com.employee.entity.EmpaddressInfo;
 import com.employee.entity.EmpDetails;
 import com.employee.entity.EmpDocuments;
@@ -36,6 +37,7 @@ import com.employee.repository.CityRepository;
 import com.employee.repository.CountryRepository;
 import com.employee.repository.DepartmentRepository;
 import com.employee.repository.DesignationRepository;
+import com.employee.repository.DistrictRepository;
 import com.employee.repository.EmpDetailsRepository;
 import com.employee.repository.EmpDocTypeRepository;
 import com.employee.repository.EmpDocumentsRepository;
@@ -110,6 +112,9 @@ public class EmployeeBasicInfoTabService {
 
     @Autowired
     private CityRepository cityRepository;
+
+    @Autowired
+    private DistrictRepository districtRepository;
 
     @Autowired
     private RelationRepository relationRepository;
@@ -1170,6 +1175,11 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("City ID is required (NOT NULL column)");
         }
 
+        if (addressDTO.getDistrictId() != null) {
+            address.setDistrict_id(districtRepository.findById(addressDTO.getDistrictId())
+                    .orElseThrow(() -> new ResourceNotFoundException("District not found")));
+        }
+
         // Set created_by and created_date (required NOT NULL columns)
         // created_by must be provided by user (from DTO) - no defaults or fallbacks
         if (createdBy == null || createdBy <= 0) {
@@ -1250,6 +1260,7 @@ public class EmployeeBasicInfoTabService {
         target.setCountry_id(source.getCountry_id());
         target.setState_id(source.getState_id());
         target.setCity_id(source.getCity_id());
+        target.setDistrict_id(source.getDistrict_id());
         target.setPostal_code(source.getPostal_code());
         target.setHouse_no(source.getHouse_no());
         target.setLandmark(source.getLandmark());
@@ -2091,6 +2102,11 @@ public class EmployeeBasicInfoTabService {
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Country not found with ID: " + addressInfo.getCurrentAddress().getCountryId()));
             }
+            if (addressInfo.getCurrentAddress().getDistrictId() != null) {
+                districtRepository.findById(addressInfo.getCurrentAddress().getDistrictId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "District not found with ID: " + addressInfo.getCurrentAddress().getDistrictId()));
+            }
             if (addressInfo.getCurrentAddress().getPin() != null
                     && addressInfo.getCurrentAddress().getPin().length() > 10) {
                 throw new ResourceNotFoundException("PIN code cannot exceed 10 characters");
@@ -2120,6 +2136,12 @@ public class EmployeeBasicInfoTabService {
                 countryRepository.findById(addressInfo.getPermanentAddress().getCountryId())
                         .orElseThrow(() -> new ResourceNotFoundException("Permanent Address Country not found with ID: "
                                 + addressInfo.getPermanentAddress().getCountryId()));
+            }
+            if (addressInfo.getPermanentAddress().getDistrictId() != null) {
+                districtRepository.findById(addressInfo.getPermanentAddress().getDistrictId())
+                        .orElseThrow(
+                                () -> new ResourceNotFoundException("Permanent Address District not found with ID: "
+                                        + addressInfo.getPermanentAddress().getDistrictId()));
             }
             if (addressInfo.getPermanentAddress().getPin() != null
                     && addressInfo.getPermanentAddress().getPin().length() > 10) {

@@ -32,6 +32,7 @@ public interface EmpaddressInfoRepository extends JpaRepository<EmpaddressInfo, 
 			        a.landmark,
 			        a.postal_code,
 			        c.cityName,
+			        d.districtName,
 			        s.stateName,
 			        co.countryName,
 			        a.emrg_contact_no,
@@ -40,6 +41,7 @@ public interface EmpaddressInfoRepository extends JpaRepository<EmpaddressInfo, 
 			    FROM EmpaddressInfo a
 			    JOIN a.emp_id e
 			    JOIN a.city_id c
+			    LEFT JOIN a.district_id d
 			    JOIN a.state_id s
 			    JOIN a.country_id co
 			    WHERE e.tempPayrollId = :tempPayrollId
