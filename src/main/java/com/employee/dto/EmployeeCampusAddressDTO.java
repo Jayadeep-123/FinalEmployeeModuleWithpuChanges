@@ -1,14 +1,14 @@
 package com.employee.dto;
- 
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
- 
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmployeeCampusAddressDTO {
-	private String payrollId;
+    private String payrollId;
     private String fullAddress;
     private String city;
     private String buildingMobileNo;
@@ -17,9 +17,10 @@ public class EmployeeCampusAddressDTO {
     private String managerMobileNo;
     private String ReportingManagerName;
     private String reportingManagerMobileNo;
+    private String campusName;
     private Integer cityId;
- 
+
     private Integer managerId;
-   private Integer campusId;
+    private Integer campusId;
     private Integer reportingManagerId;
 }

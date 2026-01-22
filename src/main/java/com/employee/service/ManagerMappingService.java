@@ -1188,6 +1188,7 @@ public class ManagerMappingService {
 
             Integer campusId = emp.getCampus_id().getCampusId();
             dto.setCampusId(campusId);
+            dto.setCampusName(emp.getCampus_id().getCampusName());
 
             City result = campusRepository.findByCampusId(campusId);
             if (result != null) {
@@ -1274,5 +1275,15 @@ public class ManagerMappingService {
             long rMob = reportingManager.getPrimary_mobile_no();
             dto.setReportingManagerMobileNo(rMob != 0 ? String.valueOf(rMob) : null);
         }
+    }
+
+    /**
+     * Updates the name of a campus.
+     */
+    public Campus updateCampusName(Integer campusId, String campusName) {
+        Campus campus = campusRepository.findById(campusId)
+                .orElseThrow(() -> new ResourceNotFoundException("Campus not found with ID: " + campusId));
+        campus.setCampusName(campusName);
+        return campusRepository.save(campus);
     }
 }
