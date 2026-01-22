@@ -20,5 +20,11 @@ public class EmpFamilyDetailsDTO {
     private Integer isDependent;
     private String isLate;
     private String email;
-    private long contactNumber;
+    private Long contactNumber;
+
+    // Additional fields from entity
+    private java.sql.Date dateOfBirth;
+    private Integer isSriChaitanyaEmp;
+    private String parentEmpPayrollId;
+    private String familyPhotoPath;
 }

@@ -1,14 +1,14 @@
 package com.employee.dto;
- 
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
- 
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class FamilyDetailsResponseDTO {
-    
+
     // Family Member Details (from EmpFamilyDetails and related entities)
     private String name; // e.g., "Name of Father"
     private String relation; // e.g., "Father", "Mother"
@@ -21,5 +21,9 @@ public class FamilyDetailsResponseDTO {
     // Address Details (derived from EmpaddressInfo)
     private String state; // e.g., "Telangana"
     private String country; // e.g., "India"
+
+    // Additional fields
+    private java.sql.Date dateOfBirth;
+    private Integer isSriChaitanyaEmp;
+    private String parentEmpPayrollId;
 }
- 

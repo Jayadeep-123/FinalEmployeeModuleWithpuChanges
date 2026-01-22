@@ -21,6 +21,7 @@ import com.employee.dto.EmpExperienceDetailsDTO;
 import com.employee.dto.EmployeeAgreementDetailsDto;
 import com.employee.dto.EmployeeBankDetailsResponseDTO;
 import com.employee.dto.FamilyDetailsResponseDTO;
+import com.employee.dto.FamilyInfoResponseDTO;
 import com.employee.dto.FullBasicInfoDto;
 import com.employee.dto.ManagerDTO;
 import com.employee.dto.QualificationDetailsDto;
@@ -188,15 +189,15 @@ public class GetEmpDetailsController {
 			@PathVariable String tempPayrollId) {
 
 		try {
-			List<FamilyDetailsResponseDTO> details = getEmpDetailsService
+			FamilyInfoResponseDTO response = getEmpDetailsService
 					.getFamilyDetailsWithAddressInfo(tempPayrollId);
 
-			if (details.isEmpty()) {
+			if (response.getFamilyMembers() == null || response.getFamilyMembers().isEmpty()) {
 				return new ResponseEntity<>("No family details found for employee with ID: " + tempPayrollId,
 						HttpStatus.NOT_FOUND);
 			}
 
-			return new ResponseEntity<>(details, HttpStatus.OK);
+			return new ResponseEntity<>(response, HttpStatus.OK);
 
 		} catch (RuntimeException e) {
 			// Handle Employee not found or other service-level exceptions
@@ -249,7 +250,8 @@ public class GetEmpDetailsController {
 	 * Get employees with same institute based on highest qualification
 	 * 
 	 * @param payrollId Payroll ID of the employee
-	 * @return SameInstituteEmployeesDTO containing institute, qualification info, and list of employees (minimum 4)
+	 * @return SameInstituteEmployeesDTO containing institute, qualification info,
+	 *         and list of employees (minimum 4)
 	 */
 	@GetMapping("/same-institute/{payrollId}")
 	public ResponseEntity<SameInstituteEmployeesDTO> getEmployeesWithSameInstitute(

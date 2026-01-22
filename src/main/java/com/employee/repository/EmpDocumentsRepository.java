@@ -29,6 +29,9 @@ public interface EmpDocumentsRepository extends JpaRepository<EmpDocuments, Inte
         java.util.Optional<EmpDocuments> findExistingExperienceDoc(@Param("expId") Integer expId,
                         @Param("docTypeId") Integer docTypeId, @Param("docPath") String docPath);
 
+        @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_exp_detl_id.emp_exp_detl_id = :expId AND ed.is_active = 1")
+        List<EmpDocuments> findByExperienceId(@Param("expId") int expId);
+
         @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_id.emp_id = :empId AND ed.doc_path LIKE :pattern AND ed.is_active = 1")
         java.util.Optional<EmpDocuments> findByEmpIdAndPathPattern(@Param("empId") Integer empId,
                         @Param("pattern") String pattern);

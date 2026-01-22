@@ -22,8 +22,10 @@ import com.employee.dto.EmpFamilyDetailsDTO;
 import com.employee.dto.EmployeeAgreementDetailsDto;
 import com.employee.dto.EmployeeBankDetailsResponseDTO;
 import com.employee.dto.FamilyDetailsResponseDTO;
+import com.employee.dto.FamilyInfoResponseDTO;
 import com.employee.dto.FullBasicInfoDto;
 import com.employee.dto.ManagerDTO;
+import com.employee.dto.PreviousEmployerInfoDTO;
 import com.employee.dto.QualificationDetailsDto;
 import com.employee.dto.QualificationInfoDTO;
 import com.employee.dto.ReferenceDTO;
@@ -81,7 +83,36 @@ public class GetEmpDetailsService {
 	}
 
 	public List<EmpFamilyDetailsDTO> getFamilyDetailsByEmpId(int empId) {
-		return empFamilyDetailsRepo.findFamilyDetailsByEmpId(empId);
+		List<EmpFamilyDetails> familyEntities = empFamilyDetailsRepo.findFamilyDetailsByEmpId(empId);
+
+		// Fetch family photo path (shared for the employee)
+		String photoPath = empDocumentsRepository.findByEmpIdAndDocName(empId, "Family Photo")
+				.map(doc -> doc.getDoc_path())
+				.orElse(null);
+
+		return familyEntities.stream().map(fam -> {
+			EmpFamilyDetailsDTO dto = new EmpFamilyDetailsDTO();
+			dto.setEmpFamilyDetlId(fam.getEmp_family_detl_id());
+			dto.setFullName(fam.getFullName());
+			dto.setAdhaarNo(fam.getAdhaarNo());
+			dto.setOccupation(fam.getOccupation());
+			dto.setGender(fam.getGender_id() != null ? fam.getGender_id().getGenderName() : null);
+			dto.setBloodGroup(fam.getBlood_group_id() != null ? fam.getBlood_group_id().getBloodGroupName() : null);
+			dto.setNationality(fam.getNationality());
+			dto.setRelation(fam.getRelation_id() != null ? fam.getRelation_id().getStudentRelationType() : null);
+			dto.setIsDependent(fam.getIs_dependent());
+			dto.setIsLate(fam.getIs_late());
+			dto.setEmail(fam.getEmail());
+			dto.setContactNumber(fam.getContact_no());
+
+			// New fields
+			dto.setDateOfBirth(fam.getDate_of_birth());
+			dto.setIsSriChaitanyaEmp(fam.getIs_sri_chaitanya_emp());
+			dto.setParentEmpPayrollId(fam.getParent_emp_id() != null ? fam.getParent_emp_id().getPayRollId() : null);
+			dto.setFamilyPhotoPath(photoPath);
+
+			return dto;
+		}).collect(Collectors.toList());
 	}
 
 	// public List<EmpExperienceDetailsDTO> getExperienceByTempPayrollId(String
@@ -134,16 +165,32 @@ public class GetEmpDetailsService {
 		EmpExperienceDetailsDTO dto = new EmpExperienceDetailsDTO();
 
 		dto.setCompanyName(entity.getPre_organigation_name());
-		dto.setDesignation(entity.getDesignation()); // This one was correct
+		dto.setDesignation(entity.getDesignation());
 		dto.setFromDate(entity.getDate_of_join().toLocalDate());
 		dto.setToDate(entity.getDate_of_leave().toLocalDate());
 		dto.setLeavingReason(entity.getLeaving_reason());
-		dto.setCompanyAddress(entity.getCompany_addr());
+		dto.setCompanyAddressLine1(entity.getCompany_addr()); // Map to new field
+		dto.setCompanyAddress(entity.getCompany_addr()); // Kept for compatibility
 		dto.setNatureOfDuties(entity.getNature_of_duties());
 
-		BigDecimal ctc = BigDecimal.valueOf(entity.getGross_salary());
-		dto.setCtc(ctc);
-		dto.setGrossSalaryPerMonth(ctc.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP));
+		// Interpreting gross_salary as monthly salary as per POST structure
+		BigDecimal monthlySalary = BigDecimal.valueOf(entity.getGross_salary());
+		dto.setGrossSalaryPerMonth(monthlySalary);
+		dto.setCtc(monthlySalary.multiply(BigDecimal.valueOf(12))); // Annual CTC
+
+		// Fetch and map associated documents
+		List<EmpDocuments> docEntities = empDocumentsRepository.findByExperienceId(entity.getEmp_exp_detl_id());
+		List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docDTOs = docEntities.stream()
+				.map(doc -> {
+					PreviousEmployerInfoDTO.ExperienceDocumentDTO d = new PreviousEmployerInfoDTO.ExperienceDocumentDTO();
+					d.setDocPath(doc.getDoc_path());
+					if (doc.getEmp_doc_type_id() != null) {
+						d.setDocTypeId(doc.getEmp_doc_type_id().getDoc_type_id());
+					}
+					return d;
+				})
+				.collect(Collectors.toList());
+		dto.setDocuments(docDTOs);
 
 		return dto;
 	}
@@ -513,7 +560,7 @@ public class GetEmpDetailsService {
 		return empOnboardingStatusViewRepository.findAll();
 	}
 
-	public List<FamilyDetailsResponseDTO> getFamilyDetailsWithAddressInfo(String tempPayrollId) {
+	public FamilyInfoResponseDTO getFamilyDetailsWithAddressInfo(String tempPayrollId) {
 
 		// 1. Find the Employee
 		Employee employee = employeeRepo.findByTempPayrollId(tempPayrollId)
@@ -537,23 +584,10 @@ public class GetEmpDetailsService {
 				.filter(a -> "CURR".equalsIgnoreCase(a.getAddrs_type()))
 				.findFirst();
 
-		// Logic Implementation:
-		boolean addressesExistAndAreIdentical = permanentAddress.isPresent()
-				&& currentAddress.isPresent()
-				&& permanentAddress.get().equals(currentAddress.get());
-		// NOTE: equals() needs to be overridden in EmpaddressInfo
-		// to compare relevant address fields (house_no, postal_code, etc.)
-
-		if (addressesExistAndAreIdentical) {
-			// Case 1: Both exist and are the same (take either)
-			stateName = permanentAddress.get().getState_id().getStateName();
-			countryName = permanentAddress.get().getCountry_id().getCountryName();
-		} else if (permanentAddress.isPresent()) {
-			// Case 2: Addresses are different, or only Permanent exists (take Permanent)
+		if (permanentAddress.isPresent()) {
 			stateName = permanentAddress.get().getState_id().getStateName();
 			countryName = permanentAddress.get().getCountry_id().getCountryName();
 		} else if (currentAddress.isPresent()) {
-			// Case 3: Only Current address exists (Optional fall-back, use Current)
 			stateName = currentAddress.get().getState_id().getStateName();
 			countryName = currentAddress.get().getCountry_id().getCountryName();
 		}
@@ -562,26 +596,38 @@ public class GetEmpDetailsService {
 		final String finalStateName = stateName;
 		final String finalCountryName = countryName;
 
+		// Fetch family photo path once
+		String photoPath = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Family Photo")
+				.map(doc -> doc.getDoc_path())
+				.orElse(null);
+
 		// 4. Map the entity list to the DTO response list
-		return familyDetailsList.stream()
+		List<FamilyDetailsResponseDTO> members = familyDetailsList.stream()
 				.map(familyDetail -> {
 					FamilyDetailsResponseDTO dto = new FamilyDetailsResponseDTO();
 
-					// Map family member details
-					// String fullName = familyDetail.getFirst_name() + (familyDetail.getLast_name()
-					// != null ? " " + familyDetail.getLast_name() : "");
-					// dto.setName(fullName);
-
 					dto.setName(familyDetail.getFullName());
 					dto.setAdhaarNo(familyDetail.getAdhaarNo());
-					// Assuming required getters exist on related entities
-					dto.setRelation(familyDetail.getRelation_id().getStudentRelationType());
-					dto.setBloodGroup(familyDetail.getBlood_group_id().getBloodGroupName());
+
+					// Safe mapping with null checks
+					dto.setRelation(familyDetail.getRelation_id() != null
+							? familyDetail.getRelation_id().getStudentRelationType()
+							: null);
+					dto.setBloodGroup(familyDetail.getBlood_group_id() != null
+							? familyDetail.getBlood_group_id().getBloodGroupName()
+							: null);
 
 					dto.setOccupation(familyDetail.getOccupation());
 					dto.setEmailId(familyDetail.getEmail());
 					dto.setPhoneNumber(familyDetail.getContact_no());
 					dto.setNationality(familyDetail.getNationality());
+
+					// New fields
+					dto.setDateOfBirth(familyDetail.getDate_of_birth());
+					dto.setIsSriChaitanyaEmp(familyDetail.getIs_sri_chaitanya_emp());
+					dto.setParentEmpPayrollId(
+							familyDetail.getParent_emp_id() != null ? familyDetail.getParent_emp_id().getPayRollId()
+									: null);
 
 					// Set the derived address info
 					dto.setState(finalStateName);
@@ -590,6 +636,8 @@ public class GetEmpDetailsService {
 					return dto;
 				})
 				.collect(Collectors.toList());
+
+		return new FamilyInfoResponseDTO(photoPath, members);
 	}
 
 	public FullBasicInfoDto getEmployeeDetailsByTempPayrollId(String tempPayrollId) {
@@ -617,7 +665,8 @@ public class GetEmpDetailsService {
 	 * Get employees with same institute based on highest qualification
 	 * 
 	 * @param payrollId Payroll ID of the employee
-	 * @return SameInstituteEmployeesDTO containing institute, qualification info, and list of employees (minimum 4)
+	 * @return SameInstituteEmployeesDTO containing institute, qualification info,
+	 *         and list of employees (minimum 4)
 	 */
 	public SameInstituteEmployeesDTO getEmployeesWithSameInstitute(String payrollId) {
 		// 1. Find employee by payrollId
@@ -632,18 +681,21 @@ public class GetEmpDetailsService {
 		Integer qualificationId = employee.getQualification_id().getQualification_id();
 		String qualificationName = employee.getQualification_id().getQualification_name();
 
-		// 3. Find the EmpQualification record for that employee with that qualification_id to get the institute
-		List<EmpQualification> empQualifications = empQualificationRepository.findByEmpIdAndIsActive(employee.getEmp_id());
-		
+		// 3. Find the EmpQualification record for that employee with that
+		// qualification_id to get the institute
+		List<EmpQualification> empQualifications = empQualificationRepository
+				.findByEmpIdAndIsActive(employee.getEmp_id());
+
 		EmpQualification highestQualification = empQualifications.stream()
-				.filter(eq -> eq.getQualification_id() != null 
+				.filter(eq -> eq.getQualification_id() != null
 						&& eq.getQualification_id().getQualification_id() == qualificationId)
 				.findFirst()
 				.orElseThrow(() -> new ResourceNotFoundException(
 						"Qualification record not found for employee with qualification_id: " + qualificationId));
 
 		if (highestQualification.getInstitute() == null || highestQualification.getInstitute().trim().isEmpty()) {
-			throw new ResourceNotFoundException("Employee does not have an institute set for the highest qualification");
+			throw new ResourceNotFoundException(
+					"Employee does not have an institute set for the highest qualification");
 		}
 
 		String institute = highestQualification.getInstitute().trim();
@@ -675,13 +727,13 @@ public class GetEmpDetailsService {
 					info.setTempPayrollId(emp.getTempPayrollId());
 					info.setEmail(emp.getEmail());
 					info.setPrimaryMobileNo(emp.getPrimary_mobile_no());
-					
+
 					// Set designation information
 					if (emp.getDesignation() != null) {
 						info.setDesignationId(emp.getDesignation().getDesignation_id());
 						info.setDesignationName(emp.getDesignation().getDesignation_name());
 					}
-					
+
 					return info;
 				})
 				.collect(Collectors.toList());

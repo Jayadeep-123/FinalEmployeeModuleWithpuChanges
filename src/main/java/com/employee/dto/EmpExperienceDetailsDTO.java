@@ -7,17 +7,20 @@ import java.time.LocalDate;
 @Data
 public class EmpExperienceDetailsDTO {
 
-    private String companyName;       // Mapped from preOrzanigationName
+    private String companyName; // Mapped from preOrzanigationName
     private String designation;
-    private LocalDate fromDate;       // Mapped from dateOfJoin
-    private LocalDate toDate;         // Mapped from dateOfLeave
+    private LocalDate fromDate; // Mapped from dateOfJoin
+    private LocalDate toDate; // Mapped from dateOfLeave
     private String leavingReason;
-    private String companyAddress;    // Mapped from companyAddr
+    private String companyAddressLine1; // Mapped from company_addr to match POST DTO
+    private String companyAddress; // Mapped from companyAddr
     private String natureOfDuties;
-    
-    // As requested: Calculated as (grossSalary / 12)
-    private BigDecimal grossSalaryPerMonth; 
-    
-    // As requested: Mapped directly from grossSalary
+
+    // Map monthly salary directly or calculate from gross_salary
+    private BigDecimal grossSalaryPerMonth;
+
+    // Total CTC mapped from grossSalary
     private BigDecimal ctc;
+
+    private java.util.List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> documents; // Associated documents
 }

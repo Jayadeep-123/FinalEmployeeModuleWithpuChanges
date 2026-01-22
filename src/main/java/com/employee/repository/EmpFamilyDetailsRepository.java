@@ -112,83 +112,60 @@
 //
 //}
 
-
-
-
 package com.employee.repository;
- 
+
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
- 
+
 import com.employee.dto.EmpFamilyDetailsDTO;
 import com.employee.dto.FamilyDetailsDTO;
 import com.employee.entity.EmpFamilyDetails;
 import com.employee.entity.Employee;
- 
+
 @Repository
 public interface EmpFamilyDetailsRepository extends JpaRepository<EmpFamilyDetails, Integer> {
- 
-    /**
-     * --- FIXED QUERY ---
-     * 1. Removed CONCAT(first_name, last_name) because those fields don't exist anymore.
-     * 2. Used 'fd.fullName' instead.
-     */
-    @Query("SELECT NEW com.employee.dto.FamilyDetailsDTO(" +
-           "rel.studentRelationType, " +  
-           "fd.fullName, " +       // <--- FIXED: Use direct fullName field
-           "bg.bloodGroupName, " +
-           "g.genderName, " +
-           "fd.nationality, " +    
-           "fd.occupation, " +     
-           "fd.date_of_birth" +      
-           ") " +
-           "FROM EmpFamilyDetails fd " +
-           "LEFT JOIN fd.relation_id rel " +
-           "LEFT JOIN fd.blood_group_id bg " +
-           "LEFT JOIN fd.gender_id g " +
-           "WHERE fd.emp_id.tempPayrollId = :payrollId AND fd.is_active = :isActive")
-    List<FamilyDetailsDTO> findFamilyDetailsByPayrollId(
-            @Param("payrollId") String payrollId, 
-            @Param("isActive") int isActive);
- 
-    
-    /**
-     * This query is correct.
-     */
-    @Query("""
-    	    SELECT new com.employee.dto.EmpFamilyDetailsDTO(
-    	        e.emp_family_detl_id,
-    	        e.fullName,          
-    	        e.adhaarNo,          
-    	        e.occupation,
-    	        g.genderName,
-    	        b.bloodGroupName,
-    	        e.nationality,
-    	        r.studentRelationType,
-    	        e.is_dependent,
-    	        e.is_late,
-    	        e.email,
-    	        e.contact_no
-    	    )
-    	    FROM EmpFamilyDetails e
-    	    JOIN e.gender_id g
-    	    JOIN e.blood_group_id b
-    	    JOIN e.relation_id r
-    	    WHERE e.emp_id.emp_id=:emp_id
-    	""")
-    	List<EmpFamilyDetailsDTO> findFamilyDetailsByEmpId(@Param("emp_id") int empId);
-    
-    @Query("SELECT fd FROM EmpFamilyDetails fd WHERE fd.emp_id.payRollId = :payrollId AND fd.is_active = :isActive")
-    List<EmpFamilyDetails> findByEmp_id_PayrollIdAndIsActive(
-            @Param("payrollId") String payrollId, 
-            @Param("isActive") int isActive);
 
-    @Query("SELECT fd FROM EmpFamilyDetails fd WHERE fd.emp_id.emp_id = :empId")
-    List<EmpFamilyDetails> findByEmp_id_EmpId(@Param("empId") int empId);
-    
-    @Query("SELECT f FROM EmpFamilyDetails f WHERE f.emp_id = :employee")
-    List<EmpFamilyDetails> findByEmployeeEntity(@Param("employee") Employee employee);
+        /**
+         * --- FIXED QUERY ---
+         * 1. Removed CONCAT(first_name, last_name) because those fields don't exist
+         * anymore.
+         * 2. Used 'fd.fullName' instead.
+         */
+        @Query("SELECT NEW com.employee.dto.FamilyDetailsDTO(" +
+                        "rel.studentRelationType, " +
+                        "fd.fullName, " + // <--- FIXED: Use direct fullName field
+                        "bg.bloodGroupName, " +
+                        "g.genderName, " +
+                        "fd.nationality, " +
+                        "fd.occupation, " +
+                        "fd.date_of_birth" +
+                        ") " +
+                        "FROM EmpFamilyDetails fd " +
+                        "LEFT JOIN fd.relation_id rel " +
+                        "LEFT JOIN fd.blood_group_id bg " +
+                        "LEFT JOIN fd.gender_id g " +
+                        "WHERE fd.emp_id.tempPayrollId = :payrollId AND fd.is_active = :isActive")
+        List<FamilyDetailsDTO> findFamilyDetailsByPayrollId(
+                        @Param("payrollId") String payrollId,
+                        @Param("isActive") int isActive);
+
+        /**
+         * This query is correct.
+         */
+        @Query("SELECT e FROM EmpFamilyDetails e WHERE e.emp_id.emp_id = :emp_id AND e.is_active = 1")
+        List<EmpFamilyDetails> findFamilyDetailsByEmpId(@Param("emp_id") int empId);
+
+        @Query("SELECT fd FROM EmpFamilyDetails fd WHERE fd.emp_id.payRollId = :payrollId AND fd.is_active = :isActive")
+        List<EmpFamilyDetails> findByEmp_id_PayrollIdAndIsActive(
+                        @Param("payrollId") String payrollId,
+                        @Param("isActive") int isActive);
+
+        @Query("SELECT fd FROM EmpFamilyDetails fd WHERE fd.emp_id.emp_id = :empId")
+        List<EmpFamilyDetails> findByEmp_id_EmpId(@Param("empId") int empId);
+
+        @Query("SELECT f FROM EmpFamilyDetails f WHERE f.emp_id = :employee")
+        List<EmpFamilyDetails> findByEmployeeEntity(@Param("employee") Employee employee);
 }

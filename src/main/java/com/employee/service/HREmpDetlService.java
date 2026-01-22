@@ -1025,6 +1025,7 @@ import com.employee.dto.EmployeeRelationDTO;
 import com.employee.dto.FamilyMemberInOrgDTO;
 import com.employee.dto.BankContactDTO;
 import com.employee.dto.QualificationDetailsDto;
+import com.employee.dto.PreviousEmployerInfoDTO;
 import com.employee.entity.BankDetails;
 import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
@@ -1089,26 +1090,39 @@ public class HREmpDetlService {
     private EmpDocTypeRepository empDocTypeRepository;
 
     public List<EmpFamilyDetailsDTO> getFamilyMembersByPayrollId(String payrollId) {
-        // Caller code (Service/Controller)
+        // Step 1: Find employee to get emp_id for photo lookup
+        Employee employee = employeeRepository.findByPayRollId(payrollId)
+                .orElseThrow(() -> new RuntimeException("Employee not found for payrollId: " + payrollId));
 
+        // Step 2: Fetch family photo path (Shared attribute for the employee)
+        String familyPhotoPath = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Family Photo")
+                .map(doc -> doc.getDoc_path())
+                .orElse(null);
+
+        // Step 3: Fetch family records
         List<EmpFamilyDetails> familyList = empFamilyDetailsRepository.findByEmp_id_PayrollIdAndIsActive(payrollId, 1);
 
         return familyList.stream().map(fam -> {
             EmpFamilyDetailsDTO dto = new EmpFamilyDetailsDTO();
             dto.setEmpFamilyDetlId(fam.getEmp_family_detl_id());
-            // dto.setFirstName(fam.getFirst_name());
-            // dto.setLastName(fam.getLast_name());
             dto.setFullName(fam.getFullName());
             dto.setAdhaarNo(fam.getAdhaarNo());
             dto.setOccupation(fam.getOccupation());
-            dto.setGender(fam.getGender_id().getGenderName());
-            dto.setBloodGroup(fam.getBlood_group_id().getBloodGroupName());
+            dto.setGender(fam.getGender_id() != null ? fam.getGender_id().getGenderName() : null);
+            dto.setBloodGroup(fam.getBlood_group_id() != null ? fam.getBlood_group_id().getBloodGroupName() : null);
             dto.setNationality(fam.getNationality());
-            dto.setRelation(fam.getRelation_id().getStudentRelationType());
+            dto.setRelation(fam.getRelation_id() != null ? fam.getRelation_id().getStudentRelationType() : null);
             dto.setIsDependent(fam.getIs_dependent());
             dto.setIsLate(fam.getIs_late());
             dto.setEmail(fam.getEmail());
-            dto.setContactNumber(fam.getContact_no()); // ✅ correct field name
+            dto.setContactNumber(fam.getContact_no() != null ? fam.getContact_no() : 0L);
+
+            // Map new fields
+            dto.setDateOfBirth(fam.getDate_of_birth());
+            dto.setIsSriChaitanyaEmp(fam.getIs_sri_chaitanya_emp());
+            dto.setParentEmpPayrollId(fam.getParent_emp_id() != null ? fam.getParent_emp_id().getPayRollId() : null);
+            dto.setFamilyPhotoPath(familyPhotoPath);
+
             return dto;
         }).collect(Collectors.toList());
     }
@@ -1393,24 +1407,33 @@ public class HREmpDetlService {
         return expList.stream().map(exp -> {
             EmpExperienceDetailsDTO dto = new EmpExperienceDetailsDTO();
 
-            // --- THIS IS THE FIX ---
-            // Changed the extra parenthesis ')' to a semicolon ';'
             dto.setCompanyName(exp.getPre_organigation_name());
-
-            // These fields from your entity map to the DTO
             dto.setDesignation(exp.getDesignation());
             dto.setFromDate(exp.getDate_of_join().toLocalDate());
             dto.setToDate(exp.getDate_of_leave().toLocalDate());
             dto.setLeavingReason(exp.getLeaving_reason());
+            dto.setCompanyAddressLine1(exp.getCompany_addr()); // Set the new field
             dto.setCompanyAddress(exp.getCompany_addr());
             dto.setNatureOfDuties(exp.getNature_of_duties());
 
-            // Handle Salary Calculation
-            BigDecimal ctc = BigDecimal.valueOf(exp.getGross_salary());
-            dto.setCtc(ctc);
+            // Interpreting gross_salary as monthly salary to match POST structure
+            BigDecimal monthlySalary = BigDecimal.valueOf(exp.getGross_salary());
+            dto.setGrossSalaryPerMonth(monthlySalary);
+            dto.setCtc(monthlySalary.multiply(BigDecimal.valueOf(12))); // Annual CTC
 
-            // Calculate per-month salary (using RoundingMode enum is preferred)
-            dto.setGrossSalaryPerMonth(ctc.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP));
+            // Fetch and map associated documents
+            List<EmpDocuments> docEntities = empDocumentsRepository.findByExperienceId(exp.getEmp_exp_detl_id());
+            List<PreviousEmployerInfoDTO.ExperienceDocumentDTO> docDTOs = docEntities.stream()
+                    .map(doc -> {
+                        PreviousEmployerInfoDTO.ExperienceDocumentDTO d = new PreviousEmployerInfoDTO.ExperienceDocumentDTO();
+                        d.setDocPath(doc.getDoc_path());
+                        if (doc.getEmp_doc_type_id() != null) {
+                            d.setDocTypeId(doc.getEmp_doc_type_id().getDoc_type_id());
+                        }
+                        return d;
+                    })
+                    .collect(Collectors.toList());
+            dto.setDocuments(docDTOs);
 
             return dto;
         }).collect(Collectors.toList());
