@@ -1126,7 +1126,8 @@ public class HREmpDetlService {
                         address.getCity_id() != null ? address.getCity_id().getCityName() : null,
                         address.getState_id() != null ? address.getState_id().getStateName() : null,
                         address.getCountry_id() != null ? address.getCountry_id().getCountryName() : null,
-                        address.getEmrg_contact_no()
+                        address.getEmrg_contact_no(),
+                        address.getIs_per_and_curr()
 
                 ))
                 .collect(Collectors.groupingBy(

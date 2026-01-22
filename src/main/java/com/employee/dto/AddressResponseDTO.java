@@ -15,5 +15,6 @@ public class AddressResponseDTO {
     private String cityName;
     private String stateName;
     private String countryName;
-    private Long  emrg_contact_no;
+    private Long emrg_contact_no;
+    private Integer isPerAndCurr;
 }

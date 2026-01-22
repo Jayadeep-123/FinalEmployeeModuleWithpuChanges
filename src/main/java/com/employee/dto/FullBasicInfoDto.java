@@ -1,7 +1,6 @@
 package com.employee.dto;
 
 import java.sql.Date;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,7 +8,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-
 public class FullBasicInfoDto {
 
     // ===== Employee (sce_emp) =====
@@ -66,7 +64,7 @@ public class FullBasicInfoDto {
 
     private Date dateOfBirth;
 
-    private String personalEmail; // ✅ mapped from personal_email
+    private String personalEmail;
     private String emergencyPhoneNo;
 
     private String fatherName;
@@ -96,10 +94,22 @@ public class FullBasicInfoDto {
     // --- Newly Added Fields ---
     private String aadhaarEnrolmentNo;
     private Long sscNo;
-    private String referenceEmployeeName;
-    private String hiredByEmployeeName;
-    private String reportingManagerName;
-    private String replacementEmployeeName;
-    private Double totalExperience;
 
+    // Reference Employee
+    private Integer referenceEmployeeId;   // ✅ Added
+    private String referenceEmployeeName;
+
+    // Hired By Employee (Recruiter/HR)
+    private Integer hiredByEmployeeId;     // ✅ Added
+    private String hiredByEmployeeName;
+
+    // Reporting Manager
+    private Integer reportingManagerId;    // ✅ Added
+    private String reportingManagerName;
+
+    // Replacement Employee
+    private Integer replacementEmployeeId; // ✅ Added
+    private String replacementEmployeeName;
+
+    private Double totalExperience;
 }
