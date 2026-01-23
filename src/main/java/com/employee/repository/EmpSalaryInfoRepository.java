@@ -70,9 +70,13 @@ public interface EmpSalaryInfoRepository extends JpaRepository<EmpSalaryInfo, In
 			"sce_employee.fn_decrypt_sal(esi.yearly_ctc) as yearly_ctc, " +
 			"esi.emp_structure_id, esi.grade_id, esi.temp_payroll_id, esi.cost_center_id, " +
 			"esi.is_pf_eligible, esi.is_esi_eligible, esi.is_active, esi.created_by, " +
-			"esi.created_date, esi.updated_by, esi.updated_date " +
+			"esi.created_date, esi.updated_by, esi.updated_date, " +
+			"st.structure_name as emp_structure_name, gr.grade_name, cc.cost_center_name " +
 			"FROM sce_employee.sce_emp_sal_info esi " +
 			"JOIN sce_employee.sce_emp e ON esi.emp_id = e.emp_id " +
+			"LEFT JOIN sce_employee.sce_emp_structure st ON esi.emp_structure_id = st.emp_structure_id " +
+			"LEFT JOIN sce_employee.sce_emp_grade gr ON esi.grade_id = gr.emp_grade_id " +
+			"LEFT JOIN sce_employee.sce_emp_costcenter cc ON esi.cost_center_id = cc.cost_center_id " +
 			"WHERE e.temp_payroll_id = :tempPayrollId AND esi.is_active = 1", nativeQuery = true)
 	Optional<DecryptedSalaryInfoProjection> findDecryptedByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
 
@@ -84,9 +88,13 @@ public interface EmpSalaryInfoRepository extends JpaRepository<EmpSalaryInfo, In
 			"sce_employee.fn_decrypt_sal(esi.yearly_ctc) as yearly_ctc, " +
 			"esi.emp_structure_id, esi.grade_id, esi.temp_payroll_id, esi.cost_center_id, " +
 			"esi.is_pf_eligible, esi.is_esi_eligible, esi.is_active, esi.created_by, " +
-			"esi.created_date, esi.updated_by, esi.updated_date " +
+			"esi.created_date, esi.updated_by, esi.updated_date, " +
+			"st.structure_name as emp_structure_name, gr.grade_name, cc.cost_center_name " +
 			"FROM sce_employee.sce_emp_sal_info esi " +
 			"JOIN sce_employee.sce_emp e ON esi.emp_id = e.emp_id " +
+			"LEFT JOIN sce_employee.sce_emp_structure st ON esi.emp_structure_id = st.emp_structure_id " +
+			"LEFT JOIN sce_employee.sce_emp_grade gr ON esi.grade_id = gr.emp_grade_id " +
+			"LEFT JOIN sce_employee.sce_emp_costcenter cc ON esi.cost_center_id = cc.cost_center_id " +
 			"WHERE e.payroll_id = :payrollId AND esi.is_active = 1", nativeQuery = true)
 	Optional<DecryptedSalaryInfoProjection> findDecryptedByPayrollId(@Param("payrollId") String payrollId);
 

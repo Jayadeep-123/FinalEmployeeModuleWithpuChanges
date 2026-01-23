@@ -40,7 +40,6 @@ public class EmpSalaryInfoController {
 	 * GET endpoint to retrieve salary info by payroll_id
 	 * Returns only DTO, not the full entity
 	 */
-	
 
 	/**
 	 * POST endpoint to forward employee to Central Office
@@ -99,10 +98,10 @@ public class EmpSalaryInfoController {
 		BackToCampusDTO result = empSalaryInfoService.backToCampus(backToCampusDTO);
 		return new ResponseEntity<>(result, HttpStatus.OK);
 	}
-	
-	  @PostMapping("/update-checklists")
-	    public ResponseEntity<CheckListUpdateDTO> updateChecklists(@RequestBody CheckListUpdateDTO dto) {
-	        CheckListUpdateDTO result = empSalaryInfoService.updateCheckListIds(dto);
-	        return new ResponseEntity<>(result, HttpStatus.OK);
-	    }
+
+	@PostMapping("/update-checklists")
+	public ResponseEntity<CheckListUpdateDTO> updateChecklists(@RequestBody CheckListUpdateDTO dto) {
+		CheckListUpdateDTO result = empSalaryInfoService.updateCheckListIds(dto);
+		return new ResponseEntity<>(result, HttpStatus.OK);
+	}
 }

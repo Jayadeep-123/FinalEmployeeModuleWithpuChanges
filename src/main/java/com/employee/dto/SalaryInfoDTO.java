@@ -62,5 +62,12 @@ public class SalaryInfoDTO {
 	private String checkListIds; // Optional - Comma-separated checklist IDs
 
 	// Audit field - passed from frontend
-	private Integer updatedBy; // Optional - User ID who updated the record (for PF details)
+	// private Integer updatedBy; // Removed as requested
+
+	// Name fields for easier consumption
+	private String empStructureName;
+	private String gradeName;
+	private String costCenterName;
+	private String orgName;
+	// private String checkListNames; // Removed as requested
 }

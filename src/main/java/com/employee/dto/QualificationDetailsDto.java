@@ -8,10 +8,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class QualificationDetailsDto {
+    private Integer empQualificationId;
+    private Integer qualificationId;
     private String qualificationName;
+    private Integer qualificationDegreeId;
     private String qualificationDegree;
     private String specialization;
     private String institute;
     private String university;
     private Integer passedoutYear;
+    private Integer isActive;
+    private String certificatePath;
 }

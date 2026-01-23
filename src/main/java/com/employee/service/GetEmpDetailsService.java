@@ -211,59 +211,99 @@ public class GetEmpDetailsService {
 		return empSubjectRepository.findCategoryInfoByPayrollId(TemppayrollId);
 	}
 
-	public EmployeeBankDetailsResponseDTO getBankDetailsByTempPayrollId(String tempPayrollId) {
-
+		public EmployeeBankDetailsResponseDTO getBankDetailsByTempPayrollId(String tempPayrollId) {
+ 
 		// Step 1: Get employee by tempPayrollId
+
 		Employee employee = employeeRepo.findByTempPayrollId(tempPayrollId)
+
 				.orElseThrow(() -> new RuntimeException("Employee not found for tempPayrollId: " + tempPayrollId));
-
+ 
 		// Step 2: Get all active bank details for that employee
+
 		List<BankDetails> bankDetailsList = bankDetailsRepository.findActiveBankDetailsByEmpId(employee.getEmp_id());
-
+ 
 		if (bankDetailsList == null || bankDetailsList.isEmpty()) {
+
 			throw new RuntimeException("No bank details found for employee ID: " + employee.getEmp_id());
+
 		}
-
+ 
 		// Step 3: Create response object
+
 		EmployeeBankDetailsResponseDTO response = new EmployeeBankDetailsResponseDTO();
-
+ 
 		// Step 4: Loop through bank details
-		for (BankDetails bd : bankDetailsList) {
 
+		for (BankDetails bd : bankDetailsList) {
+ 
 			BankInfoGetDTO dto = new BankInfoGetDTO();
+
 			dto.setBankName(bd.getBankName());
+
 			dto.setBankBranch(bd.getBankBranch());
+
 			dto.setPersonalAccountHolderName(bd.getBankHolderName());
+
 			dto.setPersonalAccountNumber(bd.getAccNo());
+
 			dto.setIfscCode(bd.getIfscCode());
 
+			dto.setBankManagerName(bd.getBankManagerName());
+
+			dto.setManagerContact(bd.getBankManagerContactNo());
+
+			dto.setManagerEmail(bd.getBankManagerEmail());
+
+			dto.setRelationshipOfficerEmail(bd.getCustomerRelationshipOfficerEmail());
+
+			dto.setRelationshipOfficerName(bd.getCustomerRelationshipOfficerName());
+
+			dto.setRelationshipOfficerNumber(bd.getCustomerRelationshipOfficerContactNo());
+
 			String accType = bd.getAccType();
-
+ 
 			// --- For PERSONAL account ---
+
 			if ("PERSONAL".equalsIgnoreCase(accType)) {
+
 				response.setPersonalBankInfo(dto);
-			}
 
+			}
+ 
 			// --- For SALARY account ---
+
 			else if ("SALARY".equalsIgnoreCase(accType)) {
-
+ 
 				// Here we need paymentType (foreign key from EmpPaymentType)
+
 				if (bd.getEmpPaymentType() != null) {
+
 					dto.setPaymentType(bd.getEmpPaymentType().getPayment_type());
+
 				} else {
+
 					dto.setPaymentType("N/A");
+
 				}
-
+ 
 				// Set extra salary-related fields
+
 				dto.setIsSalaryLessThan40000("Yes"); // Optional logic based on salary amount
-				dto.setPayableAt("Date");
 
+				dto.setPayableAt(bd.getPayableAt());
+ 
 				response.setSalaryAccountInfo(dto);
-			}
-		}
 
+			}
+
+		}
+ 
 		return response;
+
 	}
+
+ 
 
 	// EmployeeProfileView
 	public Optional<EmpProfileView> getProfileByPayrollId(String payrollId) {
@@ -657,8 +697,45 @@ public class GetEmpDetailsService {
 	public List<QualificationDetailsDto> getQualificationsByTempPayrollId(
 			String tempPayrollId) {
 
-		return empQualificationRepository
-				.findQualificationsByTempPayrollId(tempPayrollId);
+		List<EmpQualification> qualifications = empQualificationRepository
+				.findByEmp_id_TempPayrollIdAndIsActive(tempPayrollId, 1);
+
+		return qualifications.stream().map(q -> {
+			QualificationDetailsDto dto = new QualificationDetailsDto();
+			dto.setEmpQualificationId(q.getEmp_qualification_id());
+
+			if (q.getQualification_id() != null) {
+				dto.setQualificationId(q.getQualification_id().getQualification_id());
+				dto.setQualificationName(q.getQualification_id().getQualification_name());
+			}
+
+			if (q.getQualification_degree_id() != null) {
+				dto.setQualificationDegreeId(q.getQualification_degree_id().getQualification_degree_id());
+				dto.setQualificationDegree(q.getQualification_degree_id().getDegree_name());
+			}
+
+			dto.setSpecialization(q.getSpecialization());
+			dto.setInstitute(q.getInstitute());
+			dto.setUniversity(q.getUniversity());
+			dto.setPassedoutYear(q.getPassedout_year());
+			dto.setIsActive(q.getIs_active());
+
+			// Fetch certificate path
+			String linkPrefix = "QUAL_LINK_"
+					+ (q.getQualification_id() != null ? q.getQualification_id().getQualification_id() : "0") + "_";
+			String searchPattern = "%" + linkPrefix + "%";
+			empDocumentsRepository.findByEmpIdAndPathPattern(q.getEmp_id().getEmp_id(), searchPattern)
+					.ifPresent(doc -> {
+						String path = doc.getDoc_path();
+						if (path != null && path.startsWith(linkPrefix)) {
+							dto.setCertificatePath(path.substring(linkPrefix.length()));
+						} else {
+							dto.setCertificatePath(path);
+						}
+					});
+
+			return dto;
+		}).collect(Collectors.toList());
 	}
 
 	/**
