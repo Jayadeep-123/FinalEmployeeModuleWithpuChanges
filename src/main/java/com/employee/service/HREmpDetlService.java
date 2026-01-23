@@ -1270,6 +1270,14 @@ public class HREmpDetlService {
             // Set payableAt from BankDetails entity
             dto.setPayableAt(bank.getPayableAt());
 
+            // Map contact fields to DTO
+            dto.setBankManagerName(bank.getBankManagerName());
+            dto.setManagerContact(bank.getBankManagerContactNo());
+            dto.setManagerEmail(bank.getBankManagerEmail());
+            dto.setRelationshipOfficerNumber(bank.getCustomerRelationshipOfficerContactNo());
+            dto.setRelationshipOfficerName(bank.getCustomerRelationshipOfficerName());
+            dto.setRelationshipOfficerEmail(bank.getCustomerRelationshipOfficerEmail());
+
             // Note: isSalaryLessThan40000 calculation removed as netPayable field no longer
             // exists
             // This information should come from BankInfoDTO.salaryLessThan40000 if needed
