@@ -993,7 +993,7 @@
 package com.employee.service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1283,8 +1283,8 @@ public class HREmpDetlService {
             dto.setPaymentType(bank.getEmpPaymentType() != null ? bank.getEmpPaymentType().getPayment_type() : null);
             dto.setBankName(bank.getBankName());
             dto.setBankBranch(bank.getBankBranch());
-            dto.setPersonalAccountHolderName(bank.getBankHolderName());
-            dto.setPersonalAccountNumber(bank.getAccNo());
+            dto.setAccountHolderName(bank.getBankHolderName());
+            dto.setAccountNumber(bank.getAccNo());
             dto.setIfscCode(bank.getIfscCode());
             // Set payableAt from BankDetails entity
             dto.setPayableAt(bank.getPayableAt());
@@ -1294,12 +1294,24 @@ public class HREmpDetlService {
             // Note: isSalaryLessThan40000 calculation removed as netPayable field no longer
             // exists
             // This information should come from BankInfoDTO.salaryLessThan40000 if needed
-            dto.setIsSalaryLessThan40000("N/A");
-
             // ✅ Classify based on accType
             if ("SALARY".equalsIgnoreCase(bank.getAccType()) || "SALARY ACCOUNT".equalsIgnoreCase(bank.getAccType())) {
+                // Note: isSalaryLessThan40000 calculation removed as netPayable field no longer
+                // exists
+                // This information should come from BankInfoDTO.salaryLessThan40000 if needed
+                dto.setIsSalaryLessThan40000("Yes");
+
+                // Map Bank Manager & CRO Details
+                dto.setBankManagerName(bank.getBankManagerName());
+                dto.setBankManagerContactNo(bank.getBankManagerContactNo());
+                dto.setBankManagerEmail(bank.getBankManagerEmail());
+                dto.setCustomerRelationshipOfficerName(bank.getCustomerRelationshipOfficerName());
+                dto.setCustomerRelationshipOfficerContactNo(bank.getCustomerRelationshipOfficerContactNo());
+                dto.setCustomerRelationshipOfficerEmail(bank.getCustomerRelationshipOfficerEmail());
+
                 salaryAccountInfo = dto;
             } else {
+                dto.setIsSalaryLessThan40000("N/A");
                 personalBankInfo = dto;
             }
         }

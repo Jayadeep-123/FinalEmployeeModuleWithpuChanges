@@ -238,55 +238,44 @@ public class GetEmpDetailsService {
 		// Step 4: Loop through bank details
 
 		for (BankDetails bd : bankDetailsList) {
-
 			BankInfoGetDTO dto = new BankInfoGetDTO();
-
 			dto.setBankName(bd.getBankName());
-
 			dto.setBankBranch(bd.getBankBranch());
-
-			dto.setPersonalAccountHolderName(bd.getBankHolderName());
-
-			dto.setPersonalAccountNumber(bd.getAccNo());
-
+			dto.setAccountHolderName(bd.getBankHolderName()); // Updated
+			dto.setAccountNumber(bd.getAccNo()); // Updated
 			dto.setIfscCode(bd.getIfscCode());
 
 			String accType = bd.getAccType();
 
 			// --- For PERSONAL account ---
-
 			if ("PERSONAL".equalsIgnoreCase(accType)) {
-
 				response.setPersonalBankInfo(dto);
-
 			}
 
 			// --- For SALARY account ---
-
 			else if ("SALARY".equalsIgnoreCase(accType)) {
 
 				// Here we need paymentType (foreign key from EmpPaymentType)
-
 				if (bd.getEmpPaymentType() != null) {
-
 					dto.setPaymentType(bd.getEmpPaymentType().getPayment_type());
-
 				} else {
-
 					dto.setPaymentType("N/A");
-
 				}
 
 				// Set extra salary-related fields
-
 				dto.setIsSalaryLessThan40000("Yes"); // Optional logic based on salary amount
-
 				dto.setPayableAt(bd.getPayableAt());
 
+				// New Salary Info Fields
+				dto.setBankManagerName(bd.getBankManagerName());
+				dto.setBankManagerContactNo(bd.getBankManagerContactNo());
+				dto.setBankManagerEmail(bd.getBankManagerEmail());
+				dto.setCustomerRelationshipOfficerName(bd.getCustomerRelationshipOfficerName());
+				dto.setCustomerRelationshipOfficerContactNo(bd.getCustomerRelationshipOfficerContactNo());
+				dto.setCustomerRelationshipOfficerEmail(bd.getCustomerRelationshipOfficerEmail());
+
 				response.setSalaryAccountInfo(dto);
-
 			}
-
 		}
 
 		return response;
