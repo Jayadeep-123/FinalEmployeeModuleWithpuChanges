@@ -86,7 +86,9 @@ public class GetEmpDetailsService {
 		List<EmpFamilyDetails> familyEntities = empFamilyDetailsRepo.findFamilyDetailsByEmpId(empId);
 
 		// Fetch family photo path (shared for the employee)
-		String photoPath = empDocumentsRepository.findByEmpIdAndDocName(empId, "Family Photo")
+		String photoPath = empDocumentsRepository.findByEmpIdAndDocName(empId, "Family Group Photo")
+				.stream()
+				.findFirst()
 				.map(doc -> doc.getDoc_path())
 				.orElse(null);
 
@@ -211,32 +213,32 @@ public class GetEmpDetailsService {
 		return empSubjectRepository.findCategoryInfoByPayrollId(TemppayrollId);
 	}
 
-		public EmployeeBankDetailsResponseDTO getBankDetailsByTempPayrollId(String tempPayrollId) {
- 
+	public EmployeeBankDetailsResponseDTO getBankDetailsByTempPayrollId(String tempPayrollId) {
+
 		// Step 1: Get employee by tempPayrollId
 
 		Employee employee = employeeRepo.findByTempPayrollId(tempPayrollId)
 
 				.orElseThrow(() -> new RuntimeException("Employee not found for tempPayrollId: " + tempPayrollId));
- 
+
 		// Step 2: Get all active bank details for that employee
 
 		List<BankDetails> bankDetailsList = bankDetailsRepository.findActiveBankDetailsByEmpId(employee.getEmp_id());
- 
+
 		if (bankDetailsList == null || bankDetailsList.isEmpty()) {
 
 			throw new RuntimeException("No bank details found for employee ID: " + employee.getEmp_id());
 
 		}
- 
+
 		// Step 3: Create response object
 
 		EmployeeBankDetailsResponseDTO response = new EmployeeBankDetailsResponseDTO();
- 
+
 		// Step 4: Loop through bank details
 
 		for (BankDetails bd : bankDetailsList) {
- 
+
 			BankInfoGetDTO dto = new BankInfoGetDTO();
 
 			dto.setBankName(bd.getBankName());
@@ -262,7 +264,7 @@ public class GetEmpDetailsService {
 			dto.setRelationshipOfficerNumber(bd.getCustomerRelationshipOfficerContactNo());
 
 			String accType = bd.getAccType();
- 
+
 			// --- For PERSONAL account ---
 
 			if ("PERSONAL".equalsIgnoreCase(accType)) {
@@ -270,11 +272,11 @@ public class GetEmpDetailsService {
 				response.setPersonalBankInfo(dto);
 
 			}
- 
+
 			// --- For SALARY account ---
 
 			else if ("SALARY".equalsIgnoreCase(accType)) {
- 
+
 				// Here we need paymentType (foreign key from EmpPaymentType)
 
 				if (bd.getEmpPaymentType() != null) {
@@ -286,24 +288,22 @@ public class GetEmpDetailsService {
 					dto.setPaymentType("N/A");
 
 				}
- 
+
 				// Set extra salary-related fields
 
 				dto.setIsSalaryLessThan40000("Yes"); // Optional logic based on salary amount
 
 				dto.setPayableAt(bd.getPayableAt());
- 
+
 				response.setSalaryAccountInfo(dto);
 
 			}
 
 		}
- 
+
 		return response;
 
 	}
-
- 
 
 	// EmployeeProfileView
 	public Optional<EmpProfileView> getProfileByPayrollId(String payrollId) {
@@ -407,6 +407,8 @@ public class GetEmpDetailsService {
 
 		// Fetch path for the agreement document
 		empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Agreement")
+				.stream()
+				.findFirst()
 				.ifPresent(doc -> dto.setAgreementPath(doc.getDoc_path()));
 
 		dto.setNoOfCheques(chequeDtos.size());
@@ -614,7 +616,9 @@ public class GetEmpDetailsService {
 		List<EmpaddressInfo> addresses = empAddressInfoRepo.findByEmployeeEntity(employee);
 
 		String stateName = null;
+		Integer stateId = null;
 		String countryName = null;
+		Integer countryId = null;
 
 		Optional<EmpaddressInfo> permanentAddress = addresses.stream()
 				.filter(a -> "PERM".equalsIgnoreCase(a.getAddrs_type()))
@@ -626,18 +630,26 @@ public class GetEmpDetailsService {
 
 		if (permanentAddress.isPresent()) {
 			stateName = permanentAddress.get().getState_id().getStateName();
+			stateId = permanentAddress.get().getState_id().getStateId();
 			countryName = permanentAddress.get().getCountry_id().getCountryName();
+			countryId = permanentAddress.get().getCountry_id().getCountryId();
 		} else if (currentAddress.isPresent()) {
 			stateName = currentAddress.get().getState_id().getStateName();
+			stateId = currentAddress.get().getState_id().getStateId();
 			countryName = currentAddress.get().getCountry_id().getCountryName();
+			countryId = currentAddress.get().getCountry_id().getCountryId();
 		}
 
 		// Use final variables for stream mapping
 		final String finalStateName = stateName;
+		final Integer finalStateId = stateId;
 		final String finalCountryName = countryName;
+		final Integer finalCountryId = countryId;
 
 		// Fetch family photo path once
-		String photoPath = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Family Photo")
+		String photoPath = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Family Group Photo")
+				.stream()
+				.findFirst()
 				.map(doc -> doc.getDoc_path())
 				.orElse(null);
 
@@ -647,31 +659,51 @@ public class GetEmpDetailsService {
 					FamilyDetailsResponseDTO dto = new FamilyDetailsResponseDTO();
 
 					dto.setName(familyDetail.getFullName());
+					dto.setFullName(familyDetail.getFullName());
 					dto.setAdhaarNo(familyDetail.getAdhaarNo());
 
 					// Safe mapping with null checks
-					dto.setRelation(familyDetail.getRelation_id() != null
-							? familyDetail.getRelation_id().getStudentRelationType()
-							: null);
-					dto.setBloodGroup(familyDetail.getBlood_group_id() != null
-							? familyDetail.getBlood_group_id().getBloodGroupName()
-							: null);
+					if (familyDetail.getRelation_id() != null) {
+						dto.setRelation(familyDetail.getRelation_id().getStudentRelationType());
+						dto.setRelationId(familyDetail.getRelation_id().getStudentRelationId());
+					}
+					if (familyDetail.getBlood_group_id() != null) {
+						dto.setBloodGroup(familyDetail.getBlood_group_id().getBloodGroupName());
+						dto.setBloodGroupId(familyDetail.getBlood_group_id().getBloodGroupId());
+					}
+					if (familyDetail.getGender_id() != null) {
+						dto.setGenderId(familyDetail.getGender_id().getGender_id());
+					}
 
 					dto.setOccupation(familyDetail.getOccupation());
 					dto.setEmailId(familyDetail.getEmail());
+					dto.setEmail(familyDetail.getEmail());
 					dto.setPhoneNumber(familyDetail.getContact_no());
 					dto.setNationality(familyDetail.getNationality());
 
 					// New fields
 					dto.setDateOfBirth(familyDetail.getDate_of_birth());
-					dto.setIsSriChaitanyaEmp(familyDetail.getIs_sri_chaitanya_emp());
-					dto.setParentEmpPayrollId(
-							familyDetail.getParent_emp_id() != null ? familyDetail.getParent_emp_id().getPayRollId()
-									: null);
+					dto.setIsLate("Y".equalsIgnoreCase(familyDetail.getIs_late()));
+					dto.setIsDependent(familyDetail.getIs_dependent() != null && familyDetail.getIs_dependent() == 1);
+					dto.setIsSriChaitanyaEmp(
+							familyDetail.getIs_sri_chaitanya_emp() != null
+									&& familyDetail.getIs_sri_chaitanya_emp() == 1);
+
+					if (familyDetail.getParent_emp_id() != null) {
+						Employee parent = familyDetail.getParent_emp_id();
+						dto.setParentEmpId(parent.getEmp_id());
+						String pId = parent.getPayRollId();
+						if (pId == null || pId.isEmpty()) {
+							pId = parent.getTempPayrollId();
+						}
+						dto.setParentEmpPayrollId(pId);
+					}
 
 					// Set the derived address info
 					dto.setState(finalStateName);
+					dto.setStateId(finalStateId);
 					dto.setCountry(finalCountryName);
+					dto.setCountryId(finalCountryId);
 
 					return dto;
 				})

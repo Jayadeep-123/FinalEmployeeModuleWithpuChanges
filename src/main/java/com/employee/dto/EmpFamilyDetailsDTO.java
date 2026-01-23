@@ -14,9 +14,12 @@ public class EmpFamilyDetailsDTO {
     private Long adhaarNo;
     private String occupation;
     private String gender;
+    private Integer genderId;
     private String bloodGroup;
+    private Integer bloodGroupId;
     private String nationality;
     private String relation;
+    private Integer relationId;
     private Integer isDependent;
     private String isLate;
     private String email;

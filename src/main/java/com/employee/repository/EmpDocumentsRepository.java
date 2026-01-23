@@ -36,8 +36,8 @@ public interface EmpDocumentsRepository extends JpaRepository<EmpDocuments, Inte
         java.util.Optional<EmpDocuments> findByEmpIdAndPathPattern(@Param("empId") Integer empId,
                         @Param("pattern") String pattern);
 
-        @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_id.emp_id = :empId AND ed.emp_doc_type_id.doc_name = :docName AND ed.is_active = 1")
-        java.util.Optional<EmpDocuments> findByEmpIdAndDocName(@Param("empId") Integer empId,
+        @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_id.emp_id = :empId AND ed.emp_doc_type_id.doc_name = :docName AND ed.is_active = 1 ORDER BY ed.created_date DESC")
+        List<EmpDocuments> findByEmpIdAndDocName(@Param("empId") Integer empId,
                         @Param("docName") String docName);
 
         @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_id.emp_id = :empId AND ed.is_active = 1 AND ed.emp_exp_detl_id IS NULL AND ed.doc_path NOT LIKE 'CHEQUE_LINK_%' AND ed.doc_path NOT LIKE 'QUAL_LINK_%'")

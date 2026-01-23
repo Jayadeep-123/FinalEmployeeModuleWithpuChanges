@@ -1691,7 +1691,8 @@ public class EmployeeRemainingTabService {
 
                     // Save/Update associated document if path is provided
                     if (chequeDTO.getChequePath() != null) {
-                        EmpDocuments savedDoc = saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(), createdBy, updatedBy);
+                        EmpDocuments savedDoc = saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(),
+                                createdBy, updatedBy);
                         if (savedDoc != null) {
                             // Set emp_doc_id in cheque details table
                             saved.setEmpDocId(savedDoc);
@@ -1722,7 +1723,8 @@ public class EmployeeRemainingTabService {
 
                     // Save associated document if path is provided
                     if (chequeDTO.getChequePath() != null) {
-                        EmpDocuments savedDoc = saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(), createdBy, updatedBy);
+                        EmpDocuments savedDoc = saveOrUpdateChequeDocument(saved, employee, chequeDTO.getChequePath(),
+                                createdBy, updatedBy);
                         if (savedDoc != null) {
                             // Set emp_doc_id in cheque details table
                             saved.setEmpDocId(savedDoc);
@@ -1993,7 +1995,8 @@ public class EmployeeRemainingTabService {
 
     /**
      * Helper: Save or update Cheque document in EmpDocuments table
-     * Returns the saved EmpDocuments entity so that emp_doc_id can be set on the cheque entity
+     * Returns the saved EmpDocuments entity so that emp_doc_id can be set on the
+     * cheque entity
      */
     private EmpDocuments saveOrUpdateChequeDocument(EmpChequeDetails chequeEntity, Employee employee, String docPath,
             Integer createdBy, Integer updatedBy) {
@@ -2078,7 +2081,7 @@ public class EmployeeRemainingTabService {
                     logger.info("Deactivated document for Cheque ID: {} (prefix match)",
                             chequeEntity.getEmpChequeDetailsId());
                 });
-        
+
         // Clear emp_doc_id from cheque entity when document is deactivated
         if (chequeEntity.getEmpDocId() != null) {
             chequeEntity.setEmpDocId(null);
@@ -2099,7 +2102,7 @@ public class EmployeeRemainingTabService {
 
         String docName = "Agreement";
         Optional<EmpDocuments> existingDoc = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(),
-                docName);
+                docName).stream().findFirst();
 
         EmpDocuments docEntity;
         if (existingDoc.isPresent()) {
@@ -2140,6 +2143,8 @@ public class EmployeeRemainingTabService {
      */
     private void deactivateAgreementDocument(Employee employee, Integer updatedBy) {
         empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Agreement")
+                .stream()
+                .findFirst()
                 .ifPresent(doc -> {
                     doc.setIs_active(0);
                     if (updatedBy != null && updatedBy > 0)

@@ -1095,7 +1095,10 @@ public class HREmpDetlService {
                 .orElseThrow(() -> new RuntimeException("Employee not found for payrollId: " + payrollId));
 
         // Step 2: Fetch family photo path (Shared attribute for the employee)
-        String familyPhotoPath = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Family Photo")
+        String familyPhotoPath = empDocumentsRepository
+                .findByEmpIdAndDocName(employee.getEmp_id(), "Family Group Photo")
+                .stream()
+                .findFirst()
                 .map(doc -> doc.getDoc_path())
                 .orElse(null);
 
@@ -1108,10 +1111,19 @@ public class HREmpDetlService {
             dto.setFullName(fam.getFullName());
             dto.setAdhaarNo(fam.getAdhaarNo());
             dto.setOccupation(fam.getOccupation());
-            dto.setGender(fam.getGender_id() != null ? fam.getGender_id().getGenderName() : null);
-            dto.setBloodGroup(fam.getBlood_group_id() != null ? fam.getBlood_group_id().getBloodGroupName() : null);
+            if (fam.getGender_id() != null) {
+                dto.setGender(fam.getGender_id().getGenderName());
+                dto.setGenderId(fam.getGender_id().getGender_id());
+            }
+            if (fam.getBlood_group_id() != null) {
+                dto.setBloodGroup(fam.getBlood_group_id().getBloodGroupName());
+                dto.setBloodGroupId(fam.getBlood_group_id().getBloodGroupId());
+            }
             dto.setNationality(fam.getNationality());
-            dto.setRelation(fam.getRelation_id() != null ? fam.getRelation_id().getStudentRelationType() : null);
+            if (fam.getRelation_id() != null) {
+                dto.setRelation(fam.getRelation_id().getStudentRelationType());
+                dto.setRelationId(fam.getRelation_id().getStudentRelationId());
+            }
             dto.setIsDependent(fam.getIs_dependent());
             dto.setIsLate(fam.getIs_late());
             dto.setEmail(fam.getEmail());
@@ -1120,7 +1132,14 @@ public class HREmpDetlService {
             // Map new fields
             dto.setDateOfBirth(fam.getDate_of_birth());
             dto.setIsSriChaitanyaEmp(fam.getIs_sri_chaitanya_emp());
-            dto.setParentEmpPayrollId(fam.getParent_emp_id() != null ? fam.getParent_emp_id().getPayRollId() : null);
+            if (fam.getParent_emp_id() != null) {
+                Employee parent = fam.getParent_emp_id();
+                String pId = parent.getPayRollId();
+                if (pId == null || pId.isEmpty()) {
+                    pId = parent.getTempPayrollId();
+                }
+                dto.setParentEmpPayrollId(pId);
+            }
             dto.setFamilyPhotoPath(familyPhotoPath);
 
             return dto;
@@ -1604,6 +1623,8 @@ public class HREmpDetlService {
 
         // Fetch path for the agreement document
         empDocumentsRepository.findByEmpIdAndDocName(emp.getEmp_id(), "Agreement")
+                .stream()
+                .findFirst()
                 .ifPresent(doc -> response.setAgreementPath(doc.getDoc_path()));
 
         // 6. Final DTO population
