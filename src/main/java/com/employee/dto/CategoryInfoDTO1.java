@@ -8,14 +8,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CategoryInfoDTO1 {
-	
-	  private String employeeType;
-	    private String department;
-	    private String designation;
-	    
-	    // These 2 fields will be joined from the sce_emp_subject table.
-	    // They will be 'null' if the employee is not a teaching type.
-	    private String subject;
-	    private Integer agreedPeriodsPerWeek; 
 
+	private String employeeType;
+	private Integer employeeTypeId;
+	private String department;
+	private Integer departmentId;
+	private String designation;
+	private Integer designationId;
+
+	// These fields from the sce_emp_subject table.
+	private String subject;
+	private Integer subjectId;
+	private Integer orientationId;
+	private String orientationName;
+	private Integer agreedPeriodsPerWeek;
 }

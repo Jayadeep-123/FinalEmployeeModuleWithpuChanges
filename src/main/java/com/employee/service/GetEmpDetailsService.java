@@ -251,18 +251,6 @@ public class GetEmpDetailsService {
 
 			dto.setIfscCode(bd.getIfscCode());
 
-			dto.setBankManagerName(bd.getBankManagerName());
-
-			dto.setManagerContact(bd.getBankManagerContactNo());
-
-			dto.setManagerEmail(bd.getBankManagerEmail());
-
-			dto.setRelationshipOfficerEmail(bd.getCustomerRelationshipOfficerEmail());
-
-			dto.setRelationshipOfficerName(bd.getCustomerRelationshipOfficerName());
-
-			dto.setRelationshipOfficerNumber(bd.getCustomerRelationshipOfficerContactNo());
-
 			String accType = bd.getAccType();
 
 			// --- For PERSONAL account ---
@@ -402,14 +390,30 @@ public class GetEmpDetailsService {
 
 		// Build DTO
 		EmployeeAgreementDetailsDto dto = new EmployeeAgreementDetailsDto();
-		dto.setAgreementCompany(null);
+		if (employee.getAgreement_org_id() != null) {
+			dto.setAgreementCompany(employee.getAgreement_org_id().getOrganizationName());
+		}
 		dto.setAgreementType(employee.getAgreement_type());
 
 		// Fetch path for the agreement document
-		empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(), "Agreement")
-				.stream()
-				.findFirst()
-				.ifPresent(doc -> dto.setAgreementPath(doc.getDoc_path()));
+		List<EmpDocuments> agreementDocs = empDocumentsRepository.findByEmpIdAndDocName(employee.getEmp_id(),
+				"Agreement");
+		if (agreementDocs.isEmpty()) {
+			// Fallback: search for any document containing "Agreement" in its type name
+			agreementDocs = empDocumentsRepository.findByEmpIdAndIsActive(employee.getEmp_id()).stream()
+					.filter(doc -> doc.getEmp_doc_type_id() != null && doc.getEmp_doc_type_id().getDoc_name() != null
+							&& doc.getEmp_doc_type_id().getDoc_name().toUpperCase().contains("AGREEMENT"))
+					.sorted((d1, d2) -> {
+						if (d1.getCreated_date() == null || d2.getCreated_date() == null)
+							return 0;
+						return d2.getCreated_date().compareTo(d1.getCreated_date());
+					})
+					.collect(Collectors.toList());
+		}
+
+		if (!agreementDocs.isEmpty()) {
+			dto.setAgreementPath(agreementDocs.get(0).getDoc_path());
+		}
 
 		dto.setNoOfCheques(chequeDtos.size());
 		dto.setCheques(chequeDtos);
