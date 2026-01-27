@@ -1720,10 +1720,11 @@ public class HREmpDetlService {
     /**
      * API 2: Gets the details for a specific qualification name.
      */
-    
+
     private String formatQualificationName(String dbValue) {
-        if (dbValue == null) return null;
- 
+        if (dbValue == null)
+            return null;
+
         switch (dbValue) {
             case "10TH_SSC_MATRICULATION":
                 return "SSC";
@@ -1750,51 +1751,47 @@ public class HREmpDetlService {
                 return dbValue.replace("_", " ");
         }
     }
- 
+
     public List<QualificationDetailsDto> getQualificationsByPayrollId(String payrollId) {
- 
-        List<EmpQualification> qualifications =
-                empQualificationRepository.findByEmployeePayrollId(payrollId);
- 
+
+        List<EmpQualification> qualifications = empQualificationRepository.findByEmployeePayrollId(payrollId);
+
         return qualifications.stream().map(eq -> {
- 
+
             QualificationDetailsDto dto = new QualificationDetailsDto();
- 
+
             dto.setEmpQualificationId(eq.getEmp_qualification_id());
- 
+
             if (eq.getQualification_id() != null) {
                 dto.setQualificationId(eq.getQualification_id().getQualification_id());
                 // Convert qualification name to user-friendly text
-                String rawQualificationName =
-                        eq.getQualification_id().getQualification_name();
- 
+                String rawQualificationName = eq.getQualification_id().getQualification_name();
+
                 dto.setQualificationName(
-                        formatQualificationName(rawQualificationName)
-                );
+                        formatQualificationName(rawQualificationName));
             }
- 
+
             if (eq.getQualification_degree_id() != null) {
                 dto.setQualificationDegreeId(eq.getQualification_degree_id().getQualification_degree_id());
                 // Degree name (assuming already readable)
                 dto.setQualificationDegree(
-                        eq.getQualification_degree_id().getDegree_name()
-                );
+                        eq.getQualification_degree_id().getDegree_name());
             }
- 
+
             dto.setPassedoutYear(eq.getPassedout_year());
             dto.setSpecialization(eq.getSpecialization());
             dto.setInstitute(eq.getInstitute());
             dto.setUniversity(eq.getUniversity());
             dto.setIsActive(eq.getIs_active());
- 
+
             // Fetch certificate path from EmpDocuments based on doc_type_id
             if (eq.getEmp_id() != null && eq.getQualification_id() != null) {
                 Integer qId = eq.getQualification_id().getQualification_id();
-                
+
                 // Find documents for this employee and qualification ID
                 List<EmpDocuments> docs = empDocumentsRepository.findByEmpIdAndDocTypeId(
                         eq.getEmp_id().getEmp_id(), qId);
-                
+
                 // Find the first document that is categorized as an "Educational Document"
                 String path = docs.stream()
                         .filter(d -> d.getEmp_doc_type_id() != null &&
@@ -1802,19 +1799,16 @@ public class HREmpDetlService {
                         .map(EmpDocuments::getDoc_path)
                         .findFirst()
                         .orElse(null);
-                
+
                 dto.setCertificatePath(path);
             } else {
                 dto.setCertificatePath(null);
             }
- 
+
             return dto;
- 
+
         }).collect(Collectors.toList());
     }
- 
- 
- 
 
     /**
      * Retrieves the comprehensive status (Required, Uploaded, Missing) of
@@ -1916,6 +1910,10 @@ public class HREmpDetlService {
                         .orElse(null);
                 if (uploadedDoc != null) {
                     docStatus.setDocPath(uploadedDoc.getDoc_path());
+                    docStatus.setCreatedBy(uploadedDoc.getCreated_by());
+                    docStatus.setCreatedDate(uploadedDoc.getCreated_date());
+                    docStatus.setUpdatedBy(uploadedDoc.getUpdated_by());
+                    docStatus.setUpdatedDate(uploadedDoc.getUpdated_date());
                 }
                 uploadedDocumentsList.add(docStatus);
             } else {
@@ -2018,6 +2016,10 @@ public class HREmpDetlService {
                         .orElse(null);
                 if (uploadedDoc != null) {
                     docStatus.setDocPath(uploadedDoc.getDoc_path());
+                    docStatus.setCreatedBy(uploadedDoc.getCreated_by());
+                    docStatus.setCreatedDate(uploadedDoc.getCreated_date());
+                    docStatus.setUpdatedBy(uploadedDoc.getUpdated_by());
+                    docStatus.setUpdatedDate(uploadedDoc.getUpdated_date());
                 }
                 uploadedDocumentsList.add(docStatus);
             } else {
@@ -2139,6 +2141,10 @@ public class HREmpDetlService {
                         .orElse(null);
                 if (uploadedDoc != null) {
                     docStatus.setDocPath(uploadedDoc.getDoc_path());
+                    docStatus.setCreatedBy(uploadedDoc.getCreated_by());
+                    docStatus.setCreatedDate(uploadedDoc.getCreated_date());
+                    docStatus.setUpdatedBy(uploadedDoc.getUpdated_by());
+                    docStatus.setUpdatedDate(uploadedDoc.getUpdated_date());
                 }
                 uploadedDocumentsList.add(docStatus);
             } else {

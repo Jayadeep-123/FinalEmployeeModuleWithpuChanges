@@ -696,6 +696,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.employee.dto.BackToCampusDTO;
 import com.employee.dto.CheckListUpdateDTO;
 import com.employee.dto.SalaryInfoDTO;
+import com.employee.dto.SalaryInfoSaveAtCODTO;
 import com.employee.entity.BankDetails;
 import com.employee.entity.CostCenter;
 import com.employee.entity.EmpAppCheckListDetl;
@@ -1378,6 +1379,171 @@ public class EmpSalaryInfoService {
         employee.setUpdated_date(LocalDateTime.now());
 
         employeeRepository.save(employee);
+        return dto;
+    }
+
+    /**
+     * Save/Update Salary Info and PF Details at Central Office level
+     * 
+     * IMPORTANT: This method ONLY updates EmpSalaryInfo and EmpPfDetails.
+     * It does NOT modify any fields in the Employee table (no status change,
+     * no checklist update, no org update).
+     * 
+     * @param dto DTO containing restricted salary and PF information
+     * @return SalaryInfoSaveAtCODTO with the saved data
+     */
+    @Transactional
+    public SalaryInfoSaveAtCODTO saveSalaryInfoAtCO(SalaryInfoSaveAtCODTO dto) {
+        // Validation: Check if tempPayrollId is provided
+        if (dto.getTempPayrollId() == null || dto.getTempPayrollId().trim().isEmpty()) {
+            throw new ResourceNotFoundException("tempPayrollId is required. Please provide a valid temp_payroll_id.");
+        }
+
+        // Validation: Check required salary fields
+        if (dto.getMonthlyTakeHome() == null) {
+            throw new ResourceNotFoundException("monthlyTakeHome is required (NOT NULL column)");
+        }
+        if (dto.getYearlyCtc() == null) {
+            throw new ResourceNotFoundException("yearlyCtc is required (NOT NULL column)");
+        }
+        if (dto.getEmpStructureId() == null) {
+            throw new ResourceNotFoundException("empStructureId is required (NOT NULL column)");
+        }
+
+        logger.info("Saving salary info at CO level for temp_payroll_id: {}", dto.getTempPayrollId());
+
+        // Step 1: Find employee by temp_payroll_id
+        Employee employee = employeeRepository.findByTempPayrollId(dto.getTempPayrollId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with temp_payroll_id: '" + dto.getTempPayrollId() +
+                                "'. Please verify the temp_payroll_id exists."));
+
+        Integer empId = employee.getEmp_id();
+        logger.info("Found employee - temp_payroll_id: {}, emp_id: {}",
+                employee.getTempPayrollId(), empId);
+
+        // Step 2: Get emp_payment_type_id from BankDetails
+        EmpPaymentType empPaymentType = null;
+        List<BankDetails> bankDetailsList = bankDetailsRepository.findByEmpId_Emp_id(empId);
+
+        if (bankDetailsList != null && !bankDetailsList.isEmpty()) {
+            for (BankDetails bankDetail : bankDetailsList) {
+                if (bankDetail.getEmpPaymentType() != null) {
+                    Integer paymentTypeId = bankDetail.getEmpPaymentType().getEmp_payment_type_id();
+                    empPaymentType = empPaymentTypeRepository.findById(paymentTypeId).orElse(null);
+                    if (empPaymentType != null && "SALARY".equalsIgnoreCase(bankDetail.getAccType())) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Step 3: Check if EmpSalaryInfo already exists
+        Optional<EmpSalaryInfo> existingSalaryInfoOpt = empSalaryInfoRepository.findByEmpIdAndIsActive(empId, 1);
+        EmpSalaryInfo empSalaryInfo;
+
+        if (existingSalaryInfoOpt.isPresent()) {
+            empSalaryInfo = existingSalaryInfoOpt.get();
+            empSalaryInfo.setUpdatedBy(1); // Set a default updatedBy
+            empSalaryInfo.setUpdatedDate(LocalDateTime.now());
+        } else {
+            empSalaryInfo = new EmpSalaryInfo();
+            empSalaryInfo.setEmpId(employee);
+            if (employee.getCreated_by() != null) {
+                empSalaryInfo.setCreatedBy(employee.getCreated_by());
+            } else {
+                empSalaryInfo.setCreatedBy(1); // Default
+            }
+            empSalaryInfo.setCreatedDate(LocalDateTime.now());
+        }
+
+        // Set mandatory fields
+        empSalaryInfo.setTempPayrollId(employee.getTempPayrollId());
+        empSalaryInfo.setEmpPaymentType(empPaymentType);
+        empSalaryInfo.setMonthlyTakeHomeFromDouble(dto.getMonthlyTakeHome());
+        empSalaryInfo.setCtcWordsFromString(dto.getCtcWords());
+        empSalaryInfo.setYearlyCtcFromDouble(dto.getYearlyCtc());
+
+        // Set structure
+        EmpStructure empStructure = empStructureRepository.findByIdAndIsActive(dto.getEmpStructureId(), 1)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Active EmpStructure not found with ID: " + dto.getEmpStructureId()));
+        empSalaryInfo.setEmpStructure(empStructure);
+
+        // Set grade
+        if (dto.getGradeId() != null) {
+            EmpGrade empGrade = empGradeRepository.findByIdAndIsActive(dto.getGradeId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active EmpGrade not found with ID: " + dto.getGradeId()));
+            empSalaryInfo.setGrade(empGrade);
+        }
+
+        // Set cost center
+        if (dto.getCostCenterId() != null) {
+            CostCenter costCenter = costCenterRepository.findById(dto.getCostCenterId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "CostCenter not found with ID: " + dto.getCostCenterId()));
+            empSalaryInfo.setCostCenter(costCenter);
+        }
+
+        empSalaryInfo
+                .setIsPfEligible(dto.getIsPfEligible() != null && dto.getIsPfEligible() ? 1 : 0);
+        empSalaryInfo
+                .setIsEsiEligible(dto.getIsEsiEligible() != null && dto.getIsEsiEligible() ? 1 : 0);
+        empSalaryInfo.setIsActive(1);
+
+        empSalaryInfoRepository.save(empSalaryInfo);
+        empSalaryInfoRepository.flush();
+
+        // Step 4: PF Details
+        EmpPfDetails empPfDetails = empPfDetailsRepository.findByEmployeeId(empId).orElse(new EmpPfDetails());
+        boolean pfSave = false;
+
+        if (dto.getPfNo() != null) {
+            empPfDetails.setPf_no(dto.getPfNo());
+            pfSave = true;
+        }
+        if (dto.getPfJoinDate() != null) {
+            empPfDetails.setPf_join_date(dto.getPfJoinDate());
+            pfSave = true;
+        }
+        if (dto.getEsiNo() != null) {
+            empPfDetails.setEsi_no(dto.getEsiNo());
+            pfSave = true;
+        }
+        if (dto.getUanNo() != null) {
+            empPfDetails.setUan_no(dto.getUanNo());
+            pfSave = true;
+        }
+
+        if (pfSave || empSalaryInfo.getIsPfEligible() == 1 || empSalaryInfo.getIsEsiEligible() == 1) {
+            empPfDetails.setEmployee_id(employee);
+            empPfDetails.setIs_active(1);
+            if (empPfDetails.getEmp_pf_esi_uan_info_id() == 0) {
+                empPfDetails.setCreated_by(employee.getCreated_by() != null ? employee.getCreated_by() : 1);
+                empPfDetails.setCreated_date(LocalDateTime.now());
+            } else {
+                empPfDetails.setUpdated_by(1); // Default
+                empPfDetails.setUpdated_date(LocalDateTime.now());
+            }
+            empPfDetailsRepository.save(empPfDetails);
+        }
+
+        // Step 5: Update Organization ID in Employee record (if provided)
+        if (dto.getOrgId() != null) {
+            Organization org = organizationRepository.findById(dto.getOrgId())
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("Organization not found with ID: " + dto.getOrgId()));
+            employee.setOrg_id(org);
+            employee.setUpdated_date(LocalDateTime.now());
+            employeeRepository.save(employee);
+            logger.info("Updated Organization (org_id: {}) for employee: {}", dto.getOrgId(), dto.getTempPayrollId());
+        }
+
+        logger.info(
+                "Successfully saved salary and PF info at CO level for temp_payroll_id: {}. Employee status/checklist remains untouched.",
+                dto.getTempPayrollId());
+
         return dto;
     }
 
