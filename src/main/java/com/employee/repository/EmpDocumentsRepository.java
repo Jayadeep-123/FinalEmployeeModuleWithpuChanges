@@ -42,4 +42,9 @@ public interface EmpDocumentsRepository extends JpaRepository<EmpDocuments, Inte
 
         @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_id.emp_id = :empId AND ed.is_active = 1 AND ed.emp_exp_detl_id IS NULL AND ed.doc_path NOT LIKE 'CHEQUE_LINK_%' AND ed.doc_path NOT LIKE 'QUAL_LINK_%'")
         List<EmpDocuments> findGeneralDocumentsByEmpId(@Param("empId") Integer empId);
+        
+        
+        @Query("SELECT ed FROM EmpDocuments ed WHERE ed.emp_id.emp_id = :empId AND ed.doc_path LIKE :pattern AND ed.is_active = 1")
+        List<EmpDocuments> findMultipleByEmpIdAndPathPattern(@Param("empId") Integer empId,
+                        @Param("pattern") String pattern);
 }

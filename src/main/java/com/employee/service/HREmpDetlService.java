@@ -1720,33 +1720,101 @@ public class HREmpDetlService {
     /**
      * API 2: Gets the details for a specific qualification name.
      */
+    
+    private String formatQualificationName(String dbValue) {
+        if (dbValue == null) return null;
+ 
+        switch (dbValue) {
+            case "10TH_SSC_MATRICULATION":
+                return "SSC";
+            case "+2_INTERMEDIATE_PUC":
+                return "Intermediate";
+            case "DEGREE_GRADUATE":
+                return "Degree";
+            case "UNDER GRADUATE":
+                return "Under Graduate";
+            case "MASTER DEGREE_PG":
+                return "Master Degree";
+            case "DIPLOMA":
+                return "Diploma";
+            case "M.PHIL":
+                return "M.Phil";
+            case "P.H.D":
+                return "Ph.D";
+            case "DOCTORATE":
+                return "Doctorate";
+            case "OTHERS":
+                return "Others";
+            default:
+                // fallback – convert underscores to spaces
+                return dbValue.replace("_", " ");
+        }
+    }
+ 
     public List<QualificationDetailsDto> getQualificationsByPayrollId(String payrollId) {
-        List<EmpQualification> qualifications = empQualificationRepository.findByEmployeePayrollId(payrollId);
-
-        // Assuming 'qualifications' is List<EmpQualification>
+ 
+        List<EmpQualification> qualifications =
+                empQualificationRepository.findByEmployeePayrollId(payrollId);
+ 
         return qualifications.stream().map(eq -> {
+ 
             QualificationDetailsDto dto = new QualificationDetailsDto();
-
-            // --- FIX 1 (Syntax Error) ---
-            // The getter method call was incomplete and had a parenthesis error.
-            dto.setQualificationName(eq.getQualification_id().getQualification_name());
-
-            // --- FIX 2 (Field Name Mismatch) ---
-            // Corrected getter: eq.getQualification_degree_id().getDegree_name()
-            dto.setQualificationDegree(eq.getQualification_degree_id().getDegree_name());
-
-            // --- FIX 3 (Field Name Mismatch) ---
-            // Corrected setter: dto.setPassedoutYear()
-            dto.setPassedoutYear(eq.getPassedout_year()); // Assuming entity uses getPassedout_year()
-
-            // These fields are assumed correct (based on your entity's field names)
+ 
+            dto.setEmpQualificationId(eq.getEmp_qualification_id());
+ 
+            if (eq.getQualification_id() != null) {
+                dto.setQualificationId(eq.getQualification_id().getQualification_id());
+                // Convert qualification name to user-friendly text
+                String rawQualificationName =
+                        eq.getQualification_id().getQualification_name();
+ 
+                dto.setQualificationName(
+                        formatQualificationName(rawQualificationName)
+                );
+            }
+ 
+            if (eq.getQualification_degree_id() != null) {
+                dto.setQualificationDegreeId(eq.getQualification_degree_id().getQualification_degree_id());
+                // Degree name (assuming already readable)
+                dto.setQualificationDegree(
+                        eq.getQualification_degree_id().getDegree_name()
+                );
+            }
+ 
+            dto.setPassedoutYear(eq.getPassedout_year());
             dto.setSpecialization(eq.getSpecialization());
             dto.setInstitute(eq.getInstitute());
             dto.setUniversity(eq.getUniversity());
-
+            dto.setIsActive(eq.getIs_active());
+ 
+            // Fetch certificate path from EmpDocuments based on doc_type_id
+            if (eq.getEmp_id() != null && eq.getQualification_id() != null) {
+                Integer qId = eq.getQualification_id().getQualification_id();
+                
+                // Find documents for this employee and qualification ID
+                List<EmpDocuments> docs = empDocumentsRepository.findByEmpIdAndDocTypeId(
+                        eq.getEmp_id().getEmp_id(), qId);
+                
+                // Find the first document that is categorized as an "Educational Document"
+                String path = docs.stream()
+                        .filter(d -> d.getEmp_doc_type_id() != null &&
+                                "Educational Document".equalsIgnoreCase(d.getEmp_doc_type_id().getDoc_type()))
+                        .map(EmpDocuments::getDoc_path)
+                        .findFirst()
+                        .orElse(null);
+                
+                dto.setCertificatePath(path);
+            } else {
+                dto.setCertificatePath(null);
+            }
+ 
             return dto;
+ 
         }).collect(Collectors.toList());
     }
+ 
+ 
+ 
 
     /**
      * Retrieves the comprehensive status (Required, Uploaded, Missing) of
