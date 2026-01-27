@@ -965,17 +965,21 @@ public class EmployeeRemainingTabService {
         String linkPrefix = "QUAL_LINK_" + qualId + "_";
         String searchPattern = "%" + linkPrefix + "%";
 
-        EmpDocuments doc = empDocumentsRepository.findByEmpIdAndPathPattern(employee.getEmp_id(), searchPattern)
-                .orElse(new EmpDocuments());
+        List<EmpDocuments> docs = empDocumentsRepository.findMultipleByEmpIdAndPathPattern(employee.getEmp_id(),
+                searchPattern);
+        EmpDocuments doc;
+        if (!docs.isEmpty()) {
+            doc = docs.get(0);
+            // Handle duplicates if needed (optional cleanup)
+        } else {
+            doc = new EmpDocuments();
+        }
 
         doc.setEmp_id(employee);
         doc.setIs_active(1);
 
-        // Find a matching doc type by name or fallback to a general one
-        // Using "Educational Document" as it's the standard for qualifications
-        EmpDocType docType = empDocTypeRepository.findByDocTypeAndIsActive("Educational Document").stream()
-                .findFirst()
-                .orElseGet(() -> empDocTypeRepository.findById(qualId).orElse(null));
+        // Find a matching doc type by ID
+        EmpDocType docType = empDocTypeRepository.findById(qualId).orElse(null);
 
         if (docType != null) {
             doc.setEmp_doc_type_id(docType);
@@ -2033,8 +2037,14 @@ public class EmployeeRemainingTabService {
         String linkPrefix = "CHEQUE_LINK_" + chequeEntity.getEmpChequeDetailsId() + "_";
         String searchPattern = "%" + linkPrefix + "%";
 
-        EmpDocuments doc = empDocumentsRepository.findByEmpIdAndPathPattern(employee.getEmp_id(), searchPattern)
-                .orElse(new EmpDocuments());
+        List<EmpDocuments> docs = empDocumentsRepository.findMultipleByEmpIdAndPathPattern(employee.getEmp_id(),
+                searchPattern);
+        EmpDocuments doc;
+        if (!docs.isEmpty()) {
+            doc = docs.get(0);
+        } else {
+            doc = new EmpDocuments();
+        }
 
         doc.setEmp_id(employee);
         doc.setEmp_doc_type_id(docType);
@@ -2078,16 +2088,18 @@ public class EmployeeRemainingTabService {
      */
     private void deactivateChequeDocument(EmpChequeDetails chequeEntity, Integer updatedBy) {
         String searchPattern = "%CHEQUE_LINK_" + chequeEntity.getEmpChequeDetailsId() + "_%";
-        empDocumentsRepository.findByEmpIdAndPathPattern(chequeEntity.getEmpId().getEmp_id(), searchPattern)
-                .ifPresent(doc -> {
-                    doc.setIs_active(0);
-                    if (updatedBy != null && updatedBy > 0)
-                        doc.setUpdated_by(updatedBy);
-                    doc.setUpdated_date(LocalDateTime.now());
-                    empDocumentsRepository.save(doc);
-                    logger.info("Deactivated document for Cheque ID: {} (prefix match)",
-                            chequeEntity.getEmpChequeDetailsId());
-                });
+        List<EmpDocuments> docs = empDocumentsRepository
+                .findMultipleByEmpIdAndPathPattern(chequeEntity.getEmpId().getEmp_id(), searchPattern);
+
+        for (EmpDocuments doc : docs) {
+            doc.setIs_active(0);
+            if (updatedBy != null && updatedBy > 0)
+                doc.setUpdated_by(updatedBy);
+            doc.setUpdated_date(LocalDateTime.now());
+            empDocumentsRepository.save(doc);
+            logger.info("Deactivated document for Cheque ID: {} (prefix match)",
+                    chequeEntity.getEmpChequeDetailsId());
+        }
 
         // Clear emp_doc_id from cheque entity when document is deactivated
         if (chequeEntity.getEmpDocId() != null) {
