@@ -1362,7 +1362,8 @@ public class EmployeeRemainingTabService {
             personalAccount.setEmpId(employee);
             personalAccount.setAccType("PERSONAL");
             personalAccount.setBankName(bankInfo.getPersonalAccount().getBankName());
-            personalAccount.setBankBranch(null);
+            personalAccount.setBankBranch(bankInfo.getPersonalAccount().getBankBranch());
+
             personalAccount.setBankHolderName(bankInfo.getPersonalAccount().getAccountHolderName());
             if (bankInfo.getSalaryAccount() == null) {
                 personalAccount.setEmpPaymentType(paymentType);
@@ -1392,15 +1393,21 @@ public class EmployeeRemainingTabService {
             personalAccount.setIsActive(1);
 
             // Set new manager and relationship officer fields for Personal Account
-            personalAccount.setBankManagerName(bankInfo.getPersonalAccount().getBankManagerName());
-            personalAccount.setBankManagerContactNo(bankInfo.getPersonalAccount().getBankManagerContactNo());
-            personalAccount.setBankManagerEmail(bankInfo.getPersonalAccount().getBankManagerEmail());
-            personalAccount.setCustomerRelationshipOfficerName(
-                    bankInfo.getPersonalAccount().getCustomerRelationshipOfficerName());
-            personalAccount.setCustomerRelationshipOfficerContactNo(
-                    bankInfo.getPersonalAccount().getCustomerRelationshipOfficerContactNo());
-            personalAccount.setCustomerRelationshipOfficerEmail(
-                    bankInfo.getPersonalAccount().getCustomerRelationshipOfficerEmail());
+            // REMOVED as per user request
+            /*
+             * personalAccount.setBankManagerName(bankInfo.getPersonalAccount().
+             * getBankManagerName());
+             * personalAccount.setBankManagerContactNo(bankInfo.getPersonalAccount().
+             * getBankManagerContactNo());
+             * personalAccount.setBankManagerEmail(bankInfo.getPersonalAccount().
+             * getBankManagerEmail());
+             * personalAccount.setCustomerRelationshipOfficerName(
+             * bankInfo.getPersonalAccount().getCustomerRelationshipOfficerName());
+             * personalAccount.setCustomerRelationshipOfficerContactNo(
+             * bankInfo.getPersonalAccount().getCustomerRelationshipOfficerContactNo());
+             * personalAccount.setCustomerRelationshipOfficerEmail(
+             * bankInfo.getPersonalAccount().getCustomerRelationshipOfficerEmail());
+             */
 
             // Set created_by only if provided from frontend, otherwise don't set it (entity
             // default will be used)
