@@ -1,6 +1,5 @@
 package com.employee.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -233,10 +232,23 @@ public class DropDownService {
 				.collect(Collectors.toList());
 	}
 
+//	public CampusDto getActiveCampusById(int campusId) {
+//		return campusRepository.findActiveCampusById(campusId)
+//				.orElseThrow(() -> new RuntimeException("Active campus not found for ID: " + campusId));
+//	}
+	
 	public CampusDto getActiveCampusById(int campusId) {
-		return campusRepository.findActiveCampusById(campusId)
-				.orElseThrow(() -> new RuntimeException("Active campus not found for ID: " + campusId));
-	}
+        CampusDto campusDto = campusRepository.findActiveCampusById(campusId)
+                .orElseThrow(() -> new RuntimeException("Active campus not found for ID: " + campusId));
+ 
+        // Populate main building details
+        buildingRepository.findMainBuildingByCampusId(campusId).ifPresent(building -> {
+            campusDto.setBuildingId(building.getBuildingId());
+            campusDto.setBuildingName(building.getBuildingName());
+        });
+ 
+        return campusDto;
+    }
 
 	public List<GenericDropdownDTO> getActiveGrades() {
 		return gradeRepo.findByIsActive(1).stream()
@@ -271,9 +283,13 @@ public class DropDownService {
 		return cmpsOrgRepository.findOrganizationsByCampusId(campusId);
 	}
 
-	public List<GenericDropdownDTO> getBuildingsByCampusId(int campusId) {
-		return buildingRepository.findBuildingsByCampusId(campusId);
-	}
+//	public List<GenericDropdownDTO> getBuildingsByCampusId(int campusId) {
+//		return buildingRepository.findBuildingsByCampusId(campusId);
+//	}
+	
+	public List<com.employee.dto.BuildingDropdownDTO> getBuildingsByCampusId(int campusId) {
+        return buildingRepository.findBuildingsByCampusId(campusId);
+    }
 
 	public List<GenericDropdownDTO> getAllActiveStreams() {
 		return streamRepository.findAllActiveStreams();

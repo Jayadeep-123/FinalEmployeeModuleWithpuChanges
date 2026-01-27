@@ -231,16 +231,27 @@ public class DropDownsController {
 		return ResponseEntity.ok(organizations);
 	}
 
+//	@GetMapping("/{campusId}/building")
+//	public ResponseEntity<?> getBuildingsByCampusId(@PathVariable int campusId) {
+//		List<GenericDropdownDTO> buildings = empDropdownService.getBuildingsByCampusId(campusId);
+//
+//		if (buildings == null || buildings.isEmpty()) {
+//			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No buildings found for campus ID: " + campusId);
+//		}
+//
+//		return ResponseEntity.ok(buildings);
+//	}
+	
 	@GetMapping("/{campusId}/building")
-	public ResponseEntity<?> getBuildingsByCampusId(@PathVariable int campusId) {
-		List<GenericDropdownDTO> buildings = empDropdownService.getBuildingsByCampusId(campusId);
-
-		if (buildings == null || buildings.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No buildings found for campus ID: " + campusId);
-		}
-
-		return ResponseEntity.ok(buildings);
-	}
+    public ResponseEntity<?> getBuildingsByCampusId(@PathVariable int campusId) {
+        List<com.employee.dto.BuildingDropdownDTO> buildings = empDropdownService.getBuildingsByCampusId(campusId);
+ 
+        if (buildings == null || buildings.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No buildings found for campus ID: " + campusId);
+        }
+ 
+        return ResponseEntity.ok(buildings);
+    }
 
 	@GetMapping("/streams")
 	public ResponseEntity<?> getAllStreams() {
