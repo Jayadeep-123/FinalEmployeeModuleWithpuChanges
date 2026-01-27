@@ -96,15 +96,15 @@ public class FullBasicInfoDto {
     private Long sscNo;
 
     // Reference Employee
-    private Integer referenceEmployeeId;   // ✅ Added
+    private Integer referenceEmployeeId; // ✅ Added
     private String referenceEmployeeName;
 
     // Hired By Employee (Recruiter/HR)
-    private Integer hiredByEmployeeId;     // ✅ Added
+    private Integer hiredByEmployeeId; // ✅ Added
     private String hiredByEmployeeName;
 
     // Reporting Manager
-    private Integer reportingManagerId;    // ✅ Added
+    private Integer reportingManagerId; // ✅ Added
     private String reportingManagerName;
 
     // Replacement Employee
@@ -112,4 +112,5 @@ public class FullBasicInfoDto {
     private String replacementEmployeeName;
 
     private Double totalExperience;
+    private Long preEsiNo;
 }

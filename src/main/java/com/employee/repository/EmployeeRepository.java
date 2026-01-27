@@ -224,10 +224,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
                 rep.emp_id,
                 concat(rep.first_name, ' ', rep.last_name),
 
-                e.total_experience
+                e.total_experience,
+                epd.pre_esi_no
             )
             FROM Employee e
-            LEFT JOIN EmpDetails ed ON ed.employee_id.emp_id = e.emp_id
+            LEFT JOIN EmpDetails ed ON ed.employee_id.emp_id = e.emp_id AND ed.is_active = 1
+            LEFT JOIN EmpPfDetails epd ON epd.employee_id.emp_id = e.emp_id AND epd.is_active = 1
             LEFT JOIN e.gender g
             LEFT JOIN e.employee_type_id et
             LEFT JOIN e.department d
