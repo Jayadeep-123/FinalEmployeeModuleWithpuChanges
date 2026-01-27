@@ -2071,11 +2071,16 @@ public class EmployeeBasicInfoTabService {
         }
 
         // Validate tempPayrollId against SkillTestDetl table if provided
-        if (tempPayrollId != null && !tempPayrollId.trim().isEmpty()) {
-            skillTestDetailsRepository.findByTempPayrollId(tempPayrollId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Temp Payroll ID not found in Skill Test Details: "
-                            + tempPayrollId + ". Please provide a valid temp payroll ID."));
-        }
+        // REMOVED VALIDATION: Allow tempPayrollId even if not found in Skill Test
+        // Details (as per user request)
+        /*
+         * if (tempPayrollId != null && !tempPayrollId.trim().isEmpty()) {
+         * skillTestDetailsRepository.findByTempPayrollId(tempPayrollId)
+         * .orElseThrow(() -> new
+         * ResourceNotFoundException("Temp Payroll ID not found in Skill Test Details: "
+         * + tempPayrollId + ". Please provide a valid temp payroll ID."));
+         * }
+         */
     }
 
     /**
