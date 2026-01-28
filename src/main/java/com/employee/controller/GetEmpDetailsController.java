@@ -20,6 +20,7 @@ import com.employee.dto.CategoryInfoDTO1;
 import com.employee.dto.EmpExperienceDetailsDTO;
 import com.employee.dto.EmployeeAgreementDetailsDto;
 import com.employee.dto.EmployeeBankDetailsResponseDTO;
+import com.employee.dto.FamilyDetailsResponseDTO;
 import com.employee.dto.FamilyInfoResponseDTO;
 import com.employee.dto.FullBasicInfoDto;
 import com.employee.dto.ManagerDTO;
@@ -210,7 +211,7 @@ public class GetEmpDetailsController {
 	@GetMapping("/status")
 	public List<EmpOnboardingStatusView> getEmpStatus(
 			@org.springframework.web.bind.annotation.RequestParam(required = false) String categoryName) {
-		if (categoryName != null) {
+		if (categoryName != null && !categoryName.isEmpty()) {
 			return getEmpDetailsService.getEmpStatusByCategoryName(categoryName);
 		}
 		return getEmpDetailsService.getEmpStatus();

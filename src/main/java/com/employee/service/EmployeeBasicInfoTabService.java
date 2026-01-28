@@ -17,7 +17,6 @@ import com.employee.dto.BasicInfoDTO;
 import com.employee.dto.FamilyInfoDTO;
 import com.employee.dto.PreviousEmployerInfoDTO;
 import com.employee.entity.Building;
-import com.employee.entity.District;
 import com.employee.entity.EmpaddressInfo;
 import com.employee.entity.EmpDetails;
 import com.employee.entity.EmpDocuments;
@@ -243,7 +242,9 @@ public class EmployeeBasicInfoTabService {
                 if (employee.getEmp_check_list_status_id() != null) {
                     String currentStatus = employee.getEmp_check_list_status_id().getCheck_app_status_name();
                     if ("Confirm".equals(currentStatus)) {
-                        Integer updatedBy = basicInfo.getUpdatedBy() != null ? basicInfo.getUpdatedBy() : 1;
+                        Integer updatedBy = basicInfo.getUpdatedBy() != null && basicInfo.getUpdatedBy() > 0
+                                ? basicInfo.getUpdatedBy()
+                                : 1;
                         employee.setUpdated_by(updatedBy);
                         employee.setUpdated_date(LocalDateTime.now());
                     }
@@ -266,13 +267,16 @@ public class EmployeeBasicInfoTabService {
 
             // Save EmpDetails
             empDetails.setEmployee_id(employee);
-            Integer updatedBy = basicInfo.getUpdatedBy() != null ? basicInfo.getUpdatedBy() : 1;
-            saveEmpDetailsEntity(empDetails, employee, isUpdate ? updatedBy : null);
+            Integer auditUser = isUpdate
+                    ? (basicInfo.getUpdatedBy() != null && basicInfo.getUpdatedBy() > 0 ? basicInfo.getUpdatedBy()
+                            : basicInfo.getCreatedBy())
+                    : basicInfo.getCreatedBy();
+            saveEmpDetailsEntity(empDetails, employee, auditUser);
 
             // Save EmpPfDetails
             if (empPfDetails != null) {
                 empPfDetails.setEmployee_id(employee);
-                saveEmpPfDetailsEntity(empPfDetails, employee, isUpdate ? updatedBy : null);
+                saveEmpPfDetailsEntity(empPfDetails, employee, auditUser);
             }
 
             basicInfo.setEmpId(employee.getEmp_id());
@@ -435,9 +439,19 @@ public class EmployeeBasicInfoTabService {
                 Optional<EmpDetails> existingByEmail = empDetailsRepository
                         .findByPersonal_email(empDetails.getPersonal_email().trim());
                 if (existingByEmail.isPresent()) {
-                    updateEmpDetailsFieldsExceptEmail(existingByEmail.get(), empDetails);
-                    existingByEmail.get().setEmployee_id(employee);
-                    empDetailsRepository.save(existingByEmail.get());
+                    EmpDetails existing = existingByEmail.get();
+                    // CRITICAL FIX: Prevent "stealing" records from existing ACTIVE employees
+                    if (existing.getEmployee_id() != null && existing.getEmployee_id().getIs_active() == 1) {
+                        throw new ResourceNotFoundException("Personal email '" + empDetails.getPersonal_email() +
+                                "' is already associated with an active employee (ID: "
+                                + existing.getEmployee_id().getEmp_id() + ").");
+                    }
+                    updateEmpDetailsFieldsExceptEmail(existing, empDetails);
+                    existing.setEmployee_id(employee);
+                    // Use updatedBy or fallback to employee's creator
+                    existing.setUpdated_by(updatedBy != null ? updatedBy : employee.getCreated_by());
+                    existing.setUpdated_date(LocalDateTime.now());
+                    empDetailsRepository.save(existing);
                 } else {
                     empDetailsRepository.save(empDetails);
                 }

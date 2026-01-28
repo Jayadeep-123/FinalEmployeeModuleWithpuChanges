@@ -357,6 +357,12 @@ public class EmployeeOnboardingService {
 
                     if (existingByEmail.isPresent()) {
                         EmpDetails existing = existingByEmail.get();
+                        // CRITICAL FIX: Prevent "stealing" records from existing ACTIVE employees
+                        if (existing.getEmployee_id() != null && existing.getEmployee_id().getIs_active() == 1) {
+                            throw new ResourceNotFoundException("Personal email '" + empDetails.getPersonal_email() +
+                                    "' is already associated with an active employee (ID: "
+                                    + existing.getEmployee_id().getEmp_id() + ").");
+                        }
                         entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                         existing.setEmployee_id(employee);
                         existing.setUpdated_by(hrEmployeeId);
@@ -380,6 +386,12 @@ public class EmployeeOnboardingService {
 
                 if (existingByEmail.isPresent()) {
                     EmpDetails existing = existingByEmail.get();
+                    // CRITICAL FIX: Prevent "stealing" records from existing ACTIVE employees
+                    if (existing.getEmployee_id() != null && existing.getEmployee_id().getIs_active() == 1) {
+                        throw new ResourceNotFoundException("Personal email '" + empDetails.getPersonal_email() +
+                                "' is already associated with an active employee (ID: "
+                                + existing.getEmployee_id().getEmp_id() + ").");
+                    }
                     entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                     existing.setEmployee_id(employee);
                     existing.setUpdated_by(hrEmployeeId);
