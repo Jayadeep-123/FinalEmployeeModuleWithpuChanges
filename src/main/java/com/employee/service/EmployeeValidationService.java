@@ -1,27 +1,12 @@
 package com.employee.service;
  
-import java.util.List;
- 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
- 
-import com.employee.dto.AddressInfoDTO;
-import com.employee.dto.BankInfoDTO;
+
 import com.employee.dto.BasicInfoDTO;
-import com.employee.dto.CategoryInfoDTO;
-import com.employee.dto.DocumentDTO;
 import com.employee.dto.EmployeeOnboardingDTO;
-import com.employee.dto.FamilyInfoDTO;
-import com.employee.dto.PreviousEmployerInfoDTO;
-import com.employee.dto.QualificationDTO;
-import com.employee.entity.BankDetails;
-import com.employee.entity.EmpaddressInfo;
 import com.employee.entity.EmpDetails;
-import com.employee.entity.EmpDocuments;
-import com.employee.entity.EmpExperienceDetails;
-import com.employee.entity.EmpFamilyDetails;
 import com.employee.entity.EmpPfDetails;
-import com.employee.entity.EmpQualification;
 import com.employee.entity.Employee;
 import com.employee.exception.ResourceNotFoundException;
 import com.employee.repository.BloodGroupRepository;
@@ -32,7 +17,10 @@ import com.employee.repository.CityRepository;
 import com.employee.repository.CountryRepository;
 import com.employee.repository.DepartmentRepository;
 import com.employee.repository.DesignationRepository;
+import com.employee.repository.EmpDetailsRepository;
 import com.employee.repository.EmpDocTypeRepository;
+import com.employee.repository.EmpPaymentTypeRepository;
+import com.employee.repository.EmpPfDetailsRepository;
 import com.employee.repository.EmployeeRepository;
 import com.employee.repository.EmployeeTypeRepository;
 import com.employee.repository.GenderRepository;
@@ -47,7 +35,6 @@ import com.employee.repository.SkillTestDetailsRepository;
 import com.employee.repository.StateRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.WorkingModeRepository;
-import com.employee.repository.EmpPaymentTypeRepository;
  
 /**
  * Service for Employee Validation operations.
@@ -108,6 +95,12 @@ public class EmployeeValidationService {
     private OrgBankRepository orgBankRepository;
     @Autowired
     private OrgBankBranchRepository orgBankBranchRepository;
+    
+    @Autowired
+    private EmpDetailsRepository empDetailsRepository;
+ 
+    @Autowired
+    private EmpPfDetailsRepository empPfDetailsRepository;
  
     /**
      * Pre-flight checks: Validate data formats, lengths, and constraints that could cause runtime errors
@@ -616,5 +609,70 @@ public class EmployeeValidationService {
  
         return c == 0;
     }
+    
+    
+    public java.util.Map<String, Object> validateField(String fieldName, String value) {
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        boolean exists = false;
+        String message = "Value is unique.";
+ 
+        try {
+            switch (fieldName.toLowerCase()) {
+                case "aadhar":
+                case "aadhaar":
+                case "adhaar":
+                case "adhaar_no":
+                    exists = empDetailsRepository.existsByAdhaar_no(Long.parseLong(value));
+                    if (exists)
+                        message = "Aadhar number already exists.";
+                    break;
+                case "ssc":
+                case "ssc_no":
+                    exists = employeeRepository.existsBySsc_no(Long.parseLong(value));
+                    if (exists)
+                        message = "SSC number already exists.";
+                    break;
+                case "pan":
+                case "pancard":
+                case "pancard_no":
+                    exists = empDetailsRepository.existsByPancard_no(value);
+                    if (exists)
+                        message = "PAN card number already exists.";
+                    break;
+                case "mobile":
+                case "mobileno":
+                case "primary_mobile_no":
+                    exists = employeeRepository.existsByPrimary_mobile_no(Long.parseLong(value));
+                    if (exists)
+                        message = "Mobile number already exists.";
+                    break;
+                case "email":
+                    exists = employeeRepository.existsByEmail(value)
+                            || empDetailsRepository.existsByPersonal_email(value);
+                    if (exists)
+                        message = "Email already exists.";
+                    break;
+                case "esi":
+                case "esino":
+                case "esi_no":
+                    exists = empPfDetailsRepository.existsByEsi_no(Long.parseLong(value));
+                    if (exists)
+                        message = "ESI number already exists.";
+                    break;
+                default:
+                    message = "Invalid field name for validation.";
+                    break;
+            }
+        } catch (NumberFormatException e) {
+            message = "Invalid format for " + fieldName + ". Expected a numeric value.";
+        } catch (Exception e) {
+            message = "An error occurred during validation: " + e.getMessage();
+        }
+ 
+        response.put("exists", exists);
+        response.put("message", message);
+        return response;
+    }
+ 
 }
  

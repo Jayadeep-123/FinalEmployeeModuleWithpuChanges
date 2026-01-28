@@ -19,6 +19,13 @@ public interface EmpPfDetailsRepository extends JpaRepository<EmpPfDetails, Inte
 	// Find by employee ID and is_active = 1
 	@Query("SELECT epf FROM EmpPfDetails epf WHERE epf.employee_id.emp_id = :empId AND epf.is_active = :isActive")
 	Optional<EmpPfDetails> findByEmployeeIdAndIsActive(@Param("empId") Integer empId, @Param("isActive") Integer isActive);
+	
+	
+    @Query("SELECT COUNT(epf) > 0 FROM EmpPfDetails epf WHERE epf.esi_no = :esi")
+    boolean existsByEsi_no(@Param("esi") Long esi);
+ 
+    @Query("SELECT COUNT(epf) > 0 FROM EmpPfDetails epf WHERE epf.uan_no = :uan")
+    boolean existsByUan_no(@Param("uan") Long uan);
 
 }
 

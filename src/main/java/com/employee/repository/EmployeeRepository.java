@@ -264,4 +264,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
             "WHERE e.payRollId IN :payrollIds OR e.tempPayrollId IN :payrollIds")
     List<Employee> findAllByPayRollIdInOrTempPayrollIdIn(@Param("payrollIds") List<String> payrollIds);
 
+    @Query("SELECT COUNT(e) > 0 FROM Employee e WHERE e.ssc_no = :sscNo")
+    boolean existsBySsc_no(@Param("sscNo") Long sscNo);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employee e WHERE e.primary_mobile_no = :mobileNo")
+    boolean existsByPrimary_mobile_no(@Param("mobileNo") Long mobileNo);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employee e WHERE e.email = :email")
+    boolean existsByEmail(@Param("email") String email);
+
 }

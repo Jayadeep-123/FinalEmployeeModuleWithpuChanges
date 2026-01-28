@@ -31,5 +31,19 @@ public interface EmpDetailsRepository extends JpaRepository<EmpDetails, Integer>
 
 	@Query("SELECT ed FROM EmpDetails ed WHERE ed.employee_id.emp_id = :empId")
 	Optional<EmpDetails> findByEmployeeId(@Param("empId") Integer empId);
+	
+	
+	@Query("SELECT COUNT(ed) > 0 FROM EmpDetails ed WHERE ed.adhaar_no = :adhaarNo")
+    boolean existsByAdhaar_no(@Param("adhaarNo") Long adhaarNo);
+ 
+    @Query("SELECT COUNT(ed) > 0 FROM EmpDetails ed WHERE ed.pancard_no = :pan")
+    boolean existsByPancard_no(@Param("pan") String pan);
+ 
+    @Query("SELECT COUNT(ed) > 0 FROM EmpDetails ed WHERE ed.personal_email = :email")
+    boolean existsByPersonal_email(@Param("email") String email);
+ 
+    @Query("SELECT COUNT(ed) > 0 FROM EmpDetails ed WHERE ed.uanNo = :uan")
+    boolean existsByUanNo(@Param("uan") Long uan);
+ 
 }
 
