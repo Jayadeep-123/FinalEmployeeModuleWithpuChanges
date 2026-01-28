@@ -2,7 +2,6 @@
 package com.employee.service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -635,8 +634,8 @@ public class GetEmpDetailsService {
 		return empOnboardingStatusViewRepository.findAll();
 	}
 
-	public List<EmpOnboardingStatusView> getEmpStatusByCategoryId(Integer categoryId) {
-		return empOnboardingStatusViewRepository.findByCategoryId(categoryId);
+	public List<EmpOnboardingStatusView> getEmpStatusByCategoryName(String categoryName) {
+		return empOnboardingStatusViewRepository.findByCategoryName(categoryName);
 	}
 
 	public FamilyInfoResponseDTO getFamilyDetailsWithAddressInfo(String tempPayrollId) {

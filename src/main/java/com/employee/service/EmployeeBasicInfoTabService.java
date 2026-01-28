@@ -1871,7 +1871,7 @@ public class EmployeeBasicInfoTabService {
             target.setNature_of_duties(source.getNature_of_duties());
         if (source.getCompany_addr() != null)
             target.setCompany_addr(source.getCompany_addr());
-        if (source.getGross_salary() != null)
+        if (source.getGross_salary() != 0)
             target.setGross_salary(source.getGross_salary());
         target.setIs_active(source.getIs_active());
     }

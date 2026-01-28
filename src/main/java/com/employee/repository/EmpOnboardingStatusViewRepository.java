@@ -11,6 +11,6 @@ import com.employee.entity.EmpOnboardingStatusView;
 @Repository
 public interface EmpOnboardingStatusViewRepository extends JpaRepository<EmpOnboardingStatusView, Integer> {
 
-    @Query("SELECT e FROM EmpOnboardingStatusView e WHERE e.category_id = :categoryId")
-    List<EmpOnboardingStatusView> findByCategoryId(@Param("categoryId") Integer categoryId);
+    @Query("SELECT e FROM EmpOnboardingStatusView e WHERE UPPER(e.category_name) = UPPER(:categoryName)")
+    List<EmpOnboardingStatusView> findByCategoryName(@Param("categoryName") String categoryName);
 }
