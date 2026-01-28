@@ -19,7 +19,8 @@ public interface CampusRepository extends JpaRepository<Campus, Integer> {
     /**
      * 1. REQUIRED FOR SKILL TEST SERVICE
      * Used to initialize ID counters on startup.
-     * Note: If your Campus entity field is named 'cmps_code', change 'c.code' to 'c.cmps_code' below.
+     * Note: If your Campus entity field is named 'cmps_code', change 'c.code' to
+     * 'c.cmps_code' below.
      */
     @Query("SELECT c FROM Campus c WHERE c.code IS NOT NULL")
     List<Campus> findAllWithCodeNotNull();
@@ -33,19 +34,19 @@ public interface CampusRepository extends JpaRepository<Campus, Integer> {
      * 3. DTO Projection: Active Campus Details
      */
     @Query("SELECT new com.employee.dto.CampusDto(" +
-           "c.campusId, c.campusName, c.cmps_type, c.cmps_code, " +
-           "c.city.cityId, c.city.cityName) " +
-           "FROM Campus c " +
-           "WHERE c.campusId = :campusId AND c.isActive = 1")
+            "c.campusId, c.campusName, c.cmps_type, c.cmps_code, " +
+            "c.city.cityId, c.city.cityName) " +
+            "FROM Campus c " +
+            "WHERE c.campusId = :campusId AND c.isActive = 1")
     Optional<CampusDto> findActiveCampusById(@Param("campusId") int campusId);
 
     /**
      * 4. DTO Projection: Dropdown List by City and Business Type
      */
     @Query("SELECT new com.employee.dto.GenericDropdownDTO(c.campusId, c.campusName) "
-         + "FROM Campus c WHERE c.city.cityId = :cityId " 
-         + "AND c.businessType.businessTypeId = :businessId " 
-         + "AND c.isActive = 1")
+            + "FROM Campus c WHERE c.city.cityId = :cityId "
+            + "AND c.businessType.businessTypeId = :businessId "
+            + "AND c.isActive = 1")
     List<GenericDropdownDTO> findCampusDropdownByCityAndBusinessId(
             @Param("cityId") int cityId,
             @Param("businessId") int businessId);
@@ -55,10 +56,16 @@ public interface CampusRepository extends JpaRepository<Campus, Integer> {
      */
     @Query("SELECT c FROM Campus c WHERE c.isActive = :isActive")
     List<Campus> findByIsActive(@Param("isActive") Integer isActive);
-    
+
     @Query("SELECT c FROM Campus c WHERE c.city_id = :cityId AND c.isActive = 1")
     List<Campus> findCampusesByCityId(@Param("cityId") int cityId);
-    
+
     @Query("SELECT ca.city FROM Campus ca WHERE ca.campusId = :campusid")
     City findByCampusId(@Param("campusid") int campusid);
+
+    /**
+     * 6. Find all active campuses by business type ID
+     */
+    @Query("SELECT c FROM Campus c WHERE c.businessType.businessTypeId = :businessId AND c.isActive = 1")
+    List<Campus> findByBusinessTypeIdAndIsActive(@Param("businessId") Integer businessId);
 }
