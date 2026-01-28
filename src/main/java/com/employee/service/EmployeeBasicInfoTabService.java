@@ -454,8 +454,10 @@ public class EmployeeBasicInfoTabService {
         Optional<EmpPfDetails> existingPf = empPfDetailsRepository.findByEmployeeId(employee.getEmp_id());
         if (existingPf.isPresent()) {
             EmpPfDetails existing = existingPf.get();
-            existing.setPre_esi_no(empPfDetails.getPre_esi_no());
-            existing.setUan_no(empPfDetails.getUan_no());
+            if (empPfDetails.getPre_esi_no() != null)
+                existing.setPre_esi_no(empPfDetails.getPre_esi_no());
+            if (empPfDetails.getUan_no() != null)
+                existing.setUan_no(empPfDetails.getUan_no());
             existing.setIs_active(empPfDetails.getIs_active());
             // Set updated_by and updated_date for UPDATE mode
             if (updatedBy != null) {
@@ -998,20 +1000,34 @@ public class EmployeeBasicInfoTabService {
      * Helper: Update EmpDetails fields from source to target
      */
     private void updateEmpDetailsFields(EmpDetails target, EmpDetails source) {
-        target.setAdhaar_name(source.getAdhaar_name());
-        target.setDate_of_birth(source.getDate_of_birth());
-        target.setPersonal_email(source.getPersonal_email());
-        target.setEmergency_ph_no(source.getEmergency_ph_no());
-        target.setRelation_id(source.getRelation_id());
-        target.setAdhaar_no(source.getAdhaar_no());
-        target.setPancard_no(source.getPancard_no());
-        target.setAdhaar_enrolment_no(source.getAdhaar_enrolment_no());
-        target.setBloodGroup_id(source.getBloodGroup_id());
-        target.setCaste_id(source.getCaste_id());
-        target.setReligion_id(source.getReligion_id());
-        target.setMarital_status_id(source.getMarital_status_id());
-        target.setFatherName(source.getFatherName());
-        target.setUanNo(source.getUanNo());
+        if (source.getAdhaar_name() != null)
+            target.setAdhaar_name(source.getAdhaar_name());
+        if (source.getDate_of_birth() != null)
+            target.setDate_of_birth(source.getDate_of_birth());
+        if (source.getPersonal_email() != null)
+            target.setPersonal_email(source.getPersonal_email());
+        if (source.getEmergency_ph_no() != null)
+            target.setEmergency_ph_no(source.getEmergency_ph_no());
+        if (source.getRelation_id() != null)
+            target.setRelation_id(source.getRelation_id());
+        if (source.getAdhaar_no() != null)
+            target.setAdhaar_no(source.getAdhaar_no());
+        if (source.getPancard_no() != null)
+            target.setPancard_no(source.getPancard_no());
+        if (source.getAdhaar_enrolment_no() != null)
+            target.setAdhaar_enrolment_no(source.getAdhaar_enrolment_no());
+        if (source.getBloodGroup_id() != null)
+            target.setBloodGroup_id(source.getBloodGroup_id());
+        if (source.getCaste_id() != null)
+            target.setCaste_id(source.getCaste_id());
+        if (source.getReligion_id() != null)
+            target.setReligion_id(source.getReligion_id());
+        if (source.getMarital_status_id() != null)
+            target.setMarital_status_id(source.getMarital_status_id());
+        if (source.getFatherName() != null)
+            target.setFatherName(source.getFatherName());
+        if (source.getUanNo() != null)
+            target.setUanNo(source.getUanNo());
         target.setIs_active(source.getIs_active());
         // Status field removed from Employee entity - removed setStatus call
     }
@@ -1020,20 +1036,33 @@ public class EmployeeBasicInfoTabService {
      * Helper: Update EmpDetails fields except personal_email
      */
     private void updateEmpDetailsFieldsExceptEmail(EmpDetails target, EmpDetails source) {
-        target.setAdhaar_name(source.getAdhaar_name());
-        target.setDate_of_birth(source.getDate_of_birth());
+        if (source.getAdhaar_name() != null)
+            target.setAdhaar_name(source.getAdhaar_name());
+        if (source.getDate_of_birth() != null)
+            target.setDate_of_birth(source.getDate_of_birth());
         // DO NOT update personal_email
-        target.setEmergency_ph_no(source.getEmergency_ph_no());
-        target.setRelation_id(source.getRelation_id());
-        target.setAdhaar_no(source.getAdhaar_no());
-        target.setPancard_no(source.getPancard_no());
-        target.setAdhaar_enrolment_no(source.getAdhaar_enrolment_no());
-        target.setBloodGroup_id(source.getBloodGroup_id());
-        target.setCaste_id(source.getCaste_id());
-        target.setReligion_id(source.getReligion_id());
-        target.setMarital_status_id(source.getMarital_status_id());
-        target.setFatherName(source.getFatherName());
-        target.setUanNo(source.getUanNo());
+        if (source.getEmergency_ph_no() != null)
+            target.setEmergency_ph_no(source.getEmergency_ph_no());
+        if (source.getRelation_id() != null)
+            target.setRelation_id(source.getRelation_id());
+        if (source.getAdhaar_no() != null)
+            target.setAdhaar_no(source.getAdhaar_no());
+        if (source.getPancard_no() != null)
+            target.setPancard_no(source.getPancard_no());
+        if (source.getAdhaar_enrolment_no() != null)
+            target.setAdhaar_enrolment_no(source.getAdhaar_enrolment_no());
+        if (source.getBloodGroup_id() != null)
+            target.setBloodGroup_id(source.getBloodGroup_id());
+        if (source.getCaste_id() != null)
+            target.setCaste_id(source.getCaste_id());
+        if (source.getReligion_id() != null)
+            target.setReligion_id(source.getReligion_id());
+        if (source.getMarital_status_id() != null)
+            target.setMarital_status_id(source.getMarital_status_id());
+        if (source.getFatherName() != null)
+            target.setFatherName(source.getFatherName());
+        if (source.getUanNo() != null)
+            target.setUanNo(source.getUanNo());
         target.setIs_active(source.getIs_active());
         // Status field removed from Employee entity - removed setStatus call
     }
@@ -1256,15 +1285,24 @@ public class EmployeeBasicInfoTabService {
      * Helper: Update Address fields
      */
     private void updateAddressFields(EmpaddressInfo target, EmpaddressInfo source) {
-        target.setAddrs_type(source.getAddrs_type());
-        target.setCountry_id(source.getCountry_id());
-        target.setState_id(source.getState_id());
-        target.setCity_id(source.getCity_id());
-        target.setDistrict_id(source.getDistrict_id());
-        target.setPostal_code(source.getPostal_code());
-        target.setHouse_no(source.getHouse_no());
-        target.setLandmark(source.getLandmark());
-        target.setEmrg_contact_no(source.getEmrg_contact_no());
+        if (source.getAddrs_type() != null)
+            target.setAddrs_type(source.getAddrs_type());
+        if (source.getCountry_id() != null)
+            target.setCountry_id(source.getCountry_id());
+        if (source.getState_id() != null)
+            target.setState_id(source.getState_id());
+        if (source.getCity_id() != null)
+            target.setCity_id(source.getCity_id());
+        if (source.getDistrict_id() != null)
+            target.setDistrict_id(source.getDistrict_id());
+        if (source.getPostal_code() != null)
+            target.setPostal_code(source.getPostal_code());
+        if (source.getHouse_no() != null)
+            target.setHouse_no(source.getHouse_no());
+        if (source.getLandmark() != null)
+            target.setLandmark(source.getLandmark());
+        if (source.getEmrg_contact_no() != null)
+            target.setEmrg_contact_no(source.getEmrg_contact_no());
         target.setIs_active(source.getIs_active());
         target.setIs_per_and_curr(source.getIs_per_and_curr());
     }
@@ -1488,22 +1526,34 @@ public class EmployeeBasicInfoTabService {
      * Helper: Update Family fields
      */
     private void updateFamilyFields(EmpFamilyDetails target, EmpFamilyDetails source) {
-        // Full Name and Aadhaar (Updated)
-        target.setFullName(source.getFullName());
-        target.setAdhaarNo(source.getAdhaarNo());
-
-        target.setDate_of_birth(source.getDate_of_birth());
-        target.setGender_id(source.getGender_id());
-        target.setRelation_id(source.getRelation_id());
-        target.setBlood_group_id(source.getBlood_group_id());
-        target.setNationality(source.getNationality());
-        target.setOccupation(source.getOccupation());
-        target.setIs_dependent(source.getIs_dependent());
-        target.setIs_late(source.getIs_late());
-        target.setIs_sri_chaitanya_emp(source.getIs_sri_chaitanya_emp());
-        target.setParent_emp_id(source.getParent_emp_id());
-        target.setEmail(source.getEmail());
-        target.setContact_no(source.getContact_no());
+        if (source.getFullName() != null)
+            target.setFullName(source.getFullName());
+        if (source.getAdhaarNo() != null)
+            target.setAdhaarNo(source.getAdhaarNo());
+        if (source.getDate_of_birth() != null)
+            target.setDate_of_birth(source.getDate_of_birth());
+        if (source.getGender_id() != null)
+            target.setGender_id(source.getGender_id());
+        if (source.getRelation_id() != null)
+            target.setRelation_id(source.getRelation_id());
+        if (source.getBlood_group_id() != null)
+            target.setBlood_group_id(source.getBlood_group_id());
+        if (source.getNationality() != null)
+            target.setNationality(source.getNationality());
+        if (source.getOccupation() != null)
+            target.setOccupation(source.getOccupation());
+        if (source.getIs_dependent() != null)
+            target.setIs_dependent(source.getIs_dependent());
+        if (source.getIs_late() != null)
+            target.setIs_late(source.getIs_late());
+        if (source.getIs_sri_chaitanya_emp() != null)
+            target.setIs_sri_chaitanya_emp(source.getIs_sri_chaitanya_emp());
+        if (source.getParent_emp_id() != null)
+            target.setParent_emp_id(source.getParent_emp_id());
+        if (source.getEmail() != null)
+            target.setEmail(source.getEmail());
+        if (source.getContact_no() != null)
+            target.setContact_no(source.getContact_no());
         target.setIs_active(source.getIs_active());
     }
 
@@ -1807,16 +1857,22 @@ public class EmployeeBasicInfoTabService {
      * Helper: Update Experience fields
      */
     private void updateExperienceFields(EmpExperienceDetails target, EmpExperienceDetails source) {
-        target.setPre_organigation_name(source.getPre_organigation_name());
-        target.setDate_of_join(source.getDate_of_join());
-        target.setDate_of_leave(source.getDate_of_leave());
-        target.setDesignation(source.getDesignation());
-        target.setLeaving_reason(source.getLeaving_reason());
-        target.setNature_of_duties(source.getNature_of_duties());
-        target.setCompany_addr(source.getCompany_addr());
-        target.setGross_salary(source.getGross_salary());
-        // Note: preChaitanyaId has been moved to BasicInfoDTO and Employee entity
-        // It is no longer stored in EmpExperienceDetails (field removed from entity)
+        if (source.getPre_organigation_name() != null)
+            target.setPre_organigation_name(source.getPre_organigation_name());
+        if (source.getDate_of_join() != null)
+            target.setDate_of_join(source.getDate_of_join());
+        if (source.getDate_of_leave() != null)
+            target.setDate_of_leave(source.getDate_of_leave());
+        if (source.getDesignation() != null)
+            target.setDesignation(source.getDesignation());
+        if (source.getLeaving_reason() != null)
+            target.setLeaving_reason(source.getLeaving_reason());
+        if (source.getNature_of_duties() != null)
+            target.setNature_of_duties(source.getNature_of_duties());
+        if (source.getCompany_addr() != null)
+            target.setCompany_addr(source.getCompany_addr());
+        if (source.getGross_salary() != null)
+            target.setGross_salary(source.getGross_salary());
         target.setIs_active(source.getIs_active());
     }
 

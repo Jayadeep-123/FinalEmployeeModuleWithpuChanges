@@ -1,14 +1,14 @@
 package com.employee.service;
- 
+
 import java.time.LocalDateTime;
 import java.util.Optional;
- 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
- 
+
 import com.employee.dto.BasicInfoDTO;
 import com.employee.dto.EmployeeOnboardingDTO;
 import com.employee.dto.TempPayrollIdResponseDTO;
@@ -23,43 +23,44 @@ import com.employee.repository.EmpPfDetailsRepository;
 import com.employee.repository.EmployeeCheckListStatusRepository;
 import com.employee.repository.EmployeeRepository;
 import com.employee.repository.SkillTestDetailsRepository;
- 
+
 @Service
 @Transactional
 public class EmployeeOnboardingService {
- 
+
     private static final Logger logger = LoggerFactory.getLogger(EmployeeOnboardingService.class);
- 
+
     @Autowired
     private EmployeeRepository employeeRepository;
- 
+
     @Autowired
     private EmpDetailsRepository empDetailsRepository;
- 
+
     @Autowired
     private EmpPfDetailsRepository empPfDetailsRepository;
- 
+
     @Autowired
     private SkillTestDetailsRepository skillTestDetailsRepository;
- 
+
     @Autowired
     private EmployeeCheckListStatusRepository employeeCheckListStatusRepository;
- 
+
     @Autowired
     private EmployeeValidationService employeeValidationService;
- 
+
     @Autowired
     private EmployeeEntityPreparationService entityPreparationService;
- 
+
     @Transactional
     public TempPayrollIdResponseDTO generateOrValidateTempPayrollId(Integer hrEmployeeId, BasicInfoDTO basicInfo) {
- 
-        logger.info("Creating NEW employee and generating/validating temp_payroll_id. HR Employee ID (created_by): {}", hrEmployeeId);
- 
+
+        logger.info("Creating NEW employee and generating/validating temp_payroll_id. HR Employee ID (created_by): {}",
+                hrEmployeeId);
+
         if (basicInfo == null) {
             throw new ResourceNotFoundException("Basic Info is required");
         }
- 
+
         try {
             EmployeeOnboardingDTO partialOnboardingDTO = new EmployeeOnboardingDTO();
             partialOnboardingDTO.setBasicInfo(basicInfo);
@@ -70,85 +71,90 @@ public class EmployeeOnboardingService {
                     e.getMessage(), e);
             throw e;
         }
- 
+
         Employee hrEmployee = employeeRepository.findById(hrEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "HR Employee not found with emp_id: " + hrEmployeeId));
- 
+
         Campus campus = hrEmployee.getCampus_id();
         if (campus == null) {
             throw new ResourceNotFoundException(
-                    "HR Employee (emp_id: " + hrEmployeeId + ") does not have a campus assigned. Cannot generate temp_payroll_id.");
+                    "HR Employee (emp_id: " + hrEmployeeId
+                            + ") does not have a campus assigned. Cannot generate temp_payroll_id.");
         }
- 
+
         if (campus.getIsActive() == null || campus.getIsActive() != 1) {
             throw new ResourceNotFoundException(
-                    "HR Employee's campus (campus_id: " + campus.getCampusId() + ") is not active. Cannot generate temp_payroll_id.");
+                    "HR Employee's campus (campus_id: " + campus.getCampusId()
+                            + ") is not active. Cannot generate temp_payroll_id.");
         }
- 
+
         int campusCodeInt = campus.getCode();
         if (campusCodeInt == 0) {
             throw new ResourceNotFoundException(
                     "Campus code is 0 or not set for HR Employee's campus_id: " + campus.getCampusId() +
                             ". Cannot generate temp_payroll_id.");
         }
- 
+
         String campusCode = String.valueOf(campusCodeInt);
         String baseKey = "TEMP" + campusCode;
         logger.info("Base key for temp_payroll_id generation using HR Employee's campus code: {}", baseKey);
- 
+
         String tempPayrollIdFromFrontend = basicInfo.getTempPayrollId();
         Long aadharNum = basicInfo.getAdhaarNo();
         Long phoneNumber = basicInfo.getPrimaryMobileNo();
- 
+
         logger.info("Received values - tempPayrollId: '{}', aadharNum: '{}', phoneNumber: {}",
                 tempPayrollIdFromFrontend, aadharNum, phoneNumber);
- 
+
         if (tempPayrollIdFromFrontend == null || tempPayrollIdFromFrontend.trim().isEmpty()) {
-           
+
             if (aadharNum == null || aadharNum <= 0) {
                 logger.error("❌ Validation failed: aadharNum is null or empty. Received BasicInfoDTO: {}", basicInfo);
                 throw new ResourceNotFoundException(
                         "Aadhaar number (aadharNum) is required for temp_payroll_id generation when tempPayrollId is not provided. Please provide 'aadharNum' field in the request body.");
             }
- 
+
             if (phoneNumber == null || phoneNumber <= 0) {
                 logger.error("❌ Validation failed: primaryMobileNo is null. Received BasicInfoDTO: {}", basicInfo);
                 throw new ResourceNotFoundException(
                         "Phone number (primaryMobileNo) is required for temp_payroll_id generation when tempPayrollId is not provided. Please provide 'primaryMobileNo' field in the request body.");
             }
         }
- 
+
         String finalTempPayrollId = null;
         Employee existingEmployee = null;
         boolean isUpdate = false;
- 
+
         if (tempPayrollIdFromFrontend != null && !tempPayrollIdFromFrontend.trim().isEmpty()) {
             tempPayrollIdFromFrontend = tempPayrollIdFromFrontend.trim();
             logger.info("tempPayrollId provided from frontend: {}", tempPayrollIdFromFrontend);
- 
+
             Optional<com.employee.entity.SkillTestDetails> skillTestDetails = skillTestDetailsRepository
                     .findActiveByTempPayrollId(tempPayrollIdFromFrontend);
- 
+
             Optional<Employee> existingEmployeeOpt = employeeRepository.findByTempPayrollId(tempPayrollIdFromFrontend);
- 
+
             boolean foundInSkillTest = skillTestDetails.isPresent();
             boolean foundInEmployee = existingEmployeeOpt.isPresent();
- 
+
             if (foundInSkillTest && foundInEmployee) {
                 existingEmployee = existingEmployeeOpt.get();
                 isUpdate = true;
-                logger.info("✅ tempPayrollId '{}' found in BOTH SkillTestDetails and Employee table (emp_id: {}). UPDATE MODE: Will update existing employee.",
+                logger.info(
+                        "✅ tempPayrollId '{}' found in BOTH SkillTestDetails and Employee table (emp_id: {}). UPDATE MODE: Will update existing employee.",
                         tempPayrollIdFromFrontend, existingEmployee.getEmp_id());
                 finalTempPayrollId = tempPayrollIdFromFrontend;
             } else if (foundInSkillTest && !foundInEmployee) {
-                logger.info("✅ tempPayrollId '{}' found in SkillTestDetails table but NOT in Employee table. INSERT MODE: Will create new employee.",
+                logger.info(
+                        "✅ tempPayrollId '{}' found in SkillTestDetails table but NOT in Employee table. INSERT MODE: Will create new employee.",
                         tempPayrollIdFromFrontend);
                 finalTempPayrollId = tempPayrollIdFromFrontend;
             } else if (!foundInSkillTest && foundInEmployee) {
                 existingEmployee = existingEmployeeOpt.get();
                 isUpdate = true;
-                logger.info("✅ tempPayrollId '{}' found in Employee table (emp_id: {}) but NOT in SkillTestDetails. UPDATE MODE: Will update existing employee and email if provided.",
+                logger.info(
+                        "✅ tempPayrollId '{}' found in Employee table (emp_id: {}) but NOT in SkillTestDetails. UPDATE MODE: Will update existing employee and email if provided.",
                         tempPayrollIdFromFrontend, existingEmployee.getEmp_id());
                 finalTempPayrollId = tempPayrollIdFromFrontend;
             } else {
@@ -157,18 +163,19 @@ public class EmployeeOnboardingService {
                                 "' not found in SkillTestDetails or Employee table. Please provide a valid tempPayrollId.");
             }
         } else {
-            logger.info("tempPayrollId NOT provided from frontend. Checking aadhar OR phone in SkillTestDetails, Employee, and EmpDetails tables...");
- 
+            logger.info(
+                    "tempPayrollId NOT provided from frontend. Checking aadhar OR phone in SkillTestDetails, Employee, and EmpDetails tables...");
+
             Optional<com.employee.entity.SkillTestDetails> existingByAadhaarInSkillTest = skillTestDetailsRepository
                     .findActiveByAadhaarNo(aadharNum);
- 
+
             Optional<EmpDetails> existingByAadhaarInEmployee = empDetailsRepository.findByAdhaar_no(aadharNum);
- 
+
             Optional<com.employee.entity.SkillTestDetails> existingByPhoneInSkillTest = skillTestDetailsRepository
                     .findActiveByContactNumber(phoneNumber);
- 
+
             Optional<Employee> existingByPhoneInEmployee = employeeRepository.findByPrimary_mobile_no(phoneNumber);
- 
+
             if (existingByAadhaarInSkillTest.isPresent()) {
                 String existingTempPayrollId = existingByAadhaarInSkillTest.get().getTempPayrollId();
                 Long existingPhone = existingByAadhaarInSkillTest.get().getContact_number();
@@ -179,7 +186,7 @@ public class EmployeeOnboardingService {
                                 "' and phone number: '" + existingPhone +
                                 "'. Cannot generate new tempPayrollId. Please use the existing tempPayrollId from SkillTestDetails.");
             }
- 
+
             if (existingByAadhaarInEmployee.isPresent()) {
                 EmpDetails empDetails = existingByAadhaarInEmployee.get();
                 Employee existingEmp = empDetails.getEmployee_id();
@@ -194,13 +201,15 @@ public class EmployeeOnboardingService {
                                         ") with tempPayrollId: '" + existingTempPayrollId +
                                         "'. Cannot generate new tempPayrollId. Please use the existing tempPayrollId.");
                     } else {
-                        // Employee is inactive - allow creating new ID (person is returning after being inactive)
-                        logger.info("Employee with Aadhaar number '{}' exists but is INACTIVE (emp_id: {}). Allowing new tempPayrollId generation.",
+                        // Employee is inactive - allow creating new ID (person is returning after being
+                        // inactive)
+                        logger.info(
+                                "Employee with Aadhaar number '{}' exists but is INACTIVE (emp_id: {}). Allowing new tempPayrollId generation.",
                                 aadharNum, existingEmp.getEmp_id());
                     }
                 }
             }
- 
+
             if (existingByPhoneInSkillTest.isPresent()) {
                 String existingTempPayrollId = existingByPhoneInSkillTest.get().getTempPayrollId();
                 Long existingAadhaar = existingByPhoneInSkillTest.get().getAadhaar_no();
@@ -211,7 +220,7 @@ public class EmployeeOnboardingService {
                                 "' and Aadhaar number: '" + existingAadhaar +
                                 "'. Cannot generate new tempPayrollId. Please use the existing tempPayrollId from SkillTestDetails.");
             }
- 
+
             if (existingByPhoneInEmployee.isPresent()) {
                 Employee existingEmp = existingByPhoneInEmployee.get();
                 // Only prevent duplicate if employee is ACTIVE
@@ -224,22 +233,25 @@ public class EmployeeOnboardingService {
                                     ") with tempPayrollId: '" + existingTempPayrollId +
                                     "'. Cannot generate new tempPayrollId. Please use the existing tempPayrollId.");
                 } else {
-                    // Employee is inactive - allow creating new ID (person is returning after being inactive)
-                    logger.info("Employee with phone number '{}' exists but is INACTIVE (emp_id: {}). Allowing new tempPayrollId generation.",
+                    // Employee is inactive - allow creating new ID (person is returning after being
+                    // inactive)
+                    logger.info(
+                            "Employee with phone number '{}' exists but is INACTIVE (emp_id: {}). Allowing new tempPayrollId generation.",
                             phoneNumber, existingEmp.getEmp_id());
                 }
             }
- 
-            logger.info("Employee NOT found in SkillTestDetails, Employee, or EmpDetails tables. Generating new tempPayrollId...");
- 
+
+            logger.info(
+                    "Employee NOT found in SkillTestDetails, Employee, or EmpDetails tables. Generating new tempPayrollId...");
+
             String maxInSkillTest = skillTestDetailsRepository.findMaxTempPayrollIdByKey(baseKey + "%");
             String maxInEmployee = employeeRepository.findMaxTempPayrollIdByKey(baseKey + "%");
- 
+
             logger.info("Max tempPayrollId in SkillTestDetails: {}", maxInSkillTest);
             logger.info("Max tempPayrollId in Employee: {}", maxInEmployee);
- 
+
             int maxValue = 0;
- 
+
             if (maxInSkillTest != null) {
                 try {
                     String numberPart = maxInSkillTest.substring(baseKey.length());
@@ -251,7 +263,7 @@ public class EmployeeOnboardingService {
                     logger.warn("Could not parse number part from SkillTestDetails: {}", maxInSkillTest);
                 }
             }
- 
+
             if (maxInEmployee != null) {
                 try {
                     String numberPart = maxInEmployee.substring(baseKey.length());
@@ -263,24 +275,24 @@ public class EmployeeOnboardingService {
                     logger.warn("Could not parse number part from Employee: {}", maxInEmployee);
                 }
             }
- 
+
             int nextValue = maxValue + 1;
             String paddedValue = String.format("%04d", nextValue);
             finalTempPayrollId = baseKey + paddedValue;
- 
+
             logger.info("Generated new tempPayrollId: {} (next value: {})", finalTempPayrollId, nextValue);
         }
- 
+
         logger.info("✅ All validations passed. Proceeding with entity preparation and database save...");
- 
+
         Employee employee = null;
- 
+
         if (isUpdate) {
             employee = existingEmployee;
             logger.info("🔄 UPDATE MODE: Updating existing employee (emp_id: {})", employee.getEmp_id());
- 
+
             entityPreparationService.updateEmployeeEntity(employee, basicInfo);
- 
+
             if (employee.getEmp_check_list_status_id() != null) {
                 String currentStatus = employee.getEmp_check_list_status_id().getCheck_app_status_name();
                 if ("Confirm".equals(currentStatus)) {
@@ -290,15 +302,17 @@ public class EmployeeOnboardingService {
             }
         } else {
             employee = entityPreparationService.prepareEmployeeEntity(basicInfo);
-           
+
             EmployeeCheckListStatus incompletedStatus = employeeCheckListStatusRepository
                     .findByCheck_app_status_name("Incompleted")
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "EmployeeCheckListStatus with name 'Incompleted' not found"));
             employee.setEmp_check_list_status_id(incompletedStatus);
-            logger.info("➕ INSERT MODE: Creating new employee with temp_payroll_id: {} (app status set to 'Incompleted')", finalTempPayrollId);
+            logger.info(
+                    "➕ INSERT MODE: Creating new employee with temp_payroll_id: {} (app status set to 'Incompleted')",
+                    finalTempPayrollId);
         }
- 
+
         employee.setTempPayrollId(finalTempPayrollId);
 
         if (isUpdate && employee.getEmp_check_list_status_id() != null) {
@@ -309,12 +323,14 @@ public class EmployeeOnboardingService {
             }
         }
 
-        // Prepare EmpDetails and EmpPfDetails entities in memory FIRST (before saving employee)
+        // Prepare EmpDetails and EmpPfDetails entities in memory FIRST (before saving
+        // employee)
         Integer createdBy = basicInfo.getCreatedBy();
         EmpDetails empDetails = entityPreparationService.prepareEmpDetailsEntity(basicInfo, null, employee, createdBy);
         EmpPfDetails empPfDetails = entityPreparationService.prepareEmpPfDetailsEntity(basicInfo, employee, createdBy);
 
-        // Validate ALL entities BEFORE saving to prevent emp_id sequence consumption on failure
+        // Validate ALL entities BEFORE saving to prevent emp_id sequence consumption on
+        // failure
         employeeValidationService.validatePreparedEntities(employee, empDetails, empPfDetails);
         employeeValidationService.validateEntityConstraints(employee, empDetails, empPfDetails);
 
@@ -322,22 +338,23 @@ public class EmployeeOnboardingService {
         employee = employeeRepository.save(employee);
 
         Integer employeeId = employee.getEmp_id();
- 
+
         if (isUpdate) {
-            Optional<EmpDetails> existingDetails = empDetailsRepository.findById(employeeId);
- 
+            Optional<EmpDetails> existingDetails = empDetailsRepository.findByEmployeeId(employeeId);
+
             if (existingDetails.isPresent()) {
                 EmpDetails existing = existingDetails.get();
                 entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                 existing.setUpdated_by(hrEmployeeId);
                 existing.setUpdated_date(LocalDateTime.now());
                 empDetailsRepository.save(existing);
-                logger.info("Updated existing EmpDetails for employee (emp_id: {}) - email excluded from update", employeeId);
+                logger.info("Updated existing EmpDetails for employee (emp_id: {}) - email excluded from update",
+                        employeeId);
             } else {
                 if (empDetails.getPersonal_email() != null && !empDetails.getPersonal_email().trim().isEmpty()) {
                     Optional<EmpDetails> existingByEmail = empDetailsRepository
                             .findByPersonal_email(empDetails.getPersonal_email().trim());
- 
+
                     if (existingByEmail.isPresent()) {
                         EmpDetails existing = existingByEmail.get();
                         entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
@@ -360,7 +377,7 @@ public class EmployeeOnboardingService {
             if (empDetails.getPersonal_email() != null && !empDetails.getPersonal_email().trim().isEmpty()) {
                 Optional<EmpDetails> existingByEmail = empDetailsRepository
                         .findByPersonal_email(empDetails.getPersonal_email().trim());
- 
+
                 if (existingByEmail.isPresent()) {
                     EmpDetails existing = existingByEmail.get();
                     entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
@@ -368,7 +385,8 @@ public class EmployeeOnboardingService {
                     existing.setUpdated_by(hrEmployeeId);
                     existing.setUpdated_date(LocalDateTime.now());
                     empDetailsRepository.save(existing);
-                    logger.info("Updated existing EmpDetails found by email during INSERT for employee (emp_id: {}), email: {}",
+                    logger.info(
+                            "Updated existing EmpDetails found by email during INSERT for employee (emp_id: {}), email: {}",
                             employeeId, empDetails.getPersonal_email());
                 } else {
                     empDetailsRepository.save(empDetails);
@@ -382,10 +400,10 @@ public class EmployeeOnboardingService {
 
         if (empPfDetails != null) {
             empPfDetails.setEmployee_id(employee);
- 
+
             if (isUpdate) {
                 Optional<EmpPfDetails> existingPfDetails = empPfDetailsRepository.findByEmployeeId(employeeId);
- 
+
                 if (existingPfDetails.isPresent()) {
                     EmpPfDetails existing = existingPfDetails.get();
                     existing.setPre_esi_no(empPfDetails.getPre_esi_no());
@@ -403,22 +421,24 @@ public class EmployeeOnboardingService {
                 logger.info("Created new EmpPfDetails for employee (emp_id: {})", employeeId);
             }
         }
- 
+
         if (isUpdate) {
-            logger.info("✅ Successfully UPDATED employee (emp_id: {}) with tempPayrollId '{}'. Updated by HR Employee (emp_id: {})",
+            logger.info(
+                    "✅ Successfully UPDATED employee (emp_id: {}) with tempPayrollId '{}'. Updated by HR Employee (emp_id: {})",
                     employeeId, finalTempPayrollId, hrEmployeeId);
         } else {
-            logger.info("✅ Successfully created NEW employee (emp_id: {}) with tempPayrollId '{}'. Created by HR Employee (emp_id: {})",
+            logger.info(
+                    "✅ Successfully created NEW employee (emp_id: {}) with tempPayrollId '{}'. Created by HR Employee (emp_id: {})",
                     employeeId, finalTempPayrollId, hrEmployeeId);
         }
- 
+
         TempPayrollIdResponseDTO response = new TempPayrollIdResponseDTO();
         response.setTempPayrollId(finalTempPayrollId);
         response.setEmployeeId(employeeId);
         response.setMessage(isUpdate ? "Employee updated successfully with Temp Payroll ID"
                 : "New employee created successfully with Temp Payroll ID");
         response.setBasicInfo(basicInfo);
- 
+
         return response;
     }
 }
