@@ -73,7 +73,7 @@ public class SkillTestDetailsController {
 
     }
 
-    @GetMapping("/passed_employess/skilltestApprovalTable/")
+    @GetMapping("/passed_employees/skilltestApprovalTable")
     public List<SkillTestDetailsResultDto> get_details_of_passed_employees() {
         return skillTestDetailsService.get_details_of_passed_employees();
 

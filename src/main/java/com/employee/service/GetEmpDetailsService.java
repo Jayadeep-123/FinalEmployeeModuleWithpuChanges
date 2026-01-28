@@ -453,126 +453,128 @@ public class GetEmpDetailsService {
 		return response;
 	}
 
-//	public WorkingInfoDTO getWorkingInfoByTempPayrollId(String tempPayrollId) {
-//		// 1. Fetch the Employee entity with all required joins
-//		Employee employee = employeeRepo.findWorkingInfoByTempPayrollId(tempPayrollId)
-//				.orElseThrow(() -> new RuntimeException("Employee not found with tempPayrollId: " + tempPayrollId)); // Use
-//																														// a
-//																														// custom
-//																														// Exception
-//																														// later
-//
-//		// 2. Map the Employee entity to the DTO
-//		return mapToWorkingInfoDTO(employee);
-//	}
-//
-//	private WorkingInfoDTO mapToWorkingInfoDTO(Employee e) {
-//		WorkingInfoDTO dto = new WorkingInfoDTO();
-//
-//		// Employee entity fields
-//		dto.setTempPayrollId(e.getTempPayrollId());
-//		dto.setJoiningDate(e.getDate_of_join());
-//
-//		// Campus related fields (via campus_id)
-//		if (e.getCampus_id() != null) {
-//			dto.setCampusName(e.getCampus_id().getCampusName());
-//			dto.setCampusCode(e.getCampus_id().getCmps_code());
-//			dto.setCampusType(e.getCampus_id().getCmps_type());
-//
-//			// Location (assuming it's derived from the Campus's City)
-//			if (e.getCampus_id().getCity() != null) {
-//				dto.setLocation(e.getCampus_id().getCity().getCityName());
-//			}
-//		}
-//
-//		// Note: Building Name is not directly mapped in your Employee entity.
-//		// You would need a separate fetch or a direct relationship to fill this.
-//		// For now, it is left null/empty.
-//		// dto.setBuildingName(...);
-//
-//		// Related Employee entities (Manager, Hired By, Replacement)
-//		dto.setManagerName(formatEmployeeName(e.getEmployee_manager_id()));
-//		dto.setReplacementEmployeeName(formatEmployeeName(e.getEmployee_replaceby_id()));
-//		dto.setHiredByName(formatEmployeeName(e.getEmployee_hired()));
-//
-//		// Working Mode, Joining As, Mode of Hiring
-//		if (e.getWorkingMode_id() != null) {
-//			dto.setWorkingModeType(e.getWorkingMode_id().getWork_mode_type());
-//		}
-//		if (e.getJoin_type_id() != null) {
-//			dto.setJoiningAsType(e.getJoin_type_id().getJoin_type());
-//		}
-//
-//		// Assuming ModeOfHiring has a getType() method (based on entity naming pattern)
-//		if (e.getModeOfHiring_id() != null) {
-//			// Note: Assuming 'ModeOfHiring' entity exists and has a method to get the type.
-//			// Placeholder: Replace with actual method if different.
-//			// dto.setModeOfHiringType(e.getModeOfHiring_id().getModeOfHiringType());
-//		}
-//
-//		return dto;
-//	}
-	
-	
+	// public WorkingInfoDTO getWorkingInfoByTempPayrollId(String tempPayrollId) {
+	// // 1. Fetch the Employee entity with all required joins
+	// Employee employee =
+	// employeeRepo.findWorkingInfoByTempPayrollId(tempPayrollId)
+	// .orElseThrow(() -> new RuntimeException("Employee not found with
+	// tempPayrollId: " + tempPayrollId)); // Use
+	// // a
+	// // custom
+	// // Exception
+	// // later
+	//
+	// // 2. Map the Employee entity to the DTO
+	// return mapToWorkingInfoDTO(employee);
+	// }
+	//
+	// private WorkingInfoDTO mapToWorkingInfoDTO(Employee e) {
+	// WorkingInfoDTO dto = new WorkingInfoDTO();
+	//
+	// // Employee entity fields
+	// dto.setTempPayrollId(e.getTempPayrollId());
+	// dto.setJoiningDate(e.getDate_of_join());
+	//
+	// // Campus related fields (via campus_id)
+	// if (e.getCampus_id() != null) {
+	// dto.setCampusName(e.getCampus_id().getCampusName());
+	// dto.setCampusCode(e.getCampus_id().getCmps_code());
+	// dto.setCampusType(e.getCampus_id().getCmps_type());
+	//
+	// // Location (assuming it's derived from the Campus's City)
+	// if (e.getCampus_id().getCity() != null) {
+	// dto.setLocation(e.getCampus_id().getCity().getCityName());
+	// }
+	// }
+	//
+	// // Note: Building Name is not directly mapped in your Employee entity.
+	// // You would need a separate fetch or a direct relationship to fill this.
+	// // For now, it is left null/empty.
+	// // dto.setBuildingName(...);
+	//
+	// // Related Employee entities (Manager, Hired By, Replacement)
+	// dto.setManagerName(formatEmployeeName(e.getEmployee_manager_id()));
+	// dto.setReplacementEmployeeName(formatEmployeeName(e.getEmployee_replaceby_id()));
+	// dto.setHiredByName(formatEmployeeName(e.getEmployee_hired()));
+	//
+	// // Working Mode, Joining As, Mode of Hiring
+	// if (e.getWorkingMode_id() != null) {
+	// dto.setWorkingModeType(e.getWorkingMode_id().getWork_mode_type());
+	// }
+	// if (e.getJoin_type_id() != null) {
+	// dto.setJoiningAsType(e.getJoin_type_id().getJoin_type());
+	// }
+	//
+	// // Assuming ModeOfHiring has a getType() method (based on entity naming
+	// pattern)
+	// if (e.getModeOfHiring_id() != null) {
+	// // Note: Assuming 'ModeOfHiring' entity exists and has a method to get the
+	// type.
+	// // Placeholder: Replace with actual method if different.
+	// // dto.setModeOfHiringType(e.getModeOfHiring_id().getModeOfHiringType());
+	// }
+	//
+	// return dto;
+	// }
+
 	public WorkingInfoDTO getWorkingInfoByTempPayrollId(String tempPayrollId) {
-        // 1. Fetch the Employee entity with all required joins
-        Employee employee = employeeRepo.findWorkingInfoByTempPayrollId(tempPayrollId)
-                .orElseThrow(() -> new RuntimeException("Employee not found with tempPayrollId: " + tempPayrollId)); // Use
-                                                                                                                        // a
-                                                                                                                        // custom
-                                                                                                                        // Exception
-                                                                                                                        // later
- 
-        // 2. Map the Employee entity to the DTO
-        return mapToWorkingInfoDTO(employee);
-    }
- 
-    private WorkingInfoDTO mapToWorkingInfoDTO(Employee e) {
-        WorkingInfoDTO dto = new WorkingInfoDTO();
- 
-        // Employee entity fields
-        dto.setTempPayrollId(e.getTempPayrollId());
-        dto.setJoiningDate(e.getDate_of_join());
- 
-        // Campus related fields (via campus_id)
-        if (e.getCampus_id() != null) {
-            dto.setCampusName(e.getCampus_id().getCampusName());
-            dto.setCampusCode(e.getCampus_id().getCmps_code());
-            dto.setCampusType(e.getCampus_id().getCmps_type());
- 
-            // Location (assuming it's derived from the Campus's City)
-            if (e.getCampus_id().getCity() != null) {
-                dto.setLocation(e.getCampus_id().getCity().getCityName());
-            }
-        }
- 
-        // Note: Building Name is not directly mapped in your Employee entity.
-        // You would need a separate fetch or a direct relationship to fill this.
-        if (e.getBuilding_id() != null) {
-            dto.setBuildingName(e.getBuilding_id().getBuildingName());
-        }
- 
-        // Related Employee entities (Manager, Hired By, Replacement)
-        dto.setManagerName(formatEmployeeName(e.getEmployee_manager_id()));
-        dto.setReplacementEmployeeName(formatEmployeeName(e.getEmployee_replaceby_id()));
-        dto.setHiredByName(formatEmployeeName(e.getEmployee_hired()));
- 
-        // Working Mode, Joining As, Mode of Hiring
-        if (e.getWorkingMode_id() != null) {
-            dto.setWorkingModeType(e.getWorkingMode_id().getWork_mode_type());
-        }
-        if (e.getJoin_type_id() != null) {
-            dto.setJoiningAsType(e.getJoin_type_id().getJoin_type());
-        }
- 
-        // Assuming ModeOfHiring has a getType() method (based on entity naming pattern)
-        if (e.getModeOfHiring_id() != null) {
-            dto.setModeOfHiringType(e.getModeOfHiring_id().getMode_of_hiring_name());
-        }
- 
-        return dto;
-    }
- 
+		// 1. Fetch the Employee entity with all required joins
+		Employee employee = employeeRepo.findWorkingInfoByTempPayrollId(tempPayrollId)
+				.orElseThrow(() -> new RuntimeException("Employee not found with tempPayrollId: " + tempPayrollId)); // Use
+																														// a
+																														// custom
+																														// Exception
+																														// later
+
+		// 2. Map the Employee entity to the DTO
+		return mapToWorkingInfoDTO(employee);
+	}
+
+	private WorkingInfoDTO mapToWorkingInfoDTO(Employee e) {
+		WorkingInfoDTO dto = new WorkingInfoDTO();
+
+		// Employee entity fields
+		dto.setTempPayrollId(e.getTempPayrollId());
+		dto.setJoiningDate(e.getDate_of_join());
+
+		// Campus related fields (via campus_id)
+		if (e.getCampus_id() != null) {
+			dto.setCampusName(e.getCampus_id().getCampusName());
+			dto.setCampusCode(e.getCampus_id().getCmps_code());
+			dto.setCampusType(e.getCampus_id().getCmps_type());
+
+			// Location (assuming it's derived from the Campus's City)
+			if (e.getCampus_id().getCity() != null) {
+				dto.setLocation(e.getCampus_id().getCity().getCityName());
+			}
+		}
+
+		// Note: Building Name is not directly mapped in your Employee entity.
+		// You would need a separate fetch or a direct relationship to fill this.
+		if (e.getBuilding_id() != null) {
+			dto.setBuildingName(e.getBuilding_id().getBuildingName());
+		}
+
+		// Related Employee entities (Manager, Hired By, Replacement)
+		dto.setManagerName(formatEmployeeName(e.getEmployee_manager_id()));
+		dto.setReplacementEmployeeName(formatEmployeeName(e.getEmployee_replaceby_id()));
+		dto.setHiredByName(formatEmployeeName(e.getEmployee_hired()));
+
+		// Working Mode, Joining As, Mode of Hiring
+		if (e.getWorkingMode_id() != null) {
+			dto.setWorkingModeType(e.getWorkingMode_id().getWork_mode_type());
+		}
+		if (e.getJoin_type_id() != null) {
+			dto.setJoiningAsType(e.getJoin_type_id().getJoin_type());
+		}
+
+		// Assuming ModeOfHiring has a getType() method (based on entity naming pattern)
+		if (e.getModeOfHiring_id() != null) {
+			dto.setModeOfHiringType(e.getModeOfHiring_id().getMode_of_hiring_name());
+		}
+
+		return dto;
+	}
 
 	private String formatEmployeeName(Employee emp) {
 		if (emp != null) {
@@ -631,6 +633,10 @@ public class GetEmpDetailsService {
 
 	public List<EmpOnboardingStatusView> getEmpStatus() {
 		return empOnboardingStatusViewRepository.findAll();
+	}
+
+	public List<EmpOnboardingStatusView> getEmpStatusByCategoryId(Integer categoryId) {
+		return empOnboardingStatusViewRepository.findByCategoryId(categoryId);
 	}
 
 	public FamilyInfoResponseDTO getFamilyDetailsWithAddressInfo(String tempPayrollId) {

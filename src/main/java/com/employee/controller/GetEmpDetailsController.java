@@ -209,7 +209,11 @@ public class GetEmpDetailsController {
 	}
 
 	@GetMapping("/status")
-	public List<EmpOnboardingStatusView> getEmpStatus() {
+	public List<EmpOnboardingStatusView> getEmpStatus(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer categoryId) {
+		if (categoryId != null) {
+			return getEmpDetailsService.getEmpStatusByCategoryId(categoryId);
+		}
 		return getEmpDetailsService.getEmpStatus();
 	}
 
