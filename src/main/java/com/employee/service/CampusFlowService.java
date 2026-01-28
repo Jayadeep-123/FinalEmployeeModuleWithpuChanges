@@ -61,8 +61,10 @@ public class CampusFlowService {
                                                                                                                         // BOTH
                                                                                                                         // IDS
 
-        // 2. Map the entities to the DTOs in the service layer
+        // 2. Map the entities to the DTOs in the service layer - Filter to only include
+        // employees with payroll ID
         return employees.stream()
+                .filter(emp -> emp.getPayRollId() != null && !emp.getPayRollId().isEmpty())
                 .map(this::convertToDropdownDTO)
                 .collect(Collectors.toList());
     }
@@ -117,8 +119,9 @@ public class CampusFlowService {
                         es -> es.getEmp_id().getEmp_id(),
                         Collectors.mapping(es -> es.getSubject_id().getSubject_name(), Collectors.toList())));
 
-        // 4. Map and Calculate
+        // 4. Map and Calculate - Filter to only include employees with payroll ID
         return employees.stream()
+                .filter(emp -> emp.getPayRollId() != null && !emp.getPayRollId().isEmpty())
                 .map(emp -> convertToFullDetailsDTO(
                         emp,
                         detailsMap.get(emp.getEmp_id()),
@@ -138,6 +141,7 @@ public class CampusFlowService {
         return new EmployeeFullDetailsDTO(
                 emp.getEmp_id(),
                 emp.getFirst_name() + " " + emp.getLast_name(),
+                emp.getPayRollId(), // Will be null if not set
                 emp.getPrimary_mobile_no(),
                 emp.getEmail(),
                 emp.getDesignation().getDesignation_name(),
