@@ -18,4 +18,5 @@ public class EmployeeSearchRequestDTO {
     private Integer employeeTypeId; // Optional - filter by employee type ID
     private Integer campusId; // Optional - filter by campus ID
     private String payrollId; // Optional - filter by payroll ID
+    private String cmpsCategory; // Optional - filter by campus category (case-insensitive)
 }
