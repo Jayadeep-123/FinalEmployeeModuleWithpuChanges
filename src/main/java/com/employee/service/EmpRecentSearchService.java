@@ -3,6 +3,9 @@ package com.employee.service;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -97,5 +100,34 @@ public class EmpRecentSearchService {
     public void updateFinalLogout(Integer loginEmpId) {
         LocalDateTime now = LocalDateTime.now();
         empRecentSearchRepository.updateLogOutTimeForPendingRecords(loginEmpId, now);
+    }
+
+    public List<EmpRecentSearchDTO> getRecentSearches(Integer loginEmpId) {
+        List<EmpRecentSearch> entities = empRecentSearchRepository
+                .findByLogInEmployee_EmpIdOrderByLogInDesc(loginEmpId);
+        return entities.stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    private EmpRecentSearchDTO mapToDTO(EmpRecentSearch entity) {
+        EmpRecentSearchDTO dto = new EmpRecentSearchDTO();
+        dto.setEmpRecentSearchId(entity.getEmpRecentSearchId());
+        dto.setLogInEmpId(entity.getLogInEmployee() != null ? entity.getLogInEmployee().getEmp_id() : null);
+        dto.setEmpId(entity.getEmployee() != null ? entity.getEmployee().getEmp_id() : null);
+        dto.setEmpName(entity.getEmpName());
+        dto.setPayrollId(entity.getPayrollId());
+        dto.setTempPayrollId(entity.getTempPayrollId());
+        dto.setDepartmentName(entity.getDepartmentName());
+        dto.setJoinType(entity.getJoinType());
+        dto.setLevelName(entity.getLevelName());
+        dto.setLogIn(entity.getLogIn());
+        dto.setLogOut(entity.getLogOut());
+        dto.setPhotoPath(entity.getPhotoPath());
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
+        dto.setUpdatedBy(entity.getUpdatedBy());
+        dto.setUpdatedDate(entity.getUpdatedDate());
+        return dto;
     }
 }
