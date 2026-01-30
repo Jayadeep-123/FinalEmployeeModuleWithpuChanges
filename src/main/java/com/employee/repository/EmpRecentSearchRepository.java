@@ -29,7 +29,7 @@ public interface EmpRecentSearchRepository extends JpaRepository<EmpRecentSearch
         Optional<EmpRecentSearch> findTopByLogInEmployee_EmpIdAndEmployee_EmpIdOrderByLogInDesc(
                         @Param("logInEmpId") Integer logInEmpId, @Param("searchEmpId") Integer searchEmpId);
 
-        @Query("SELECT e FROM EmpRecentSearch e WHERE e.logInEmployee.emp_id = :logInEmpId ORDER BY e.logIn DESC")
+        @Query("SELECT e FROM EmpRecentSearch e WHERE e.logInEmployee.emp_id = :logInEmpId ORDER BY e.logIn DESC LIMIT 5")
         List<EmpRecentSearch> findByLogInEmployee_EmpIdOrderByLogInDesc(@Param("logInEmpId") Integer logInEmpId);
 
         @Modifying
