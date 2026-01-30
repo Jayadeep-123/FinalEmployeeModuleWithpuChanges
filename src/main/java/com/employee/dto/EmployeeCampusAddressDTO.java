@@ -23,4 +23,10 @@ public class EmployeeCampusAddressDTO {
     private Integer managerId;
     private Integer campusId;
     private Integer reportingManagerId;
+    
+    private Integer departmentId;
+    private String departmentName;
+    private Integer designationId;
+    private String designationName;
+    private String employeeName;
 }
