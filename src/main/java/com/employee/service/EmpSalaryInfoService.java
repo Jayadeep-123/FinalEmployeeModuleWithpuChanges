@@ -1257,6 +1257,7 @@ public class EmpSalaryInfoService {
      *                        checkListIds
      * @return BackToCampusDTO with the saved data
      * @throws ResourceNotFoundException if employee status is not "Pending at DO"
+     *                                   or "Back to DO"
      */
     @Transactional
     public BackToCampusDTO backToCampus(BackToCampusDTO backToCampusDTO) {
@@ -1297,24 +1298,24 @@ public class EmpSalaryInfoService {
                             "' is not active. emp_id: " + empId);
         }
 
-        // Validation: Check if current status is "Pending at DO" - this method only
-        // works for "Pending at DO" status
+        // Validation: Check if current status is "Pending at DO" or "Back to DO"
         if (employee.getEmp_check_list_status_id() == null) {
             throw new ResourceNotFoundException(
                     "Cannot send employee back to campus: Employee (emp_id: " + empId +
                             ", temp_payroll_id: '" + backToCampusDTO.getTempPayrollId() +
-                            "') does not have a status set. This method only works when employee status is 'Pending at DO'.");
+                            "') does not have a status set. This method only works when employee status is 'Pending at DO' or 'Back to DO'.");
         }
 
         String currentStatusName = employee.getEmp_check_list_status_id().getCheck_app_status_name();
-        if (!"Pending at DO".equals(currentStatusName)) {
+        if (!"Pending at DO".equals(currentStatusName) && !"Back to DO".equals(currentStatusName)) {
             throw new ResourceNotFoundException(
                     "Cannot send employee back to campus: Current employee status is '" + currentStatusName +
                             "' (emp_id: " + empId + ", temp_payroll_id: '" + backToCampusDTO.getTempPayrollId() +
-                            "'). This method only works when employee status is 'Pending at DO'.");
+                            "'). This method only works when employee status is 'Pending at DO' or 'Back to DO'.");
         }
 
-        logger.info("Employee (emp_id: {}) current status is 'Pending at DO', proceeding with back to campus", empId);
+        logger.info("Employee (emp_id: {}) current status is '{}', proceeding with back to campus", empId,
+                currentStatusName);
 
         // Step 2: Update app status to "Back to Campus"
         EmployeeCheckListStatus backToCampusStatus = employeeCheckListStatusRepository
