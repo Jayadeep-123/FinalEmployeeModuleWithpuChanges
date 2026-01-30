@@ -43,6 +43,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         Join<?, ?> s = c.join("state", JoinType.LEFT);
         Join<?, ?> moh = e.join("modeOfHiring_id", JoinType.LEFT);
         Join<?, ?> et_join = e.join("employee_type_id", JoinType.LEFT);
+        Join<?, ?> bt_proj = c.join("businessType", JoinType.LEFT);
 
         // Build SELECT clause (DTO projection - 14 fields)
         query.select(cb.construct(
@@ -63,6 +64,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                 cb.coalesce(city.get("cityName"), cb.literal("N/A")),
                 c.get("campusId"),
                 cb.coalesce(c.get("campusName"), cb.literal("N/A")),
+                cb.coalesce(bt_proj.get("businessTypeName"), cb.literal("N/A")),
                 et_join.get("emp_type_id"),
                 cb.coalesce(et_join.get("emp_type"), cb.literal("N/A"))));
 
@@ -99,8 +101,8 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         }
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
-            predicates
-                    .add(cb.equal(cb.lower(c.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+            predicates.add(cb.equal(cb.lower(bt_proj.get("businessTypeName")),
+                    searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         query.where(predicates.toArray(new Predicate[0]));
@@ -148,8 +150,10 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         }
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
+            Join<?, ?> countBt = countC.join("businessType", JoinType.LEFT);
             countPredicates.add(
-                    cb.equal(cb.lower(countC.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+                    cb.equal(cb.lower(countBt.get("businessTypeName")),
+                            searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         countQuery.select(cb.count(countRoot));
@@ -174,6 +178,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         Join<?, ?> state = c.join("state", JoinType.LEFT);
         Join<?, ?> et = e.join("employee_type_id", JoinType.LEFT);
         Join<?, ?> moh = e.join("modeOfHiring_id", JoinType.LEFT);
+        Join<?, ?> bt_proj = c.join("businessType", JoinType.LEFT);
 
         // Build SELECT clause (Projection - 14 fields)
         query.select(cb.construct(
@@ -194,6 +199,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                 cb.coalesce(city.get("cityName"), cb.literal("N/A")),
                 c.get("campusId"),
                 cb.coalesce(c.get("campusName"), cb.literal("N/A")),
+                cb.coalesce(bt_proj.get("businessTypeName"), cb.literal("N/A")),
                 et.get("emp_type_id"),
                 cb.coalesce(et.get("emp_type"), cb.literal("N/A"))));
 
@@ -229,6 +235,11 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
 
         if (searchRequest.getDepartmentId() != null) {
             predicates.add(cb.equal(d.get("department_id"), searchRequest.getDepartmentId()));
+        }
+
+        if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
+            predicates.add(cb.equal(cb.lower(bt_proj.get("businessTypeName")),
+                    searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         query.where(predicates.toArray(new Predicate[0]));
@@ -273,8 +284,10 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             countPredicates.add(cb.equal(cd.get("department_id"), searchRequest.getDepartmentId()));
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
-            countPredicates
-                    .add(cb.equal(cb.lower(cc.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+            Join<?, ?> countBt = cc.join("businessType", JoinType.LEFT);
+            countPredicates.add(
+                    cb.equal(cb.lower(countBt.get("businessTypeName")),
+                            searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         countQuery.select(cb.count(countRoot));
@@ -302,6 +315,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         Join<?, ?> city_proj = c.join("city", JoinType.LEFT);
         Join<?, ?> s_proj = c.join("state", JoinType.LEFT);
         Join<?, ?> et_proj = e.join("employee_type_id", JoinType.LEFT);
+        Join<?, ?> bt_proj = c.join("businessType", JoinType.LEFT);
 
         // Build SELECT clause (DTO projection - 14 fields)
         query.select(cb.construct(
@@ -322,6 +336,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                 cb.coalesce(city_proj.get("cityName"), cb.literal("N/A")),
                 c.get("campusId"),
                 cb.coalesce(c.get("campusName"), cb.literal("N/A")),
+                cb.coalesce(bt_proj.get("businessTypeName"), cb.literal("N/A")),
                 et_proj.get("emp_type_id"),
                 cb.coalesce(et_proj.get("emp_type"), cb.literal("N/A"))));
 
@@ -366,8 +381,8 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         }
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
-            predicates
-                    .add(cb.equal(cb.lower(c.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+            predicates.add(cb.equal(cb.lower(bt_proj.get("businessTypeName")),
+                    searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         query.where(predicates.toArray(new Predicate[0]));
@@ -422,8 +437,10 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         }
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
+            Join<?, ?> countBt = countC.join("businessType", JoinType.LEFT);
             countPredicates.add(
-                    cb.equal(cb.lower(countC.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+                    cb.equal(cb.lower(countBt.get("businessTypeName")),
+                            searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         countQuery.select(cb.count(countRoot));
@@ -448,6 +465,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         Join<?, ?> s = c.join("state", JoinType.LEFT);
         Join<?, ?> moh = e.join("modeOfHiring_id", JoinType.LEFT);
         Join<?, ?> et_join = e.join("employee_type_id", JoinType.LEFT);
+        Join<?, ?> bt_proj = c.join("businessType", JoinType.LEFT);
 
         // SELECT clause
         query.select(cb.construct(
@@ -468,6 +486,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                 cb.coalesce(city.get("cityName"), cb.literal("N/A")),
                 c.get("campusId"),
                 cb.coalesce(c.get("campusName"), cb.literal("N/A")),
+                cb.coalesce(bt_proj.get("businessTypeName"), cb.literal("N/A")),
                 et_join.get("emp_type_id"),
                 cb.coalesce(et_join.get("emp_type"), cb.literal("N/A"))));
 
@@ -511,8 +530,8 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         }
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
-            predicates
-                    .add(cb.equal(cb.lower(c.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+            predicates.add(cb.equal(cb.lower(bt_proj.get("businessTypeName")),
+                    searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         query.where(predicates.toArray(new Predicate[0]));
@@ -569,8 +588,10 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         }
 
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
+            Join<?, ?> countBt = countC.join("businessType", JoinType.LEFT);
             countPredicates.add(
-                    cb.equal(cb.lower(countC.get("cmps_type")), searchRequest.getCmpsCategory().trim().toLowerCase()));
+                    cb.equal(cb.lower(countBt.get("businessTypeName")),
+                            searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
         countQuery.select(cb.count(countRoot));
