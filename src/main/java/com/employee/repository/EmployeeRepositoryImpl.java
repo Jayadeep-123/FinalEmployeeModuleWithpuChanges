@@ -82,7 +82,12 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             Predicate firstNamePredicate = cb.like(cb.lower(e.get("first_name")), namePattern);
             Predicate lastNamePredicate = cb.like(cb.lower(e.get("last_name")), namePattern);
 
-            predicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate));
+            // Full Name match: check if pattern matches concatenated first + last name
+            Predicate fullNamePredicate = cb.like(
+                    cb.lower(cb.concat(cb.concat(e.get("first_name"), cb.literal(" ")), e.get("last_name"))),
+                    namePattern);
+
+            predicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
         }
 
         // Optional: cityId
@@ -134,7 +139,13 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             Predicate firstNamePredicate = cb.like(cb.lower(countRoot.get("first_name")), namePattern);
             Predicate lastNamePredicate = cb.like(cb.lower(countRoot.get("last_name")), namePattern);
 
-            countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate));
+            // Full Name match: check if pattern matches concatenated first + last name
+            Predicate fullNamePredicate = cb.like(
+                    cb.lower(cb.concat(cb.concat(countRoot.get("first_name"), cb.literal(" ")),
+                            countRoot.get("last_name"))),
+                    namePattern);
+
+            countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
         }
 
         if (searchRequest.getCityId() != null) {
@@ -207,13 +218,25 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(e.get("is_active"), 1)); // Only active employees
         predicates.add(cb.isNotNull(e.get("payRollId"))); // Only show employees with generated payroll ID
-
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
-            String[] ids = searchRequest.getPayrollId().split(",");
+            String searchValue = searchRequest.getPayrollId().trim();
+            String[] ids = searchValue.split(",");
             if (ids.length > 1) {
                 predicates.add(e.get("payRollId").in((Object[]) ids));
             } else {
-                predicates.add(cb.equal(e.get("payRollId"), ids[0].trim()));
+                String singleValue = ids[0].trim();
+                String namePattern = "%" + singleValue.toLowerCase() + "%";
+
+                Predicate payrollPredicate = cb.equal(e.get("payRollId"), singleValue);
+                Predicate firstNamePredicate = cb.like(cb.lower(e.get("first_name")), namePattern);
+                Predicate lastNamePredicate = cb.like(cb.lower(e.get("last_name")), namePattern);
+
+                // Full Name match: check if pattern matches concatenated first + last name
+                Predicate fullNamePredicate = cb.like(
+                        cb.lower(cb.concat(cb.concat(e.get("first_name"), cb.literal(" ")), e.get("last_name"))),
+                        namePattern);
+
+                predicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
 
@@ -265,11 +288,25 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
 
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
-            String[] ids = searchRequest.getPayrollId().split(",");
+            String searchValue = searchRequest.getPayrollId().trim();
+            String[] ids = searchValue.split(",");
             if (ids.length > 1) {
                 countPredicates.add(countRoot.get("payRollId").in((Object[]) ids));
             } else {
-                countPredicates.add(cb.equal(countRoot.get("payRollId"), ids[0].trim()));
+                String singleValue = ids[0].trim();
+                String namePattern = "%" + singleValue.toLowerCase() + "%";
+
+                Predicate payrollPredicate = cb.equal(countRoot.get("payRollId"), singleValue);
+                Predicate firstNamePredicate = cb.like(cb.lower(countRoot.get("first_name")), namePattern);
+                Predicate lastNamePredicate = cb.like(cb.lower(countRoot.get("last_name")), namePattern);
+
+                // Full Name match: check if pattern matches concatenated first + last name
+                Predicate fullNamePredicate = cb.like(
+                        cb.lower(cb.concat(cb.concat(countRoot.get("first_name"), cb.literal(" ")),
+                                countRoot.get("last_name"))),
+                        namePattern);
+
+                countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
         if (searchRequest.getStateId() != null)
@@ -347,11 +384,24 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
 
         // Optional: payrollId (can be comma-separated)
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
-            String[] ids = searchRequest.getPayrollId().split(",");
+            String searchValue = searchRequest.getPayrollId().trim();
+            String[] ids = searchValue.split(",");
             if (ids.length > 1) {
                 predicates.add(e.get("payRollId").in((Object[]) ids));
             } else {
-                predicates.add(cb.equal(e.get("payRollId"), ids[0].trim()));
+                String singleValue = ids[0].trim();
+                String namePattern = "%" + singleValue.toLowerCase() + "%";
+
+                Predicate payrollPredicate = cb.equal(e.get("payRollId"), singleValue);
+                Predicate firstNamePredicate = cb.like(cb.lower(e.get("first_name")), namePattern);
+                Predicate lastNamePredicate = cb.like(cb.lower(e.get("last_name")), namePattern);
+
+                // Full Name match: check if pattern matches concatenated first + last name
+                Predicate fullNamePredicate = cb.like(
+                        cb.lower(cb.concat(cb.concat(e.get("first_name"), cb.literal(" ")), e.get("last_name"))),
+                        namePattern);
+
+                predicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
 
@@ -405,11 +455,25 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
 
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
-            String[] ids = searchRequest.getPayrollId().split(",");
+            String searchValue = searchRequest.getPayrollId().trim();
+            String[] ids = searchValue.split(",");
             if (ids.length > 1) {
                 countPredicates.add(countRoot.get("payRollId").in((Object[]) ids));
             } else {
-                countPredicates.add(cb.equal(countRoot.get("payRollId"), ids[0].trim()));
+                String singleValue = ids[0].trim();
+                String namePattern = "%" + singleValue.toLowerCase() + "%";
+
+                Predicate payrollPredicate = cb.equal(countRoot.get("payRollId"), singleValue);
+                Predicate firstNamePredicate = cb.like(cb.lower(countRoot.get("first_name")), namePattern);
+                Predicate lastNamePredicate = cb.like(cb.lower(countRoot.get("last_name")), namePattern);
+
+                // Full Name match: check if pattern matches concatenated first + last name
+                Predicate fullNamePredicate = cb.like(
+                        cb.lower(cb.concat(cb.concat(countRoot.get("first_name"), cb.literal(" ")),
+                                countRoot.get("last_name"))),
+                        namePattern);
+
+                countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
 
@@ -512,7 +576,12 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                 Predicate firstNamePredicate = cb.like(cb.lower(e.get("first_name")), namePattern);
                 Predicate lastNamePredicate = cb.like(cb.lower(e.get("last_name")), namePattern);
 
-                predicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate));
+                // Full Name match: check if pattern matches concatenated first + last name
+                Predicate fullNamePredicate = cb.like(
+                        cb.lower(cb.concat(cb.concat(e.get("first_name"), cb.literal(" ")), e.get("last_name"))),
+                        namePattern);
+
+                predicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
 
@@ -571,7 +640,13 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                 Predicate firstNamePredicate = cb.like(cb.lower(countRoot.get("first_name")), namePattern);
                 Predicate lastNamePredicate = cb.like(cb.lower(countRoot.get("last_name")), namePattern);
 
-                countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate));
+                // Full Name match: check if pattern matches concatenated first + last name
+                Predicate fullNamePredicate = cb.like(
+                        cb.lower(cb.concat(cb.concat(countRoot.get("first_name"), cb.literal(" ")),
+                                countRoot.get("last_name"))),
+                        namePattern);
+
+                countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
 

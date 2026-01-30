@@ -62,4 +62,14 @@ public interface CampusRepository extends JpaRepository<Campus, Integer> {
 
         @Query("SELECT ca.city FROM Campus ca WHERE ca.campusId = :campusid")
         City findByCampusId(@Param("campusid") int campusid);
+
+        @Query("SELECT new com.employee.dto.GenericDropdownDTO(c.campusId, c.campusName) " +
+                        "FROM Campus c WHERE c.isActive = :isActive AND c.businessType.businessTypeId = :businessId")
+        List<GenericDropdownDTO> findByIsActiveAndBusinessId(@Param("isActive") Integer isActive,
+                        @Param("businessId") Integer businessId);
+
+        @Query("SELECT new com.employee.dto.GenericDropdownDTO(c.campusId, c.campusName) " +
+                        "FROM Campus c WHERE c.isActive = :isActive AND LOWER(c.businessType.businessTypeName) = LOWER(:businessName)")
+        List<GenericDropdownDTO> findByIsActiveAndBusinessName(@Param("isActive") Integer isActive,
+                        @Param("businessName") String businessName);
 }

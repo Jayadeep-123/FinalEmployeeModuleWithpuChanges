@@ -176,8 +176,11 @@ public class EmployeeEntityPreparationService {
             employee.setTotal_experience(basicInfo.getTotalExperience().doubleValue());
         if (basicInfo.getAge() != null)
             employee.setAge(basicInfo.getAge());
-        if (basicInfo.getSscNo() != null)
+        if (Boolean.TRUE.equals(basicInfo.getSscNotAvailable())) {
+            employee.setSsc_no(null);
+        } else if (basicInfo.getSscNo() != null) {
             employee.setSsc_no(basicInfo.getSscNo());
+        }
         employee.setIs_active(1);
         if (basicInfo.getTempPayrollId() != null && !basicInfo.getTempPayrollId().trim().isEmpty()) {
             employee.setTempPayrollId(basicInfo.getTempPayrollId());
@@ -234,12 +237,12 @@ public class EmployeeEntityPreparationService {
                             "replacedByEmpId is required when joinTypeId is 3 (Replacement).");
                 }
                 employee.setEmployee_replaceby_id(employeeRepository
-                        .findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+                        .findById(basicInfo.getReplacedByEmpId())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
+                                "Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
             } else if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
                 employee.setEmployee_replaceby_id(
-                        employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0).orElse(null));
+                        employeeRepository.findById(basicInfo.getReplacedByEmpId()).orElse(null));
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
@@ -401,8 +404,11 @@ public class EmployeeEntityPreparationService {
             employee.setTotal_experience(basicInfo.getTotalExperience().doubleValue());
         if (basicInfo.getAge() != null)
             employee.setAge(basicInfo.getAge());
-        if (basicInfo.getSscNo() != null)
+        if (Boolean.TRUE.equals(basicInfo.getSscNotAvailable())) {
+            employee.setSsc_no(null);
+        } else if (basicInfo.getSscNo() != null) {
             employee.setSsc_no(basicInfo.getSscNo());
+        }
         if (basicInfo.getTempPayrollId() != null && !basicInfo.getTempPayrollId().trim().isEmpty())
             employee.setTempPayrollId(basicInfo.getTempPayrollId());
         if (basicInfo.getCreatedBy() != null && basicInfo.getCreatedBy() > 0)
@@ -449,11 +455,11 @@ public class EmployeeEntityPreparationService {
                     throw new ResourceNotFoundException("replacedByEmpId is required when joinTypeId is 3.");
                 }
                 employee.setEmployee_replaceby_id(employeeRepository
-                        .findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
-                        .orElseThrow(() -> new ResourceNotFoundException("Inactive Replacement Employee not found")));
+                        .findById(basicInfo.getReplacedByEmpId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Replacement Employee not found")));
             } else if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
                 employee.setEmployee_replaceby_id(
-                        employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0).orElse(null));
+                        employeeRepository.findById(basicInfo.getReplacedByEmpId()).orElse(null));
             } else {
                 employee.setEmployee_replaceby_id(null);
             }

@@ -503,7 +503,9 @@ public class EmployeeBasicInfoTabService {
             employee.setAge(basicInfo.getAge());
         }
 
-        if (basicInfo.getSscNo() != null) {
+        if (Boolean.TRUE.equals(basicInfo.getSscNotAvailable())) {
+            employee.setSsc_no(null);
+        } else if (basicInfo.getSscNo() != null) {
             employee.setSsc_no(basicInfo.getSscNo());
         }
 
@@ -650,11 +652,11 @@ public class EmployeeBasicInfoTabService {
                 throw new ResourceNotFoundException(
                         "replacedByEmpId is required when joinTypeId is 3 (Replacement). Please provide a valid replacement employee ID.");
             }
-            employee.setEmployee_replaceby_id(employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+            employee.setEmployee_replaceby_id(employeeRepository.findById(basicInfo.getReplacedByEmpId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
+                            "Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
         } else if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
-            employee.setEmployee_replaceby_id(employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+            employee.setEmployee_replaceby_id(employeeRepository.findById(basicInfo.getReplacedByEmpId())
                     .orElse(null));
         } else {
             employee.setEmployee_replaceby_id(null);
@@ -717,7 +719,9 @@ public class EmployeeBasicInfoTabService {
             employee.setAge(basicInfo.getAge());
         }
 
-        if (basicInfo.getSscNo() != null) {
+        if (Boolean.TRUE.equals(basicInfo.getSscNotAvailable())) {
+            employee.setSsc_no(null);
+        } else if (basicInfo.getSscNo() != null) {
             employee.setSsc_no(basicInfo.getSscNo());
         }
 
@@ -792,12 +796,12 @@ public class EmployeeBasicInfoTabService {
                             "replacedByEmpId is required when joinTypeId is 3 (Replacement). Please provide a valid replacement employee ID.");
                 }
                 employee.setEmployee_replaceby_id(employeeRepository
-                        .findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+                        .findById(basicInfo.getReplacedByEmpId())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
+                                "Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
             } else if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
                 employee.setEmployee_replaceby_id(
-                        employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+                        employeeRepository.findById(basicInfo.getReplacedByEmpId())
                                 .orElse(null));
             } else {
                 employee.setEmployee_replaceby_id(null);
@@ -2058,10 +2062,9 @@ public class EmployeeBasicInfoTabService {
         }
 
         if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
-            employeeRepository.findByIdAndIs_active(basicInfo.getReplacedByEmpId(), 0)
+            employeeRepository.findById(basicInfo.getReplacedByEmpId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Inactive Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId()
-                                    + ". Only inactive employees (is_active = 0) can be used as replacement."));
+                            "Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId()));
         }
 
         // Validate preChaitanyaId: if entered, must be an inactive employee (is_active

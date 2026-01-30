@@ -232,23 +232,24 @@ public class DropDownService {
 				.collect(Collectors.toList());
 	}
 
-//	public CampusDto getActiveCampusById(int campusId) {
-//		return campusRepository.findActiveCampusById(campusId)
-//				.orElseThrow(() -> new RuntimeException("Active campus not found for ID: " + campusId));
-//	}
-	
+	// public CampusDto getActiveCampusById(int campusId) {
+	// return campusRepository.findActiveCampusById(campusId)
+	// .orElseThrow(() -> new RuntimeException("Active campus not found for ID: " +
+	// campusId));
+	// }
+
 	public CampusDto getActiveCampusById(int campusId) {
-        CampusDto campusDto = campusRepository.findActiveCampusById(campusId)
-                .orElseThrow(() -> new RuntimeException("Active campus not found for ID: " + campusId));
- 
-        // Populate main building details
-        buildingRepository.findMainBuildingByCampusId(campusId).ifPresent(building -> {
-            campusDto.setBuildingId(building.getBuildingId());
-            campusDto.setBuildingName(building.getBuildingName());
-        });
- 
-        return campusDto;
-    }
+		CampusDto campusDto = campusRepository.findActiveCampusById(campusId)
+				.orElseThrow(() -> new RuntimeException("Active campus not found for ID: " + campusId));
+
+		// Populate main building details
+		buildingRepository.findMainBuildingByCampusId(campusId).ifPresent(building -> {
+			campusDto.setBuildingId(building.getBuildingId());
+			campusDto.setBuildingName(building.getBuildingName());
+		});
+
+		return campusDto;
+	}
 
 	public List<GenericDropdownDTO> getActiveGrades() {
 		return gradeRepo.findByIsActive(1).stream()
@@ -283,13 +284,13 @@ public class DropDownService {
 		return cmpsOrgRepository.findOrganizationsByCampusId(campusId);
 	}
 
-//	public List<GenericDropdownDTO> getBuildingsByCampusId(int campusId) {
-//		return buildingRepository.findBuildingsByCampusId(campusId);
-//	}
-	
+	// public List<GenericDropdownDTO> getBuildingsByCampusId(int campusId) {
+	// return buildingRepository.findBuildingsByCampusId(campusId);
+	// }
+
 	public List<com.employee.dto.BuildingDropdownDTO> getBuildingsByCampusId(int campusId) {
-        return buildingRepository.findBuildingsByCampusId(campusId);
-    }
+		return buildingRepository.findBuildingsByCampusId(campusId);
+	}
 
 	public List<GenericDropdownDTO> getAllActiveStreams() {
 		return streamRepository.findAllActiveStreams();
@@ -371,35 +372,54 @@ public class DropDownService {
 				.collect(Collectors.toList());
 	}
 
-	public List<GenericDropdownDTO> getActiveCampuses() {
-		return campusRepository.findByIsActive(ACTIVE_STATUS).stream()
-				.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName())).collect(Collectors.toList());
+	public List<GenericDropdownDTO> getActiveCampuses(String cmpsCategory) {
+		if (cmpsCategory == null || cmpsCategory.trim().isEmpty()) {
+			return campusRepository.findByIsActive(ACTIVE_STATUS).stream()
+					.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName())).collect(Collectors.toList());
+		}
+
+		Integer businessId = 0;
+		if ("college".equalsIgnoreCase(cmpsCategory)) {
+			businessId = 1;
+		} else if ("school".equalsIgnoreCase(cmpsCategory)) {
+			businessId = 2;
+		}
+
+		if (businessId > 0) {
+			return campusRepository.findByIsActiveAndBusinessId(ACTIVE_STATUS, businessId);
+		} else {
+			// Fallback to name-based match if category doesn't map to hardcoded IDs
+			return campusRepository.findByIsActiveAndBusinessName(ACTIVE_STATUS, cmpsCategory.trim());
+		}
 	}
 
-//	public List<GenericDropdownDTO> getAllEmployeesByCampusId(Integer campusId) {
-//
-//		// 1. Change the repository call to the one that fetches ALL (Active + Inactive)
-//		List<Employee> employees = employeeRepository.findAllEmployeesByCampusId(campusId);
-//
-//		// 2. Safety check (optional, but good practice)
-//		if (employees == null || employees.isEmpty()) {
-//			return new ArrayList<>();
-//		}
-//
-//		return employees.stream()
-//				.map(emp -> {
-//					// 3. (Optional Tip) visually distinguish Inactive users in the dropdown
-//					String fullName = emp.getFirst_name() + " " + emp.getLast_name();
-//
-//					// // Assuming you have a 'status' field. If not, remove this if-block.
-//					// if (emp.getStatus() != null && !emp.getStatus().equalsIgnoreCase("Active")) {
-//					// fullName += " (Inactive)";
-//					// }
-//
-//					return new GenericDropdownDTO(emp.getEmp_id(), fullName);
-//				})
-//				.collect(Collectors.toList());
-//	}
+	// public List<GenericDropdownDTO> getAllEmployeesByCampusId(Integer campusId) {
+	//
+	// // 1. Change the repository call to the one that fetches ALL (Active +
+	// Inactive)
+	// List<Employee> employees =
+	// employeeRepository.findAllEmployeesByCampusId(campusId);
+	//
+	// // 2. Safety check (optional, but good practice)
+	// if (employees == null || employees.isEmpty()) {
+	// return new ArrayList<>();
+	// }
+	//
+	// return employees.stream()
+	// .map(emp -> {
+	// // 3. (Optional Tip) visually distinguish Inactive users in the dropdown
+	// String fullName = emp.getFirst_name() + " " + emp.getLast_name();
+	//
+	// // // Assuming you have a 'status' field. If not, remove this if-block.
+	// // if (emp.getStatus() != null &&
+	// !emp.getStatus().equalsIgnoreCase("Active")) {
+	// // fullName += " (Inactive)";
+	// // }
+	//
+	// return new GenericDropdownDTO(emp.getEmp_id(), fullName);
+	// })
+	// .collect(Collectors.toList());
+	// }
 
 	public List<GenericDropdownDTO> getCitiesByDistrictId(Integer districtId) {
 		return cityRepository.findByDistrictId(districtId).stream()

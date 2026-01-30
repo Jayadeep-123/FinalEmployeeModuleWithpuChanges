@@ -355,19 +355,20 @@ public class EmployeeRemainingTabService {
             Employee employee = findEmployeeByTempPayrollId(tempPayrollId);
 
             // Step 3: Prepare updates in memory (NO database writes yet)
-            Integer createdBy = agreementInfo.getCreatedBy();
-            Integer updatedBy = agreementInfo.getUpdatedBy();
-            prepareAgreementInfoUpdates(agreementInfo, employee, updatedBy);
+            // Safely extract fields from DTO (handle null DTO)
+            Integer createdBy = (agreementInfo != null) ? agreementInfo.getCreatedBy() : null;
+            Integer updatedBy = (agreementInfo != null) ? agreementInfo.getUpdatedBy() : null;
+            String categoryName = (agreementInfo != null && agreementInfo.getCategory() != null)
+                    ? agreementInfo.getCategory().trim()
+                    : null;
 
-            // Step 3.5: Change employee status from "Incompleted" to "Pending at DO" when
-            // agreement is submitted
-            // BUT: If category is "school", do NOT change the status (keep current status)
-            // Category is passed by user in the request (case-insensitive comparison)
-            String categoryName = null;
-            if (agreementInfo.getCategory() != null && !agreementInfo.getCategory().trim().isEmpty()) {
-                categoryName = agreementInfo.getCategory().trim();
+            if (agreementInfo != null) {
+                prepareAgreementInfoUpdates(agreementInfo, employee, updatedBy);
             }
 
+            // Step 3.5: Change employee status to "Pending at DO" when agreement is
+            // submitted
+            // BUT: If category is "school", do NOT change the status (keep current status)
             if (categoryName != null && "school".equalsIgnoreCase(categoryName)) {
                 logger.info("User provided category is '{}' (school) - status will NOT be changed. Current status: {}",
                         categoryName,
@@ -378,29 +379,24 @@ public class EmployeeRemainingTabService {
                 // Category is "college" or any other (or null) - change status to "Pending at
                 // DO"
                 changeStatusToPendingAtDO(employee);
-                logger.info("User provided category is '{}' - status changed to 'Pending at DO'",
+                logger.info("Category is '{}' - status changed to 'Pending at DO'",
                         categoryName != null ? categoryName : "null/not provided");
             }
 
             // Step 4: Save to database ONLY after all validations pass
             employeeRepository.save(employee);
-            saveAgreementChequeDetails(agreementInfo, employee, createdBy, updatedBy);
 
-            // Save Agreement Document path
-            saveOrUpdateAgreementDocument(employee, agreementInfo.getAgreementPath(), createdBy, updatedBy);
-
-            // Log message based on whether status was changed
-            if (categoryName != null && "school".equalsIgnoreCase(categoryName)) {
-                logger.info(
-                        "✅ Saved agreement info for emp_id: {} (tempPayrollId: {}). Status NOT changed (user provided category is '{}')",
-                        employee.getEmp_id(), tempPayrollId, categoryName);
-            } else {
-                logger.info(
-                        "✅ Saved agreement info and changed status to 'Pending at DO' for emp_id: {} (tempPayrollId: {}). User provided category: '{}'",
-                        employee.getEmp_id(), tempPayrollId, categoryName != null ? categoryName : "null/not provided");
+            if (agreementInfo != null) {
+                saveAgreementChequeDetails(agreementInfo, employee, createdBy, updatedBy);
+                // Save Agreement Document path
+                saveOrUpdateAgreementDocument(employee, agreementInfo.getAgreementPath(), createdBy, updatedBy);
             }
-            // Return the saved DTO object
-            return agreementInfo;
+
+            logger.info("✅ Finished processing agreement info for emp_id: {} (tempPayrollId: {}). Category: '{}'",
+                    employee.getEmp_id(), tempPayrollId, categoryName != null ? categoryName : "null/not provided");
+
+            // Return the DTO object (or a new one if it was null)
+            return (agreementInfo != null) ? agreementInfo : new AgreementInfoDTO();
 
         } catch (Exception e) {
             logger.error("❌ ERROR: Agreement Info save failed. Error: {}", e.getMessage(), e);
