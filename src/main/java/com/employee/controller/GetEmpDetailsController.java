@@ -1,4 +1,3 @@
-
 package com.employee.controller;
 
 import java.util.List;
@@ -20,7 +19,6 @@ import com.employee.dto.CategoryInfoDTO1;
 import com.employee.dto.EmpExperienceDetailsDTO;
 import com.employee.dto.EmployeeAgreementDetailsDto;
 import com.employee.dto.EmployeeBankDetailsResponseDTO;
-import com.employee.dto.FamilyDetailsResponseDTO;
 import com.employee.dto.FamilyInfoResponseDTO;
 import com.employee.dto.FullBasicInfoDto;
 import com.employee.dto.ManagerDTO;

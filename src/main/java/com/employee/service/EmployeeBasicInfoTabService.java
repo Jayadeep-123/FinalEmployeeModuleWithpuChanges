@@ -101,6 +101,9 @@ public class EmployeeBasicInfoTabService {
     private EmpFamilyDetailsRepository empFamilyDetailsRepository;
 
     @Autowired
+    private EmployeeEntityPreparationService entityPreparationService;
+
+    @Autowired
     private EmpExperienceDetailsRepository empExperienceDetailsRepository;
 
     @Autowired
@@ -134,12 +137,6 @@ public class EmployeeBasicInfoTabService {
     private BuildingRepository buildingRepository;
 
     @Autowired
-    private DepartmentRepository departmentRepository;
-
-    @Autowired
-    private DesignationRepository designationRepository;
-
-    @Autowired
     private EmployeeTypeRepository employeeTypeRepository;
 
     @Autowired
@@ -165,9 +162,6 @@ public class EmployeeBasicInfoTabService {
 
     @Autowired
     private OccupationRepository occupationRepository;
-
-    @Autowired
-    private SkillTestDetailsRepository skillTestDetailsRepository;
 
     // ============================================================================
     // API METHODS (4 APIs)
@@ -426,6 +420,7 @@ public class EmployeeBasicInfoTabService {
     private void saveEmpDetailsEntity(EmpDetails empDetails, Employee employee, Integer updatedBy) {
         Optional<EmpDetails> existingDetails = empDetailsRepository.findByEmployeeId(employee.getEmp_id());
         if (existingDetails.isPresent()) {
+
             updateEmpDetailsFields(existingDetails.get(), empDetails);
             // Set updated_by and updated_date for UPDATE mode
             if (updatedBy != null) {
@@ -446,6 +441,7 @@ public class EmployeeBasicInfoTabService {
                                 "' is already associated with an active employee (ID: "
                                 + existing.getEmployee_id().getEmp_id() + ").");
                     }
+
                     updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                     existing.setEmployee_id(employee);
                     // Use updatedBy or fallback to employee's creator

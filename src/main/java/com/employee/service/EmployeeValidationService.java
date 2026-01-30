@@ -611,56 +611,74 @@ public class EmployeeValidationService {
     }
     
     
+    
     public java.util.Map<String, Object> validateField(String fieldName, String value) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         boolean exists = false;
         String message = "Value is unique.";
  
         try {
-            switch (fieldName.toLowerCase()) {
+            String normalizedFieldName = fieldName != null ? fieldName.trim().toLowerCase() : "";
+            String normalizedValue = value != null ? value.trim() : "";
+ 
+            switch (normalizedFieldName) {
                 case "aadhar":
                 case "aadhaar":
                 case "adhaar":
                 case "adhaar_no":
-                    exists = empDetailsRepository.existsByAdhaar_no(Long.parseLong(value));
+                case "aadhaar no":
+                    exists = empDetailsRepository.existsByAdhaar_no(Long.parseLong(normalizedValue));
                     if (exists)
                         message = "Aadhar number already exists.";
                     break;
                 case "ssc":
                 case "ssc_no":
-                    exists = employeeRepository.existsBySsc_no(Long.parseLong(value));
+                    exists = employeeRepository.existsBySsc_no(Long.parseLong(normalizedValue));
                     if (exists)
                         message = "SSC number already exists.";
                     break;
                 case "pan":
                 case "pancard":
                 case "pancard_no":
-                    exists = empDetailsRepository.existsByPancard_no(value);
+                case "pan no":
+                    // PAN is usually uppercase, but for existence check we should be consistent
+                    exists = empDetailsRepository.existsByPancard_no(normalizedValue.toUpperCase());
                     if (exists)
                         message = "PAN card number already exists.";
                     break;
                 case "mobile":
-                case "mobileno":
+                case "mobile no":
                 case "primary_mobile_no":
-                    exists = employeeRepository.existsByPrimary_mobile_no(Long.parseLong(value));
+                    exists = employeeRepository.existsByPrimary_mobile_no(Long.parseLong(normalizedValue));
                     if (exists)
                         message = "Mobile number already exists.";
                     break;
                 case "email":
-                    exists = employeeRepository.existsByEmail(value)
-                            || empDetailsRepository.existsByPersonal_email(value);
+                case "personal_email":
+                    String emailValue = normalizedValue.toLowerCase();
+                    exists = employeeRepository.existsByEmail(emailValue)
+                            || empDetailsRepository.existsByPersonal_email(emailValue);
                     if (exists)
                         message = "Email already exists.";
                     break;
                 case "esi":
                 case "esino":
                 case "esi_no":
-                    exists = empPfDetailsRepository.existsByEsi_no(Long.parseLong(value));
+                    exists = empPfDetailsRepository.existsByEsi_no(Long.parseLong(normalizedValue));
                     if (exists)
                         message = "ESI number already exists.";
                     break;
+                case "uan":
+                case "uan no":
+                case "uan_no":
+                    long uan = Long.parseLong(normalizedValue);
+                    exists = empDetailsRepository.existsByUanNo(uan)
+                            || empPfDetailsRepository.existsByUan_no(uan);
+                    if (exists)
+                        message = "UAN number already exists.";
+                    break;
                 default:
-                    message = "Invalid field name for validation.";
+                    message = "Invalid field name for validation: " + fieldName;
                     break;
             }
         } catch (NumberFormatException e) {
@@ -673,6 +691,7 @@ public class EmployeeValidationService {
         response.put("message", message);
         return response;
     }
+ 
  
 }
  

@@ -344,6 +344,7 @@ public class EmployeeOnboardingService {
 
             if (existingDetails.isPresent()) {
                 EmpDetails existing = existingDetails.get();
+
                 entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                 existing.setUpdated_by(hrEmployeeId);
                 existing.setUpdated_date(LocalDateTime.now());
@@ -363,6 +364,7 @@ public class EmployeeOnboardingService {
                                     "' is already associated with an active employee (ID: "
                                     + existing.getEmployee_id().getEmp_id() + ").");
                         }
+
                         entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                         existing.setEmployee_id(employee);
                         existing.setUpdated_by(hrEmployeeId);
@@ -392,6 +394,7 @@ public class EmployeeOnboardingService {
                                 "' is already associated with an active employee (ID: "
                                 + existing.getEmployee_id().getEmp_id() + ").");
                     }
+
                     entityPreparationService.updateEmpDetailsFieldsExceptEmail(existing, empDetails);
                     existing.setEmployee_id(employee);
                     existing.setUpdated_by(hrEmployeeId);
