@@ -131,6 +131,9 @@ public class DropDownService {
 	@Autowired
 	OrientationGroupRepository orientationGroupRepository;
 
+	@Autowired
+	com.employee.repository.BusinessTypeRepository businessTypeRepository;
+
 	private static final int ACTIVE_STATUS = 1;
 
 	public List<GenericDropdownDTO> getMaritalStatusTypes() {
@@ -373,22 +376,27 @@ public class DropDownService {
 	}
 
 	public List<GenericDropdownDTO> getActiveCampuses(String cmpsCategory) {
+		// If no category is provided, return all active campuses
 		if (cmpsCategory == null || cmpsCategory.trim().isEmpty()) {
 			return campusRepository.findByIsActive(ACTIVE_STATUS).stream()
-					.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName())).collect(Collectors.toList());
+					.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName()))
+					.collect(Collectors.toList());
 		}
 
 		Integer businessId = 0;
-		if ("college".equalsIgnoreCase(cmpsCategory)) {
-			businessId = 1;
-		} else if ("school".equalsIgnoreCase(cmpsCategory)) {
-			businessId = 2;
+		// Map category string to Business/Business Type ID dynamically
+		java.util.Optional<com.employee.entity.BusinessType> businessType = businessTypeRepository
+				.findByBusinessTypeNameIgnoreCase(cmpsCategory.trim());
+
+		if (businessType.isPresent()) {
+			businessId = businessType.get().getBusinessTypeId();
 		}
 
+		// Fetch based on ID if mapped, otherwise try matching by name (fallback or if
+		// name matches other criteria)
 		if (businessId > 0) {
 			return campusRepository.findByIsActiveAndBusinessId(ACTIVE_STATUS, businessId);
 		} else {
-			// Fallback to name-based match if category doesn't map to hardcoded IDs
 			return campusRepository.findByIsActiveAndBusinessName(ACTIVE_STATUS, cmpsCategory.trim());
 		}
 	}

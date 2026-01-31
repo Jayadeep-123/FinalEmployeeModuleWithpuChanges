@@ -8,5 +8,6 @@ import com.employee.entity.BusinessType;
 @Repository
 public interface BusinessTypeRepository extends JpaRepository<BusinessType, Integer> {
 
-}
+    java.util.Optional<BusinessType> findByBusinessTypeNameIgnoreCase(String businessTypeName);
 
+}
