@@ -81,7 +81,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.CentralOfficeChecklistDTO;
+import com.employee.dto.IncompletedStatusDTO;
 import com.employee.dto.RejectBackToDODTO;
+import com.employee.dto.RejectEmployeeDTO;
 import com.employee.dto.SalaryInfoSaveAtCODTO;
 import com.employee.exception.ResourceNotFoundException;
 import com.employee.service.CentralOfficeLevelService;
@@ -161,6 +163,32 @@ public class CentralOfficeController {
     @PostMapping("/reject-back-to-do")
     public ResponseEntity<RejectBackToDODTO> rejectBackToDO(@RequestBody RejectBackToDODTO rejectDTO) {
         RejectBackToDODTO result = centralOfficeLevelService.rejectBackToDO(rejectDTO);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    /**
+     * POST endpoint to reject employee and set status to "Reject" (ID 5)
+     *
+     * @param rejectDTO Contains tempPayrollId (required) and remarks (required)
+     * @return ResponseEntity with the updated RejectEmployeeDTO
+     */
+    @PostMapping("/reject-employee")
+    public ResponseEntity<RejectEmployeeDTO> rejectEmployee(@RequestBody RejectEmployeeDTO rejectDTO) {
+        logger.info("Received request to reject employee for temp_payroll_id: {}", rejectDTO.getTempPayrollId());
+        RejectEmployeeDTO result = centralOfficeLevelService.rejectEmployee(rejectDTO);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    /**
+     * POST endpoint to change employee status to "Incompleted"
+     *
+     * @param statusDTO Contains tempPayrollId (required) and remarks (required)
+     * @return ResponseEntity with the updated IncompletedStatusDTO
+     */
+    @PostMapping("/mark-as-incompleted")
+    public ResponseEntity<IncompletedStatusDTO> markAsIncompleted(@RequestBody IncompletedStatusDTO statusDTO) {
+        logger.info("Received request to mark as incompleted for temp_payroll_id: {}", statusDTO.getTempPayrollId());
+        IncompletedStatusDTO result = centralOfficeLevelService.markAsIncompleted(statusDTO);
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
