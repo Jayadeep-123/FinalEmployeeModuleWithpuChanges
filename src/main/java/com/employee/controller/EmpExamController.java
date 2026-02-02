@@ -1,9 +1,15 @@
 package com.employee.controller;
 
-import com.employee.dto.EmpExamDataDTO;
-import com.employee.service.EmpExamIntegrationService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.employee.dto.EmpExamDataDTO;
+import com.employee.dto.ExamResultDTO;
+import com.employee.service.EmpExamIntegrationService;
 
 @RestController
 @RequestMapping("/api/integration")

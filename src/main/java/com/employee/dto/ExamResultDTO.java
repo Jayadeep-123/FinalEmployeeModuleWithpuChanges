@@ -1,7 +1,8 @@
-package com.employee.controller;
+package com.employee.dto;
+
+import java.util.List;
 
 import lombok.Data;
-import java.util.List;
 
 @Data
 public class ExamResultDTO {

@@ -8,8 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.employee.controller.ExamResultDTO;
+
 import com.employee.dto.EmpExamDataDTO;
+import com.employee.dto.ExamResultDTO;
 import com.employee.entity.SkillTestDetails;
 import com.employee.repository.SkillTestDetailsRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

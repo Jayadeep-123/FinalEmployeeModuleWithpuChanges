@@ -1,4 +1,4 @@
-package com.employee.controller;
+package com.employee.dto;
 
 import lombok.Data;
 
