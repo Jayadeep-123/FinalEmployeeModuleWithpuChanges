@@ -1243,12 +1243,13 @@ public class EmpSalaryInfoService {
      * Sends employee back to campus for corrections
      *
      * IMPORTANT: This method ONLY works when employee current status is "Pending at
-     * DO"
+     * DO", "Back to DO", or "Pending at CO"
      * If employee has any other status, this method will throw an error
      *
      * Flow:
      * 1. Find employee by temp_payroll_id
-     * 2. Validate that current status is "Pending at DO" (required)
+     * 2. Validate that current status is "Pending at DO", "Back to DO", or "Pending
+     * at CO" (required)
      * 3. Set emp_app_status_id to "Back to Campus" status
      * 4. Save remarks (reason for sending back)
      * 5. Optionally update checklist IDs (capture current state similar to forward)
@@ -1256,8 +1257,8 @@ public class EmpSalaryInfoService {
      * @param backToCampusDTO DTO containing tempPayrollId, remarks, and optional
      *                        checkListIds
      * @return BackToCampusDTO with the saved data
-     * @throws ResourceNotFoundException if employee status is not "Pending at DO"
-     *                                   or "Back to DO"
+     * @throws ResourceNotFoundException if employee status is not "Pending at DO",
+     *                                   "Back to DO", or "Pending at CO"
      */
     @Transactional
     public BackToCampusDTO backToCampus(BackToCampusDTO backToCampusDTO) {
@@ -1298,20 +1299,22 @@ public class EmpSalaryInfoService {
                             "' is not active. emp_id: " + empId);
         }
 
-        // Validation: Check if current status is "Pending at DO" or "Back to DO"
+        // Validation: Check if current status is "Pending at DO", "Back to DO", or
+        // "Pending at CO"
         if (employee.getEmp_check_list_status_id() == null) {
             throw new ResourceNotFoundException(
                     "Cannot send employee back to campus: Employee (emp_id: " + empId +
                             ", temp_payroll_id: '" + backToCampusDTO.getTempPayrollId() +
-                            "') does not have a status set. This method only works when employee status is 'Pending at DO' or 'Back to DO'.");
+                            "') does not have a status set. This method only works when employee status is 'Pending at DO', 'Back to DO' or 'Pending at CO'.");
         }
 
         String currentStatusName = employee.getEmp_check_list_status_id().getCheck_app_status_name();
-        if (!"Pending at DO".equals(currentStatusName) && !"Back to DO".equals(currentStatusName)) {
+        if (!"Pending at DO".equals(currentStatusName) && !"Back to DO".equals(currentStatusName)
+                && !"Pending at CO".equals(currentStatusName)) {
             throw new ResourceNotFoundException(
                     "Cannot send employee back to campus: Current employee status is '" + currentStatusName +
                             "' (emp_id: " + empId + ", temp_payroll_id: '" + backToCampusDTO.getTempPayrollId() +
-                            "'). This method only works when employee status is 'Pending at DO' or 'Back to DO'.");
+                            "'). This method only works when employee status is 'Pending at DO', 'Back to DO' or 'Pending at CO'.");
         }
 
         logger.info("Employee (emp_id: {}) current status is '{}', proceeding with back to campus", empId,
