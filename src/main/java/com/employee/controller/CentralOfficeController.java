@@ -167,15 +167,28 @@ public class CentralOfficeController {
     }
 
     /**
-     * POST endpoint to reject employee and set status to "Reject" (ID 5)
+     * POST endpoint to reject employee and set status to "Rejected by DO" (ID 5)
      *
      * @param rejectDTO Contains tempPayrollId (required) and remarks (required)
      * @return ResponseEntity with the updated RejectEmployeeDTO
      */
-    @PostMapping("/reject-employee")
-    public ResponseEntity<RejectEmployeeDTO> rejectEmployee(@RequestBody RejectEmployeeDTO rejectDTO) {
-        logger.info("Received request to reject employee for temp_payroll_id: {}", rejectDTO.getTempPayrollId());
-        RejectEmployeeDTO result = centralOfficeLevelService.rejectEmployee(rejectDTO);
+    @PostMapping("/reject-by-do")
+    public ResponseEntity<RejectEmployeeDTO> rejectByDO(@RequestBody RejectEmployeeDTO rejectDTO) {
+        logger.info("Received request to reject by DO for temp_payroll_id: {}", rejectDTO.getTempPayrollId());
+        RejectEmployeeDTO result = centralOfficeLevelService.rejectByDO(rejectDTO);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    /**
+     * POST endpoint to reject employee and set status to "Rejected by CO" (ID 11)
+     *
+     * @param rejectDTO Contains tempPayrollId (required) and remarks (required)
+     * @return ResponseEntity with the updated RejectEmployeeDTO
+     */
+    @PostMapping("/reject-by-co")
+    public ResponseEntity<RejectEmployeeDTO> rejectByCO(@RequestBody RejectEmployeeDTO rejectDTO) {
+        logger.info("Received request to reject by CO for temp_payroll_id: {}", rejectDTO.getTempPayrollId());
+        RejectEmployeeDTO result = centralOfficeLevelService.rejectByCO(rejectDTO);
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 

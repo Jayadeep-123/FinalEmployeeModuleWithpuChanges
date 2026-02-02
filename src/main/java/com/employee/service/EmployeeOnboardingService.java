@@ -293,13 +293,8 @@ public class EmployeeOnboardingService {
 
             entityPreparationService.updateEmployeeEntity(employee, basicInfo);
 
-            if (employee.getEmp_check_list_status_id() != null) {
-                String currentStatus = employee.getEmp_check_list_status_id().getCheck_app_status_name();
-                if ("Confirm".equals(currentStatus)) {
-                    employee.setUpdated_by(hrEmployeeId);
-                    employee.setUpdated_date(LocalDateTime.now());
-                }
-            }
+            employee.setUpdated_by(hrEmployeeId);
+            employee.setUpdated_date(LocalDateTime.now());
         } else {
             employee = entityPreparationService.prepareEmployeeEntity(basicInfo);
 
@@ -315,12 +310,9 @@ public class EmployeeOnboardingService {
 
         employee.setTempPayrollId(finalTempPayrollId);
 
-        if (isUpdate && employee.getEmp_check_list_status_id() != null) {
-            String currentStatus = employee.getEmp_check_list_status_id().getCheck_app_status_name();
-            if ("Confirm".equals(currentStatus)) {
-                employee.setUpdated_by(hrEmployeeId);
-                employee.setUpdated_date(LocalDateTime.now());
-            }
+        if (isUpdate) {
+            employee.setUpdated_by(hrEmployeeId);
+            employee.setUpdated_date(LocalDateTime.now());
         }
 
         // Prepare EmpDetails and EmpPfDetails entities in memory FIRST (before saving

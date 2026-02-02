@@ -1195,9 +1195,8 @@ public class EmployeeRemainingTabService {
                             "Designation not found with ID: " + categoryInfo.getDesignationId())));
         }
 
-        // Set updated_by and updated_date on Employee table ONLY if status is "Confirm"
-        if (updatedBy != null && updatedBy > 0 && employee.getEmp_check_list_status_id() != null
-                && "Confirm".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name())) {
+        // Set updated_by and updated_date on Employee table for every change
+        if (updatedBy != null && updatedBy > 0) {
             employee.setUpdated_by(updatedBy);
             employee.setUpdated_date(LocalDateTime.now());
         }
@@ -1646,9 +1645,8 @@ public class EmployeeRemainingTabService {
             }
         }
 
-        // Set updated_by and updated_date on Employee table ONLY if status is "Confirm"
-        if (updatedBy != null && updatedBy > 0 && employee.getEmp_check_list_status_id() != null
-                && "Confirm".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name())) {
+        // Set updated_by and updated_date on Employee table for every change
+        if (updatedBy != null && updatedBy > 0) {
             employee.setUpdated_by(updatedBy);
             employee.setUpdated_date(LocalDateTime.now());
         }

@@ -232,16 +232,14 @@ public class EmployeeBasicInfoTabService {
             } else {
                 // UPDATE MODE: Update existing employee entity
                 updateEmployeeEntity(employee, basicInfo);
-                // Set updated_by and updated_date ONLY if status is "Confirm"
-                if (employee.getEmp_check_list_status_id() != null) {
-                    String currentStatus = employee.getEmp_check_list_status_id().getCheck_app_status_name();
-                    if ("Confirm".equals(currentStatus)) {
-                        Integer updatedBy = basicInfo.getUpdatedBy() != null && basicInfo.getUpdatedBy() > 0
-                                ? basicInfo.getUpdatedBy()
-                                : 1;
-                        employee.setUpdated_by(updatedBy);
-                        employee.setUpdated_date(LocalDateTime.now());
-                    }
+                // Set updated_by and updated_date for every change
+                if (basicInfo.getUpdatedBy() != null && basicInfo.getUpdatedBy() > 0) {
+                    employee.setUpdated_by(basicInfo.getUpdatedBy());
+                    employee.setUpdated_date(LocalDateTime.now());
+                } else if (basicInfo.getCreatedBy() != null && basicInfo.getCreatedBy() > 0) {
+                    // Fallback to createdBy if updatedBy not provided on update
+                    employee.setUpdated_by(basicInfo.getCreatedBy());
+                    employee.setUpdated_date(LocalDateTime.now());
                 }
             }
 

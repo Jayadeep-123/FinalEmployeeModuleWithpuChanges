@@ -511,56 +511,96 @@ public class CentralOfficeLevelService {
     }
 
     /**
-     * Reject an employee and set status to "Reject" (ID 5)
-     * This method is called to reject an employee application and store remarks
+     * Reject an employee by DO and set status to "Rejected by DO" (ID 5)
      *
      * @param rejectDTO DTO containing tempPayrollId and remarks
      * @return Updated RejectEmployeeDTO
      */
-    public RejectEmployeeDTO rejectEmployee(RejectEmployeeDTO rejectDTO) {
-        // Validation: Check if tempPayrollId is provided
+    public RejectEmployeeDTO rejectByDO(RejectEmployeeDTO rejectDTO) {
+        validateRejectionRequest(rejectDTO);
+
+        Employee employee = getEmployeeByTempId(rejectDTO.getTempPayrollId());
+        validateNotConfirmed(employee);
+
+        // Validation: Only "Pending at DO" can be rejected by DO
+        if (employee.getEmp_check_list_status_id() == null ||
+                !"Pending at DO".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name())) {
+
+            String currentStatus = (employee.getEmp_check_list_status_id() != null)
+                    ? employee.getEmp_check_list_status_id().getCheck_app_status_name()
+                    : "null";
+
+            throw new ResourceNotFoundException("Cannot reject employee by DO. Current status is '" + currentStatus +
+                    "'. Only employees with 'Pending at DO' status can be rejected by the Divisional Office.");
+        }
+
+        updateEmployeeStatusAndRemarks(employee, "Rejected by DO", rejectDTO.getRemarks());
+        return rejectDTO;
+    }
+
+    /**
+     * Reject an employee by CO and set status to "Rejected by CO" (ID 11)
+     *
+     * @param rejectDTO DTO containing tempPayrollId and remarks
+     * @return Updated RejectEmployeeDTO
+     */
+    public RejectEmployeeDTO rejectByCO(RejectEmployeeDTO rejectDTO) {
+        validateRejectionRequest(rejectDTO);
+
+        Employee employee = getEmployeeByTempId(rejectDTO.getTempPayrollId());
+        validateNotConfirmed(employee);
+
+        // Validation: Only "Pending at CO" can be rejected by CO
+        if (employee.getEmp_check_list_status_id() == null ||
+                !"Pending at CO".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name())) {
+
+            String currentStatus = (employee.getEmp_check_list_status_id() != null)
+                    ? employee.getEmp_check_list_status_id().getCheck_app_status_name()
+                    : "null";
+
+            throw new ResourceNotFoundException("Cannot reject employee by CO. Current status is '" + currentStatus +
+                    "'. Only employees with 'Pending at CO' status can be rejected by the Central Office.");
+        }
+
+        updateEmployeeStatusAndRemarks(employee, "Rejected by CO", rejectDTO.getRemarks());
+        return rejectDTO;
+    }
+
+    private void validateRejectionRequest(RejectEmployeeDTO rejectDTO) {
         if (rejectDTO.getTempPayrollId() == null || rejectDTO.getTempPayrollId().trim().isEmpty()) {
             throw new ResourceNotFoundException("tempPayrollId is required.");
         }
-
-        // Validation: Check if remarks is provided
         if (rejectDTO.getRemarks() == null || rejectDTO.getRemarks().trim().isEmpty()) {
             throw new ResourceNotFoundException("remarks is required.");
         }
+    }
 
-        logger.info("Rejecting employee - temp_payroll_id: {}, remarks: {}",
-                rejectDTO.getTempPayrollId(), rejectDTO.getRemarks());
-
-        // Find employee by temp_payroll_id
-        Employee employee = employeeRepository.findByTempPayrollId(rejectDTO.getTempPayrollId())
+    private Employee getEmployeeByTempId(String tempPayrollId) {
+        return employeeRepository.findByTempPayrollId(tempPayrollId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employee not found with temp_payroll_id: " + rejectDTO.getTempPayrollId()));
+                        "Employee not found with temp_payroll_id: " + tempPayrollId));
+    }
 
-        // Validation: Check if current status is "Confirm"
+    private void validateNotConfirmed(Employee employee) {
         if (employee.getEmp_check_list_status_id() != null &&
                 "Confirm".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name())) {
 
             throw new ResourceNotFoundException("Cannot reject employee. Employee is already 'Confirm'. " +
                     "Rejection is not allowed for confirmed employees.");
         }
+    }
 
-        // Update status to "Reject"
-        EmployeeCheckListStatus rejectStatus = employeeCheckListStatusRepository.findByCheck_app_status_name("Reject")
-                .orElseThrow(
-                        () -> new ResourceNotFoundException("EmployeeCheckListStatus with name 'Reject' not found"));
+    private void updateEmployeeStatusAndRemarks(Employee employee, String statusName, String remarks) {
+        EmployeeCheckListStatus status = employeeCheckListStatusRepository.findByCheck_app_status_name(statusName)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "EmployeeCheckListStatus with name '" + statusName + "' not found"));
 
-        employee.setEmp_check_list_status_id(rejectStatus);
-
-        // Update remarks
-        employee.setRemarks(rejectDTO.getRemarks().trim());
-
-        // Save employee updates
+        employee.setEmp_check_list_status_id(status);
+        employee.setRemarks(remarks.trim());
         employeeRepository.save(employee);
 
-        logger.info("Successfully rejected employee (temp_payroll_id: '{}') with status 'Reject'",
-                rejectDTO.getTempPayrollId());
-
-        return rejectDTO;
+        logger.info("Successfully updated employee (temp_payroll_id: '{}') to status '{}'",
+                employee.getTempPayrollId(), statusName);
     }
 
     /**
@@ -587,16 +627,17 @@ public class CentralOfficeLevelService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Employee not found with temp_payroll_id: " + statusDTO.getTempPayrollId()));
 
-        // Validation: Check if current status is "Reject"
+        // Validation: Check if current status is "Rejected by DO" or "Rejected by CO"
         if (employee.getEmp_check_list_status_id() == null ||
-                !"Reject".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name())) {
+                (!"Rejected by DO".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name()) &&
+                        !"Rejected by CO".equals(employee.getEmp_check_list_status_id().getCheck_app_status_name()))) {
 
             String currentStatus = (employee.getEmp_check_list_status_id() != null)
                     ? employee.getEmp_check_list_status_id().getCheck_app_status_name()
                     : "null";
 
             throw new ResourceNotFoundException("Cannot mark as Incompleted. Current status is '" + currentStatus +
-                    "'. This method only works for employees with 'Reject' status.");
+                    "'. This method only works for employees with 'Rejected by DO' or 'Rejected by CO' status.");
         }
 
         // Retrieve "Incompleted" status by name
