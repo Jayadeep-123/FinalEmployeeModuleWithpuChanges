@@ -3,7 +3,7 @@ package com.employee.entity;
 import java.sql.Date;
 import java.time.LocalDateTime;
 
-import org.hibernate.validator.constraints.Range;
+import jakarta.validation.constraints.Min;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -172,7 +172,7 @@ public class Employee {
 	@JoinColumn(name = "building_id", nullable = true)
 	private Building building_id; // Optional - can be null
 
-	@Range(min = 18, max = 58, message = "Age must be between 18 and 58")
+	@Min(value = 18, message = "Age must be at least 18")
 	@Column(name = "age")
 	private Integer age;// Optional - nullable
 
