@@ -59,4 +59,6 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
 
         @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId AND std.isActive = 1")
         Optional<SkillTestDetails> findActiveByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
+
+        List<SkillTestDetails> findByIsActive(int isActive);
 }

@@ -95,4 +95,15 @@ public class SkillTestDetailsController {
                 .getSkillTestResultsByPayrollId(tempPayrollId);
         return ResponseEntity.ok(results);
     }
+
+    /**
+     * Get list of all active skill test details with simplified fields
+     * GET /api/v1/skill-details/list
+     */
+    @GetMapping("/list")
+    public ResponseEntity<List<com.employee.dto.SkillTestListDto>> getAllSkillTestList() {
+        log.info("Fetching all skill test list");
+        List<com.employee.dto.SkillTestListDto> list = skillTestDetailsService.getSkillTestList();
+        return ResponseEntity.ok(list);
+    }
 }

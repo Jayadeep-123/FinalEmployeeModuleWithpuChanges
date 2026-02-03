@@ -1673,7 +1673,7 @@ public class EmployeeRemainingTabService {
             return;
 
         // Set agreement information in Employee entity (in memory only)
-        if (agreementInfo.getAgreementOrgId() != null) {
+        if (agreementInfo.getAgreementOrgId() != null && agreementInfo.getAgreementOrgId() > 0) {
             Organization org = organizationRepository.findById(agreementInfo.getAgreementOrgId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Agreement Organization not found with ID: " + agreementInfo.getAgreementOrgId()));
@@ -1715,6 +1715,12 @@ public class EmployeeRemainingTabService {
             Integer updatedBy) {
         if (agreementInfo == null)
             return;
+
+        // If isCheckSubmit is null (not provided in empty object), SKIP everything.
+        // We only process cheques if true (save/update) or false (deactivate).
+        if (agreementInfo.getIsCheckSubmit() == null) {
+            return;
+        }
 
         // Save cheque details ONLY if isCheckSubmit is true AND cheque details are
         // provided
@@ -1812,6 +1818,7 @@ public class EmployeeRemainingTabService {
             logger.info("✅ Updated/Created {} cheque details for Employee ID: {}",
                     agreementInfo.getChequeDetails().size(), employee.getEmp_id());
         } else {
+            // isCheckSubmit is explicitly FALSE
             int empId = employee.getEmp_id();
 
             List<EmpChequeDetails> existingCheques = empChequeDetailsRepository.findAll().stream()
@@ -2016,42 +2023,14 @@ public class EmployeeRemainingTabService {
 
     /**
      * Helper: Validate Agreement Info DTO
+     * NOTE: Validations removed as per requirement.
      */
     private void validateAgreementInfo(AgreementInfoDTO agreementInfo) {
         if (agreementInfo == null) {
             return; // Agreement info is optional
         }
 
-        // If isCheckSubmit is true, cheque details MUST be provided
-        if (Boolean.TRUE.equals(agreementInfo.getIsCheckSubmit())) {
-            if (agreementInfo.getChequeDetails() == null || agreementInfo.getChequeDetails().isEmpty()) {
-                throw new ResourceNotFoundException(
-                        "Cheque details are required when isCheckSubmit is true. Please provide at least one cheque detail.");
-            }
-        }
-
-        // Validate cheque details if isCheckSubmit is true and cheque details are
-        // provided
-        if (Boolean.TRUE.equals(agreementInfo.getIsCheckSubmit()) && agreementInfo.getChequeDetails() != null
-                && !agreementInfo.getChequeDetails().isEmpty()) {
-
-            for (AgreementInfoDTO.ChequeDetailDTO chequeDTO : agreementInfo.getChequeDetails()) {
-                if (chequeDTO == null)
-                    continue;
-
-                if (chequeDTO.getChequeNo() == null) {
-                    throw new ResourceNotFoundException("Cheque Number is required (NOT NULL column)");
-                }
-
-                if (chequeDTO.getChequeBankName() == null || chequeDTO.getChequeBankName().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Cheque Bank Name is required (NOT NULL column)");
-                }
-
-                if (chequeDTO.getChequeBankIfscCode() == null || chequeDTO.getChequeBankIfscCode().trim().isEmpty()) {
-                    throw new ResourceNotFoundException("Cheque Bank IFSC Code is required (NOT NULL column)");
-                }
-            }
-        }
+        // Validation logic removed as requested
     }
 
     /**
@@ -2165,7 +2144,7 @@ public class EmployeeRemainingTabService {
     private void saveOrUpdateAgreementDocument(Employee employee, String docPath, Integer createdBy,
             Integer updatedBy) {
         if (docPath == null || docPath.trim().isEmpty() || "string".equalsIgnoreCase(docPath)) {
-            deactivateAgreementDocument(employee, updatedBy);
+            // Updated behavior: Do NOTHING if empty/null. Do not deactivate.
             return;
         }
 

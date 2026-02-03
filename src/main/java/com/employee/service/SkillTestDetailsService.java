@@ -516,4 +516,68 @@ public class SkillTestDetailsService {
         log.info("Fetching skill test results for tempPayrollId: {}", tempPayrollId);
         return skilltestresultrepository.findSkillTestDetailsByPayrollId(tempPayrollId.trim());
     }
+
+    /**
+     * Get list of all skill test details with specific fields
+     */
+    @Transactional(readOnly = true)
+    public List<com.employee.dto.SkillTestListDto> getSkillTestList() {
+        // Use repository method to get active records directly from DB
+        return skillTestDetailsRepository.findByIsActive(1).stream()
+                .map(entity -> {
+                    com.employee.dto.SkillTestListDto dto = new com.employee.dto.SkillTestListDto();
+
+                    // 1. Employee Name
+                    String fName = entity.getFirstName() != null ? entity.getFirstName() : "";
+                    String lName = entity.getLastName() != null ? entity.getLastName() : "";
+                    dto.setEmployeeName((fName + " " + lName).trim());
+
+                    // 2. Temp Payroll ID
+                    dto.setTempPayrollId(entity.getTempPayrollId());
+
+                    // 3. Employee Number
+                    // Try to get from Employee entity first, else fallback to previous_chaitanya_id
+                    if (entity.getEmpId() != null && entity.getEmpId().getPayRollId() != null) {
+                        dto.setEmployeeNumber(entity.getEmpId().getPayRollId());
+                    } else {
+                        dto.setEmployeeNumber(
+                                entity.getPrevious_chaitanya_id() != null ? entity.getPrevious_chaitanya_id() : "N/A");
+                    }
+
+                    // 4. Join Date (Mapping CreatedDate as fallback, or JoinDate if available in
+                    // fields)
+                    // Requirement said "join date". Entity has createdDate. Employee entity has
+                    // join_date.
+                    // SkillTestDetails entity doesn't seem to have a specific 'join_date' field in
+                    // the class,
+                    // but let's check if it exists or use createdDate as proxy for when this record
+                    // was made.
+                    // CHECK: The DTO we made has LocalDateTime.
+                    dto.setJoinDate(entity.getCreatedDate());
+
+                    // 5. City
+                    if (entity.getCity() != null) {
+                        dto.setCity(entity.getCity().getCityName());
+                    } else {
+                        dto.setCity("N/A");
+                    }
+
+                    // 6. Campus
+                    if (entity.getCampus() != null) {
+                        dto.setCampus(entity.getCampus().getCampusName());
+                    } else {
+                        dto.setCampus("N/A");
+                    }
+
+                    // 7. Gender
+                    if (entity.getGender() != null) {
+                        dto.setGender(entity.getGender().getGenderName());
+                    } else {
+                        dto.setGender("N/A");
+                    }
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
 }
