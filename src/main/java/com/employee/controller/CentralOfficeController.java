@@ -83,6 +83,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.employee.dto.CentralOfficeChecklistDTO;
 import com.employee.dto.IncompletedStatusDTO;
 import com.employee.dto.RejectBackToDODTO;
+import com.employee.dto.RejectEmployeeByRoleDTO;
 import com.employee.dto.RejectEmployeeDTO;
 import com.employee.dto.SalaryInfoSaveAtCODTO;
 import com.employee.exception.ResourceNotFoundException;
@@ -189,6 +190,20 @@ public class CentralOfficeController {
     public ResponseEntity<RejectEmployeeDTO> rejectByCO(@RequestBody RejectEmployeeDTO rejectDTO) {
         logger.info("Received request to reject by CO for temp_payroll_id: {}", rejectDTO.getTempPayrollId());
         RejectEmployeeDTO result = centralOfficeLevelService.rejectByCO(rejectDTO);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    /**
+     * POST endpoint to reject employee based on role ("DO" or "CO")
+     * 
+     * @param rejectDTO Contains tempPayrollId, remarks, and role
+     * @return ResponseEntity with the updated RejectEmployeeByRoleDTO
+     */
+    @PostMapping("/reject-by-role")
+    public ResponseEntity<RejectEmployeeByRoleDTO> rejectByRole(@RequestBody RejectEmployeeByRoleDTO rejectDTO) {
+        logger.info("Received request to reject by role: '{}' for temp_payroll_id: {}",
+                rejectDTO.getRole(), rejectDTO.getTempPayrollId());
+        RejectEmployeeByRoleDTO result = centralOfficeLevelService.rejectEmployeeByRole(rejectDTO);
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 

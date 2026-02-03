@@ -14,6 +14,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.employee.dto.CentralOfficeChecklistDTO;
 import com.employee.dto.IncompletedStatusDTO;
 import com.employee.dto.RejectBackToDODTO;
+import com.employee.dto.RejectEmployeeByRoleDTO;
 import com.employee.dto.RejectEmployeeDTO;
 import com.employee.entity.Campus;
 import com.employee.entity.City;
@@ -656,5 +657,34 @@ public class CentralOfficeLevelService {
                 statusDTO.getTempPayrollId());
 
         return statusDTO;
+    }
+
+    /**
+     * Reject employee based on role ("DO" or "CO")
+     * Delegates to rejectByDO or rejectByCO based on the role provided.
+     * 
+     * @param dto DTO containing tempPayrollId, remarks, and role
+     * @return The same DTO if successful
+     */
+    public RejectEmployeeByRoleDTO rejectEmployeeByRole(RejectEmployeeByRoleDTO dto) {
+        // Validation
+        if (dto.getRole() == null || dto.getRole().trim().isEmpty()) {
+            throw new ResourceNotFoundException("Role is required. Valid values are 'DO' or 'CO'.");
+        }
+
+        String role = dto.getRole().trim().toUpperCase();
+        RejectEmployeeDTO rejectDto = new RejectEmployeeDTO(dto.getTempPayrollId(), dto.getRemarks());
+
+        if ("DO".equals(role)) {
+            logger.info("Delegating to rejectByDO for temp_payroll_id: {}", dto.getTempPayrollId());
+            rejectByDO(rejectDto);
+        } else if ("CO".equals(role)) {
+            logger.info("Delegating to rejectByCO for temp_payroll_id: {}", dto.getTempPayrollId());
+            rejectByCO(rejectDto);
+        } else {
+            throw new ResourceNotFoundException("Invalid role: '" + dto.getRole() + "'. Valid roles are 'DO' or 'CO'.");
+        }
+
+        return dto;
     }
 }
