@@ -327,11 +327,14 @@ public class EmployeeRemainingTabService {
 
     /**
      * API 9: Save Agreement Info (Tab 9) When agreement is submitted, change
-     * employee status from "Incompleted" to "Pending at DO" (if category is NOT
-     * "school")
+     * employee status from "Incompleted" to "Pending at DO" (unless category is
+     * "school" and role is not specific)
      *
      * Business Logic:
-     * - If category is "school": Status remains unchanged (keeps current status)
+     * - If category is "school":
+     * - Status changes to "Pending at DO" ONLY if role is one of: "Senior
+     * Lecturer", "CASHIER", "Vice Principal" (case-insensitive)
+     * - Otherwise, status remains unchanged (keeps current status)
      * - If category is "college" or any other: Status changes from "Incompleted" to
      * "Pending at DO"
      *
@@ -368,13 +371,29 @@ public class EmployeeRemainingTabService {
 
             // Step 3.5: Change employee status to "Pending at DO" when agreement is
             // submitted
-            // BUT: If category is "school", do NOT change the status (keep current status)
+            // BUT: If category is "school", only change to "Pending at DO" for specific
+            // roles
+            String roleName = (agreementInfo != null && agreementInfo.getRole() != null)
+                    ? agreementInfo.getRole().trim()
+                    : null;
+
             if (categoryName != null && "school".equalsIgnoreCase(categoryName)) {
-                logger.info("User provided category is '{}' (school) - status will NOT be changed. Current status: {}",
-                        categoryName,
-                        employee.getEmp_check_list_status_id() != null
-                                ? employee.getEmp_check_list_status_id().getCheck_app_status_name()
-                                : "null");
+                // Check if role is Senior Lecturer, CASHIER, or Vice Principal
+                // (case-insensitive)
+                boolean isAllowedRole = roleName != null && ("Senior Lecturer".equalsIgnoreCase(roleName) ||
+                        "CASHIER".equalsIgnoreCase(roleName) ||
+                        "Vice Principal".equalsIgnoreCase(roleName));
+
+                if (isAllowedRole) {
+                    changeStatusToPendingAtDO(employee);
+                    logger.info("School category with allowed role '{}' - status changed to 'Pending at DO'", roleName);
+                } else {
+                    logger.info("School category with role '{}' - status remains unchanged. Current status: {}",
+                            roleName != null ? roleName : "null",
+                            employee.getEmp_check_list_status_id() != null
+                                    ? employee.getEmp_check_list_status_id().getCheck_app_status_name()
+                                    : "null");
+                }
             } else {
                 // Category is "college" or any other (or null) - change status to "Pending at
                 // DO"
@@ -402,6 +421,43 @@ public class EmployeeRemainingTabService {
             logger.error("❌ ERROR: Agreement Info save failed. Error: {}", e.getMessage(), e);
             throw e;
         }
+    }
+
+    /**
+     * Change Employee Status to Pending at DO
+     * Updates status to "Pending at DO" based ONLY on temp_payroll_id.
+     * 
+     * @param tempPayrollId The temp payroll ID of the employee
+     * @return Success message
+     */
+    public String pendingAtDO(String tempPayrollId) {
+        if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
+            throw new ResourceNotFoundException("tempPayrollId is required.");
+        }
+
+        Employee employee = employeeRepository.findByTempPayrollId(tempPayrollId.trim())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with temp_payroll_id: " + tempPayrollId));
+
+        // Validate status: Only from "Incompleted" or "Back to Campus"
+        if (employee.getEmp_check_list_status_id() == null) {
+            throw new ResourceNotFoundException("Employee does not have a status set.");
+        }
+
+        String currentStatus = employee.getEmp_check_list_status_id().getCheck_app_status_name();
+        if (!"Incompleted".equals(currentStatus) && !"Back to Campus".equals(currentStatus)) {
+            throw new ResourceNotFoundException(
+                    "Cannot change status to Pending at DO. Current status is '" + currentStatus +
+                            "'. Only 'Incompleted' or 'Back to Campus' employees can be processed.");
+        }
+
+        // Update status and clear remarks
+        changeStatusToPendingAtDO(employee);
+        employee.setRemarks(null);
+        employeeRepository.save(employee);
+
+        logger.info("Successfully changed employee {} status to Pending at DO and cleared remarks.", tempPayrollId);
+        return "Employee status changed to Pending at DO successfully.";
     }
 
     /**

@@ -34,6 +34,7 @@ public class AgreementInfoDTO {
 	// If "college" or any other: status will change from "Incompleted" to "Pending
 	// at DO"
 	private String category; // Category name (case-insensitive comparison)
+	private String role; // Role/Designation name (case-insensitive comparison)
 
 	// Is Check Submit flag (stored in Employee.is_check_submit)
 	// If true: cheque details will be saved in EmpChequeDetails table and

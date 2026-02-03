@@ -28,10 +28,13 @@ import com.employee.service.EmployeeRemainingTabService;
  * Provides separate APIs for each tab, allowing step-by-step onboarding.
  * 
  * This controller calls two services:
- * - EmployeeBasicInfoTabService (4 APIs: Basic, Address, Family, Previous Employer)
- * - EmployeeRemainingTabService (5 APIs: Qualification, Documents, Category, Bank, Agreement)
+ * - EmployeeBasicInfoTabService (4 APIs: Basic, Address, Family, Previous
+ * Employer)
+ * - EmployeeRemainingTabService (5 APIs: Qualification, Documents, Category,
+ * Bank, Agreement)
  * 
- * NOTE: EmployeeController remains unchanged - this is an additional controller.
+ * NOTE: EmployeeController remains unchanged - this is an additional
+ * controller.
  */
 @RestController
 @RequestMapping("/api/employee/tab")
@@ -62,7 +65,7 @@ public class EmployeeTabController {
      * POST /api/employee/tab/address-info
      * 
      * @param tempPayrollId Temp Payroll ID
-     * @param addressInfo Address Info DTO
+     * @param addressInfo   Address Info DTO
      * @return Saved AddressInfoDTO object
      */
     @PostMapping("/address-info")
@@ -78,7 +81,7 @@ public class EmployeeTabController {
      * POST /api/employee/tab/family-info
      * 
      * @param tempPayrollId Temp Payroll ID
-     * @param familyInfo Family Info DTO
+     * @param familyInfo    Family Info DTO
      * @return Saved FamilyInfoDTO object
      */
     @PostMapping("/family-info")
@@ -93,7 +96,7 @@ public class EmployeeTabController {
      * API 4: Save Previous Employer Info (Tab 4)
      * POST /api/employee/tab/previous-employer
      * 
-     * @param tempPayrollId Temp Payroll ID
+     * @param tempPayrollId        Temp Payroll ID
      * @param previousEmployerInfo Previous Employer Info DTO
      * @return Saved PreviousEmployerInfoDTO object
      */
@@ -101,7 +104,8 @@ public class EmployeeTabController {
     public ResponseEntity<PreviousEmployerInfoDTO> savePreviousEmployerInfo(
             @RequestParam("tempPayrollId") String tempPayrollId,
             @RequestBody PreviousEmployerInfoDTO previousEmployerInfo) {
-        PreviousEmployerInfoDTO response = employeeBasicInfoTabService.savePreviousEmployerInfo(tempPayrollId, previousEmployerInfo);
+        PreviousEmployerInfoDTO response = employeeBasicInfoTabService.savePreviousEmployerInfo(tempPayrollId,
+                previousEmployerInfo);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -126,7 +130,7 @@ public class EmployeeTabController {
      * POST /api/employee/tab/documents
      * 
      * @param tempPayrollId Temp Payroll ID
-     * @param documents Document DTO
+     * @param documents     Document DTO
      * @return Saved DocumentDTO object
      */
     @PostMapping("/documents")
@@ -142,7 +146,7 @@ public class EmployeeTabController {
      * POST /api/employee/tab/category-info
      * 
      * @param tempPayrollId Temp Payroll ID
-     * @param categoryInfo Category Info DTO
+     * @param categoryInfo  Category Info DTO
      * @return Saved CategoryInfoDTO object
      */
     @PostMapping("/category-info")
@@ -158,7 +162,7 @@ public class EmployeeTabController {
      * POST /api/employee/tab/bank-info
      * 
      * @param tempPayrollId Temp Payroll ID
-     * @param bankInfo Bank Info DTO
+     * @param bankInfo      Bank Info DTO
      * @return Saved BankInfoDTO object
      */
     @PostMapping("/bank-info")
@@ -184,25 +188,46 @@ public class EmployeeTabController {
         AgreementInfoDTO response = employeeRemainingTabService.saveAgreementInfo(tempPayrollId, agreementInfo);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-	
-	/**
-	 * API: Forward Employee to Divisional Office
-	 * POST /api/employee/tab/forward-to-divisional-office
-	 * 
-	 * Forwards employee from Campus to Divisional Office by updating status to "Pending at DO"
-	 * Accepts request body with salary information and saves/updates it
-	 * 
-	 * @param requestDTO ForwardToDivisionalOfficeResponseDTO containing tempPayrollId and salary details
-	 * @return ResponseEntity with ForwardToDivisionalOfficeResponseDTO containing employee and status details
-	 */
+
+    /**
+     * API: Forward Employee to Divisional Office
+     * POST /api/employee/tab/forward-to-divisional-office
+     * 
+     * Forwards employee from Campus to Divisional Office by updating status to
+     * "Pending at DO"
+     * Accepts request body with salary information and saves/updates it
+     * 
+     * @param requestDTO ForwardToDivisionalOfficeResponseDTO containing
+     *                   tempPayrollId and salary details
+     * @return ResponseEntity with ForwardToDivisionalOfficeResponseDTO containing
+     *         employee and status details
+     */
     @PostMapping("/forward-to-divisional-office/{tempPayrollId}")
     public ResponseEntity<ForwardToDivisionalOfficeResponseDTO> forwardToDivisionalOffice(
-        @RequestBody ForwardToDivisionalOfficeResponseDTO requestDTO,
-        @PathVariable String tempPayrollId) {
-        // Ensure tempPayrollId is set in the DTO (from path variable, overriding body if needed)
+            @RequestBody ForwardToDivisionalOfficeResponseDTO requestDTO,
+            @PathVariable String tempPayrollId) {
+        // Ensure tempPayrollId is set in the DTO (from path variable, overriding body
+        // if needed)
         requestDTO.setTempPayrollId(tempPayrollId);
-        ForwardToDivisionalOfficeResponseDTO response = employeeRemainingTabService.forwardEmployeeToDivisionalOffice(requestDTO);
+        ForwardToDivisionalOfficeResponseDTO response = employeeRemainingTabService
+                .forwardEmployeeToDivisionalOffice(requestDTO);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-}
 
+    /**
+     * API: Change Employee Status to Pending at DO
+     * POST /api/employee/tab/pending-at-do/{tempPayrollId}
+     * 
+     * Forwards employee from Campus to Divisional Office by updating status to
+     * "Pending at DO".
+     * Only changes the status based on tempPayrollId and clears remarks.
+     * 
+     * @param tempPayrollId Temp Payroll ID
+     * @return Success message
+     */
+    @PostMapping("/pending-at-do/{tempPayrollId}")
+    public ResponseEntity<String> pendingAtDO(@PathVariable String tempPayrollId) {
+        String message = employeeRemainingTabService.pendingAtDO(tempPayrollId);
+        return new ResponseEntity<>(message, HttpStatus.OK);
+    }
+}
