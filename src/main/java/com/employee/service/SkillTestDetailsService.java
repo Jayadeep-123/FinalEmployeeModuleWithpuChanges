@@ -53,6 +53,7 @@ import com.employee.repository.StructureRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.SkillTestApprovalRepository;
 import com.employee.entity.SkillTestApproval;
+import com.employee.entity.SkillTestApprovalStatus;
 
 import com.employee.entity.OrientationGroup;
 import com.employee.repository.OrientationGroupRepository;
@@ -579,5 +580,64 @@ public class SkillTestDetailsService {
                     return dto;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper to update skill test approval status
+     */
+    @Transactional
+    public void updateSkillTestStatus(String tempPayrollId, int statusId) {
+        if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
+            throw new ResourceNotFoundException("tempPayrollId is required");
+        }
+
+        // 1. Fetch active results
+        List<SkillTestResult> results = skilltestresultrepository.findActiveByTempPayrollId(tempPayrollId.trim());
+
+        if (results == null || results.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No active skill test results found for tempPayrollId: " + tempPayrollId);
+        }
+
+        // 2. Get the latest result (Ordered by examDate DESC in Repo)
+        SkillTestResult latestResult = results.get(0);
+
+        // 3. Fetch status entity
+        SkillTestApprovalStatus status = skillTestApprovalStatusRepository.findById(statusId)
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("SkillTestApprovalStatus not found with ID: " + statusId));
+
+        // 4. Update and Save
+        latestResult.setSkillTestApprovalStatus(status);
+
+        // Ensure record stays active (User reported issues with it becoming inactive)
+        latestResult.setIsActive(1);
+
+        // Use system user (1) or catch principal if available, defaulting to 1 for now
+        latestResult.setUpdatedBy(1);
+        latestResult.setUpdatedDate(LocalDateTime.now());
+
+        log.info("Saving updates to EXISTING SkillTestResult ID: {}", latestResult.getSkillTestResultId());
+        skilltestresultrepository.save(latestResult);
+        log.info("Successfully updated skill test result ID {} to status ID {}", latestResult.getSkillTestResultId(),
+                statusId);
+    }
+
+    /**
+     * Approve Skill Test Result
+     */
+    @Transactional
+    public void approveSkillTestResult(String tempPayrollId) {
+        // ID 2 = Skill Test Approved
+        updateSkillTestStatus(tempPayrollId, 2);
+    }
+
+    /**
+     * Reject Skill Test Result
+     */
+    @Transactional
+    public void rejectSkillTestResult(String tempPayrollId) {
+        // ID 3 = Rejected
+        updateSkillTestStatus(tempPayrollId, 3);
     }
 }
