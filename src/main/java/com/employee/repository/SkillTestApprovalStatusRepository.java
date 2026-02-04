@@ -6,6 +6,8 @@ import org.springframework.stereotype.Repository;
 import com.employee.entity.SkillTestApprovalStatus;
 
 @Repository
-public interface SkillTestApprovalStatusRepository extends JpaRepository<SkillTestApprovalStatus, Integer>{
+public interface SkillTestApprovalStatusRepository extends JpaRepository<SkillTestApprovalStatus, Integer> {
+
+    java.util.Optional<SkillTestApprovalStatus> findByStatusName(String statusName);
 
 }

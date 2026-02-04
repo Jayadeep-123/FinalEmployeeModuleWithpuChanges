@@ -10,13 +10,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SkillTestResultDTO {
 
-    private String payrollId;          
-    private String fullName;           
-    private String subjectName;        
-    private Date examDate;             
-    private int noOfQuestions;         
-    private int attempted;             
-    private int unAttempted;           
-    private int wrong;                 
-    private int totalMarks;            
+    private String payrollId;
+    private String fullName;
+    private String subjectName;
+    private Date examDate;
+    private int noOfQuestions;
+    private int attempted;
+    private int unAttempted;
+    private int wrong;
+    private int totalMarks;
 }

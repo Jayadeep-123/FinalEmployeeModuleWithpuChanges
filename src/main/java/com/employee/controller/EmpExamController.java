@@ -45,6 +45,7 @@ public class EmpExamController {
         EmpExamDataDTO data = integrationService.previewEmployeeData(id);
         return ResponseEntity.ok(data);
     }
+
     // =====================================================================
     // 3. FETCH RESULT ENDPOINT (GET)
     // Usage: GET http://localhost:8080/api/integration/get-result?empId=376487
@@ -52,11 +53,23 @@ public class EmpExamController {
     // =====================================================================
     @GetMapping("/get-result")
     public ResponseEntity<ExamResultDTO> getExamResult(@RequestParam String empId) {
-        ExamResultDTO result = integrationService.fetchExamResult(empId);
+        // Optimized: Returns local data if present, otherwise fetches from API
+        ExamResultDTO result = integrationService.getExamResultLocalOrExternal(empId);
         if (result != null) {
             return ResponseEntity.ok(result);
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    // =====================================================================
+    // 4. FETCH ALL RESULTS ENDPOINT (GET)
+    // Usage: GET http://localhost:8080/api/integration/fetch-all-results
+    // Action: Triggers parallel sync for ALL qualifying employees
+    // =====================================================================
+    @GetMapping("/fetch-all-results")
+    public ResponseEntity<String> fetchAllResults() {
+        integrationService.fetchAllResults();
+        return ResponseEntity.ok("Bulk synchronization started in the background.");
     }
 }

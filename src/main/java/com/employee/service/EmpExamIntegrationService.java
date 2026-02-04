@@ -7,7 +7,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.employee.dto.EmpExamDataDTO;
 import com.employee.dto.ExamResultDTO;
@@ -17,6 +18,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class EmpExamIntegrationService {
+
+    private static final Logger logger = LoggerFactory.getLogger(EmpExamIntegrationService.class);
 
     // --- API CONFIGURATION ---
     private final String API_BASE_URL = "https://webservice.scaits.net/empExamService";
@@ -35,15 +38,18 @@ public class EmpExamIntegrationService {
     private final ObjectMapper objectMapper;
     private final SkillTestDetailsRepository skillTestRepository;
     private final com.employee.repository.SkillTestResultRepository skillTestResultRepository;
+    private final com.employee.repository.SkillTestApprovalStatusRepository skillTestApprovalStatusRepository;
 
     public EmpExamIntegrationService(RestTemplate restTemplate,
             ObjectMapper objectMapper,
             SkillTestDetailsRepository skillTestRepository,
-            com.employee.repository.SkillTestResultRepository skillTestResultRepository) {
+            com.employee.repository.SkillTestResultRepository skillTestResultRepository,
+            com.employee.repository.SkillTestApprovalStatusRepository skillTestApprovalStatusRepository) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.skillTestRepository = skillTestRepository;
         this.skillTestResultRepository = skillTestResultRepository;
+        this.skillTestApprovalStatusRepository = skillTestApprovalStatusRepository;
     }
 
     // ==================================================================================
@@ -89,7 +95,7 @@ public class EmpExamIntegrationService {
             // new param is 'empPayrollId'
             String finalUrl = FETCH_RESULT_URL + "?empPayrollId=" + empId;
 
-            System.out.println("Fetching Results from: " + finalUrl);
+            logger.info("Fetching Results from: {}", finalUrl);
 
             ResponseEntity<ExamResultDTO> response = restTemplate.exchange(
                     finalUrl,
@@ -106,15 +112,93 @@ public class EmpExamIntegrationService {
 
             return dto;
 
+        } catch (org.springframework.web.client.HttpClientErrorException.UnprocessableEntity e) {
+            // Special handling for 422: "This Employee have not attempt the exam"
+            // We don't want to print stack traces for this expected scenario
+            logger.debug("Employee {} has not attempted the exam yet (422).", empId);
+            return null;
         } catch (Exception e) {
-            System.err.println("Error Fetching Exam Result: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error Fetching Exam Result for {}: {}", empId, e.getMessage());
             return null;
         }
     }
 
+    /**
+     * Fetches exam results for all active employees who don't have results yet.
+     * Uses parallel stream for faster execution (fetching "all at one time").
+     */
+    /**
+     * Optimized retrieval:
+     * 1. Checks local 'result' table first.
+     * 2. If exists, returns local data.
+     * 3. If not, fetches from external API and saves locally.
+     */
+    public ExamResultDTO getExamResultLocalOrExternal(String empId) {
+        // 1. Check Local DB
+        java.util.Optional<com.employee.entity.SkillTestResult> local = skillTestResultRepository
+                .findLatestActiveByPayrollId(empId);
+
+        if (local.isPresent()) {
+            logger.info("Found local exam result for {}, skipping API call.", empId);
+            return mapEntityToExamResultDto(local.get());
+        }
+
+        // 2. Not found locally -> Fetch from External API
+        logger.info("No local result found for {}, fetching from external API.", empId);
+        return fetchExamResult(empId);
+    }
+
+    private ExamResultDTO mapEntityToExamResultDto(com.employee.entity.SkillTestResult entity) {
+        ExamResultDTO dto = new ExamResultDTO();
+        dto.setPayrollId(entity.getSkillTestDetlId().getTempPayrollId());
+        dto.setExamDate(entity.getExamDate() != null ? entity.getExamDate().toString() : null);
+        dto.setTotalMarks(String.valueOf(entity.getTotalMarks()));
+        dto.setTotalQuestions(String.valueOf(entity.getNoOfQuestion()));
+        dto.setAttempted(String.valueOf(entity.getNoOfQuesAttempt()));
+        dto.setUnAttempted(String.valueOf(entity.getNoOfQuesUnattempt()));
+        dto.setCorrect(String.valueOf(entity.getNoOfQuesCorrect()));
+        dto.setWrong(String.valueOf(entity.getNoOfQuesWrong()));
+
+        if (entity.getSkillTestDetlId().getSubject() != null) {
+            dto.setSubject(entity.getSkillTestDetlId().getSubject().getSubject_name());
+        }
+
+        return dto;
+    }
+
+    public void fetchAllResults() {
+        // 1. Fetch active skill test details that DON'T have a result yet
+        java.util.List<SkillTestDetails> activeEmployees = skillTestRepository.findActiveWithoutResults();
+
+        if (activeEmployees == null || activeEmployees.isEmpty()) {
+            logger.info("No active employees found needing results synchronization.");
+            return;
+        }
+
+        logger.info(">>> Starting Parallel Fetch for {} employees <<<", activeEmployees.size());
+
+        // 2. Process in parallel
+        activeEmployees.parallelStream().forEach(emp -> {
+            String tempId = emp.getTempPayrollId();
+            if (tempId != null && !tempId.trim().isEmpty()) {
+                fetchExamResult(tempId); // This method handles its own try-catch and logging
+            }
+        });
+
+        logger.info(">>> Completed Parallel Fetch <<<");
+    }
+
     private void saveExamResult(ExamResultDTO dto) {
+        if (dto == null || dto.getPayrollId() == null)
+            return;
+
         try {
+            // Final Double-Check: Skip if an active result already exists locally
+            if (skillTestResultRepository.findLatestActiveByPayrollId(dto.getPayrollId()).isPresent()) {
+                logger.info("Active result already exists for {}, skipping duplicate save.", dto.getPayrollId());
+                return;
+            }
+
             // 1. Find Employee locally
             SkillTestDetails employee = skillTestRepository.findByTempPayrollId(dto.getPayrollId())
                     .orElseThrow(
@@ -136,18 +220,22 @@ public class EmpExamIntegrationService {
                     oldResult.setIsActive(0); // Deactivate
                 }
                 skillTestResultRepository.saveAll(existingActive);
-                System.out.println("Deactivated " + existingActive.size() + " old results for: " + dto.getPayrollId());
+                logger.info("Deactivated {} old results for: {}", existingActive.size(), dto.getPayrollId());
             }
             // --------------------------
 
             // Parse Date (dd-MM-yyyy -> SQL Date)
             try {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd-MM-yyyy");
-                java.util.Date parsed = sdf.parse(dto.getExamDate());
-                resultEntity.setExamDate(new java.sql.Date(parsed.getTime()));
+                if (dto.getExamDate() != null && !dto.getExamDate().trim().isEmpty()) {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd-MM-yyyy");
+                    java.util.Date parsed = sdf.parse(dto.getExamDate());
+                    resultEntity.setExamDate(new java.sql.Date(parsed.getTime()));
+                } else {
+                    logger.warn("Exam date is missing for {}, using current date.", dto.getPayrollId());
+                    resultEntity.setExamDate(new java.sql.Date(System.currentTimeMillis()));
+                }
             } catch (Exception e) {
-                System.err.println("Date Parse Error: " + e.getMessage());
-                // Fallback to current date or handle accordingly
+                logger.error("Date Parse Error for {}: {}", dto.getPayrollId(), e.getMessage());
                 resultEntity.setExamDate(new java.sql.Date(System.currentTimeMillis()));
             }
 
@@ -165,13 +253,15 @@ public class EmpExamIntegrationService {
             resultEntity.setIsActive(1);
             resultEntity.setCreatedBy(1); // Hardcoded as per instruction
 
+            // Set Approval Status (ID 1: "Skill Test Approval")
+            skillTestApprovalStatusRepository.findById(1).ifPresent(resultEntity::setSkillTestApprovalStatus);
+
             // Save
             skillTestResultRepository.save(resultEntity);
-            System.out.println("Saved Exam Result for: " + dto.getPayrollId());
+            logger.info("Saved Exam Result for: {}", dto.getPayrollId());
 
         } catch (Exception e) {
-            System.err.println("Error Saving Local Result: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error Saving Local Result for {}: {}", dto.getPayrollId(), e.getMessage());
         }
     }
 
@@ -223,11 +313,9 @@ public class EmpExamIntegrationService {
         dto.setPasswordDecrypt(rawPassword); // Send raw in 'passwordDecrypt'
         dto.setPassword(md5Hash(rawPassword)); // Send hash in 'password'
 
-        dto.setStatus("Test"); // Changed to "Test" as per payload sample
+        // Hardcoded status as per requirement
+        dto.setStatus("Skill Test Approval");
 
-        // --- Dynamic Relationships (Using Null Checks) ---
-
-        // Employee Type (Hardcoded to EMPLOYEE as per requirement)
         dto.setStudentType("EMPLOYEE");
 
         // Gender
