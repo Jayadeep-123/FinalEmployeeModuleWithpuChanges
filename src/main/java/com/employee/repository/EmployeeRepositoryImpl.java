@@ -265,6 +265,11 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
                     searchRequest.getCmpsCategory().trim().toLowerCase()));
         }
 
+        if (searchRequest.getCampusName() != null && !searchRequest.getCampusName().trim().isEmpty()) {
+            predicates.add(cb.like(cb.lower(c.get("campusName")),
+                    "%" + searchRequest.getCampusName().trim().toLowerCase() + "%"));
+        }
+
         query.where(predicates.toArray(new Predicate[0]));
 
         // Pagination logic
@@ -325,6 +330,11 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             countPredicates.add(
                     cb.equal(cb.lower(countBt.get("businessTypeName")),
                             searchRequest.getCmpsCategory().trim().toLowerCase()));
+        }
+
+        if (searchRequest.getCampusName() != null && !searchRequest.getCampusName().trim().isEmpty()) {
+            countPredicates.add(cb.like(cb.lower(cc.get("campusName")),
+                    "%" + searchRequest.getCampusName().trim().toLowerCase() + "%"));
         }
 
         countQuery.select(cb.count(countRoot));

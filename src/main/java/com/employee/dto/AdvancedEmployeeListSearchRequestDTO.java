@@ -22,4 +22,5 @@ public class AdvancedEmployeeListSearchRequestDTO {
     private Integer departmentId; // Optional
     private String payrollId; // Optional - can be a single ID or comma-separated IDs
     private String cmpsCategory; // Optional - filter by campus category (case-insensitive)
+    private String campusName; // Optional - filter by campus name
 }
