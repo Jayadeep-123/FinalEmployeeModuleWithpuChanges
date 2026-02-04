@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -94,5 +95,30 @@ public class SkillTestDetailsController {
         List<SkillTestResultDTO> results = skillTestDetailsService
                 .getSkillTestResultsByPayrollId(tempPayrollId);
         return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Get list of all active skill test details with simplified fields
+     * GET /api/v1/skill-details/list
+     */
+    @GetMapping("/list")
+    public ResponseEntity<List<com.employee.dto.SkillTestListDto>> getAllSkillTestList() {
+        log.info("Fetching all skill test list");
+        List<com.employee.dto.SkillTestListDto> list = skillTestDetailsService.getSkillTestList();
+        return ResponseEntity.ok(list);
+    }
+
+    @PutMapping("/approvedorNot/{tempPayrollId}")
+    public ResponseEntity<String> approveSkillTest(@PathVariable("tempPayrollId") String tempPayrollId) {
+        log.info("Approving skill test for tempPayrollId: {}", tempPayrollId);
+        skillTestDetailsService.approveSkillTestResult(tempPayrollId);
+        return ResponseEntity.ok("Skill Test Approved successfully");
+    }
+
+    @PutMapping("/reject/{tempPayrollId}")
+    public ResponseEntity<String> rejectSkillTest(@PathVariable("tempPayrollId") String tempPayrollId) {
+        log.info("Rejecting skill test for tempPayrollId: {}", tempPayrollId);
+        skillTestDetailsService.rejectSkillTestResult(tempPayrollId);
+        return ResponseEntity.ok("Skill Test Rejected successfully");
     }
 }

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.employee.dto.EmpPfEsiResponseDTO;
 import com.employee.dto.AddressResponseDTO;
 import com.employee.dto.AllDocumentsDTO;
 import com.employee.dto.BankInfoGetDTO;
@@ -76,6 +77,9 @@ public class GetEmpDetailsService {
 	EmpaddressInfoRepository empAddressInfoRepo;
 	@Autowired
 	EmpOnboardingStatusViewRepository empOnboardingStatusViewRepository;
+
+	@Autowired
+	EmpPfDetailsRepository empPfDetailsRepository;
 
 	GetEmpDetailsService(EmpQualificationRepository empQualificationRepository) {
 		this.empQualificationRepository = empQualificationRepository;
@@ -907,6 +911,26 @@ public class GetEmpDetailsService {
 		dto.setEmployees(employeeInfoList);
 
 		return dto;
+	}
+
+	public EmpPfEsiResponseDTO getPfEsiDetailsByTempPayrollId(String tempPayrollId) {
+		Employee employee = employeeRepo.findByTempPayrollId(tempPayrollId)
+				.orElseThrow(
+						() -> new ResourceNotFoundException("Employee not found for tempPayrollId: " + tempPayrollId));
+
+		// Fetch active PF details
+		Optional<com.employee.entity.EmpPfDetails> pfDetailsOpt = empPfDetailsRepository
+				.findByEmployeeIdAndIsActive(employee.getEmp_id(), 1);
+
+		if (pfDetailsOpt.isEmpty()) {
+			return new EmpPfEsiResponseDTO(); // Return empty object if not found
+		}
+
+		com.employee.entity.EmpPfDetails pfDetails = pfDetailsOpt.get();
+		return new EmpPfEsiResponseDTO(
+				pfDetails.getUan_no(),
+				pfDetails.getEsi_no(),
+				pfDetails.getPf_no());
 	}
 
 }

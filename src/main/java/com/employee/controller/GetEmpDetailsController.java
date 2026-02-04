@@ -32,6 +32,8 @@ import com.employee.entity.EmployeeOnboardingView;
 import com.employee.entity.SkillTestApproval;
 import com.employee.service.GetEmpDetailsService;
 
+import com.employee.dto.EmpPfEsiResponseDTO;
+
 @RestController
 @RequestMapping("/api/EmpDetailsFORCODO")
 @CrossOrigin("*")
@@ -264,6 +266,12 @@ public class GetEmpDetailsController {
 		} catch (RuntimeException e) {
 			return ResponseEntity.notFound().build();
 		}
+	}
+
+	@GetMapping("/pf-esi-details/{tempPayrollId}")
+	public ResponseEntity<EmpPfEsiResponseDTO> getPfEsiDetails(@PathVariable String tempPayrollId) {
+		EmpPfEsiResponseDTO response = getEmpDetailsService.getPfEsiDetailsByTempPayrollId(tempPayrollId);
+		return ResponseEntity.ok(response);
 	}
 
 }

@@ -60,14 +60,9 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
         @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId AND std.isActive = 1")
         Optional<SkillTestDetails> findActiveByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
 
-        List<SkillTestDetails> findByIsActive(Integer isActive);
-
-        /**
-         * Find all active records that DO NOT have an active result in the results
-         * table.
-         * Used by the scheduler to skip employees who already have results.
-         */
-        @Query("SELECT s FROM SkillTestDetails s WHERE s.isActive = 1 AND NOT EXISTS " +
-                        "(SELECT r FROM SkillTestResult r WHERE r.skillTestDetlId = s AND r.isActive = 1)")
+        @Query("SELECT std FROM SkillTestDetails std WHERE std.isActive = 1 AND NOT EXISTS " +
+                        "(SELECT str FROM SkillTestResult str WHERE str.skillTestDetlId = std AND str.isActive = 1)")
         List<SkillTestDetails> findActiveWithoutResults();
+
+        List<SkillTestDetails> findByIsActive(Integer isActive);
 }

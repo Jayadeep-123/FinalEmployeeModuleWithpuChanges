@@ -35,8 +35,9 @@ public interface SkillTestResultRepository extends JpaRepository<SkillTestResult
     List<SkillTestResult> findBySkillTestDetlIdAndIsActive(com.employee.entity.SkillTestDetails skillTestDetlId,
             int isActive);
 
-    @Query("SELECT r FROM SkillTestResult r JOIN r.skillTestDetlId d " +
-            "WHERE d.tempPayrollId = :tempPayrollId AND r.isActive = 1 " +
-            "ORDER BY r.examDate DESC LIMIT 1")
-    java.util.Optional<SkillTestResult> findLatestActiveByPayrollId(@Param("tempPayrollId") String tempPayrollId);
+    @Query("SELECT r FROM SkillTestResult r WHERE r.skillTestDetlId.tempPayrollId = :payrollId AND r.isActive = 1 ORDER BY r.examDate DESC LIMIT 1")
+    java.util.Optional<SkillTestResult> findLatestActiveByPayrollId(@Param("payrollId") String payrollId);
+
+    @Query("SELECT r FROM SkillTestResult r WHERE r.skillTestDetlId.tempPayrollId = :tempPayrollId AND r.isActive = 1 ORDER BY r.examDate DESC")
+    List<SkillTestResult> findActiveByTempPayrollId(@Param("tempPayrollId") String tempPayrollId);
 }

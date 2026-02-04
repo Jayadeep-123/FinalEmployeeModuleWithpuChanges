@@ -53,6 +53,7 @@ import com.employee.repository.StructureRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.SkillTestApprovalRepository;
 import com.employee.entity.SkillTestApproval;
+import com.employee.entity.SkillTestApprovalStatus;
 
 import com.employee.entity.OrientationGroup;
 import com.employee.repository.OrientationGroupRepository;
@@ -442,10 +443,6 @@ public class SkillTestDetailsService {
 
         // 2. Filter & Map directly from SkillTestResult
         return testResults.stream()
-                .filter(result -> result.getSkillTestApprovalStatus() != null &&
-                        result.getSkillTestApprovalStatus().getStatusName() != null &&
-                        result.getSkillTestApprovalStatus().getStatusName().trim().toLowerCase()
-                                .startsWith("skill test approv"))
                 .filter(result -> result.getSkillTestDetlId() != null) // Prevent NullPointer
                 .map(result -> {
                     SkillTestDetailsResultDto dto = new SkillTestDetailsResultDto();
@@ -515,5 +512,128 @@ public class SkillTestDetailsService {
         }
         log.info("Fetching skill test results for tempPayrollId: {}", tempPayrollId);
         return skilltestresultrepository.findSkillTestDetailsByPayrollId(tempPayrollId.trim());
+    }
+
+    /**
+     * Get list of all skill test details with specific fields
+     */
+    @Transactional(readOnly = true)
+    public List<com.employee.dto.SkillTestListDto> getSkillTestList() {
+        // Use repository method to get active records directly from DB
+        return skillTestDetailsRepository.findByIsActive(1).stream()
+                .map(entity -> {
+                    com.employee.dto.SkillTestListDto dto = new com.employee.dto.SkillTestListDto();
+
+                    // 1. Employee Name
+                    String fName = entity.getFirstName() != null ? entity.getFirstName() : "";
+                    String lName = entity.getLastName() != null ? entity.getLastName() : "";
+                    dto.setEmployeeName((fName + " " + lName).trim());
+
+                    // 2. Temp Payroll ID
+                    dto.setTempPayrollId(entity.getTempPayrollId());
+
+                    // 3. Employee Number
+                    // Try to get from Employee entity first, else fallback to previous_chaitanya_id
+                    if (entity.getEmpId() != null && entity.getEmpId().getPayRollId() != null) {
+                        dto.setEmployeeNumber(entity.getEmpId().getPayRollId());
+                    } else {
+                        dto.setEmployeeNumber(
+                                entity.getPrevious_chaitanya_id() != null ? entity.getPrevious_chaitanya_id() : "N/A");
+                    }
+
+                    // 4. Join Date (Mapping CreatedDate as fallback, or JoinDate if available in
+                    // fields)
+                    // Requirement said "join date". Entity has createdDate. Employee entity has
+                    // join_date.
+                    // SkillTestDetails entity doesn't seem to have a specific 'join_date' field in
+                    // the class,
+                    // but let's check if it exists or use createdDate as proxy for when this record
+                    // was made.
+                    // CHECK: The DTO we made has LocalDateTime.
+                    dto.setJoinDate(entity.getCreatedDate());
+
+                    // 5. City
+                    if (entity.getCity() != null) {
+                        dto.setCity(entity.getCity().getCityName());
+                    } else {
+                        dto.setCity("N/A");
+                    }
+
+                    // 6. Campus
+                    if (entity.getCampus() != null) {
+                        dto.setCampus(entity.getCampus().getCampusName());
+                    } else {
+                        dto.setCampus("N/A");
+                    }
+
+                    // 7. Gender
+                    if (entity.getGender() != null) {
+                        dto.setGender(entity.getGender().getGenderName());
+                    } else {
+                        dto.setGender("N/A");
+                    }
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper to update skill test approval status
+     */
+    @Transactional
+    public void updateSkillTestStatus(String tempPayrollId, int statusId) {
+        if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
+            throw new ResourceNotFoundException("tempPayrollId is required");
+        }
+
+        // 1. Fetch active results
+        List<SkillTestResult> results = skilltestresultrepository.findActiveByTempPayrollId(tempPayrollId.trim());
+
+        if (results == null || results.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No active skill test results found for tempPayrollId: " + tempPayrollId);
+        }
+
+        // 2. Get the latest result (Ordered by examDate DESC in Repo)
+        SkillTestResult latestResult = results.get(0);
+
+        // 3. Fetch status entity
+        SkillTestApprovalStatus status = skillTestApprovalStatusRepository.findById(statusId)
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("SkillTestApprovalStatus not found with ID: " + statusId));
+
+        // 4. Update and Save
+        latestResult.setSkillTestApprovalStatus(status);
+
+        // Ensure record stays active (User reported issues with it becoming inactive)
+        latestResult.setIsActive(1);
+
+        // Use system user (1) or catch principal if available, defaulting to 1 for now
+        latestResult.setUpdatedBy(1);
+        latestResult.setUpdatedDate(LocalDateTime.now());
+
+        log.info("Saving updates to EXISTING SkillTestResult ID: {}", latestResult.getSkillTestResultId());
+        skilltestresultrepository.save(latestResult);
+        log.info("Successfully updated skill test result ID {} to status ID {}", latestResult.getSkillTestResultId(),
+                statusId);
+    }
+
+    /**
+     * Approve Skill Test Result
+     */
+    @Transactional
+    public void approveSkillTestResult(String tempPayrollId) {
+        // ID 2 = Skill Test Approved
+        updateSkillTestStatus(tempPayrollId, 2);
+    }
+
+    /**
+     * Reject Skill Test Result
+     */
+    @Transactional
+    public void rejectSkillTestResult(String tempPayrollId) {
+        // ID 3 = Rejected
+        updateSkillTestStatus(tempPayrollId, 3);
     }
 }
