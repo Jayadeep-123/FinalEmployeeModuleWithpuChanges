@@ -215,14 +215,15 @@ public class ManagerMappingController {
         return ResponseEntity.ok(results);
     }
 
-//    @PutMapping("/campus-name")
-//    public ResponseEntity<?> updateCampusName(@RequestParam Integer campusId, @RequestParam String campusName) {
-//        try {
-//            managerMappingService.updateCampusName(campusId, campusName);
-//            return ResponseEntity.ok("Campus name updated successfully");
-//        } catch (Exception e) {
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body("Error updating campus name: " + e.getMessage());
-//        }
-//    }
+    // @PutMapping("/campus-name")
+    // public ResponseEntity<?> updateCampusName(@RequestParam Integer campusId,
+    // @RequestParam String campusName) {
+    // try {
+    // managerMappingService.updateCampusName(campusId, campusName);
+    // return ResponseEntity.ok("Campus name updated successfully");
+    // } catch (Exception e) {
+    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    // .body("Error updating campus name: " + e.getMessage());
+    // }
+    // }
 }

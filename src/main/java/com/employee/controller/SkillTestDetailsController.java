@@ -109,16 +109,18 @@ public class SkillTestDetailsController {
     }
 
     @PutMapping("/approvedorNot/{tempPayrollId}")
-    public ResponseEntity<String> approveSkillTest(@PathVariable("tempPayrollId") String tempPayrollId) {
-        log.info("Approving skill test for tempPayrollId: {}", tempPayrollId);
-        skillTestDetailsService.approveSkillTestResult(tempPayrollId);
+    public ResponseEntity<String> approveSkillTest(@PathVariable("tempPayrollId") String tempPayrollId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer updatedBy) {
+        log.info("Approving skill test for tempPayrollId: {} by user: {}", tempPayrollId, updatedBy);
+        skillTestDetailsService.approveSkillTestResult(tempPayrollId, updatedBy);
         return ResponseEntity.ok("Skill Test Approved successfully");
     }
 
     @PutMapping("/reject/{tempPayrollId}")
-    public ResponseEntity<String> rejectSkillTest(@PathVariable("tempPayrollId") String tempPayrollId) {
-        log.info("Rejecting skill test for tempPayrollId: {}", tempPayrollId);
-        skillTestDetailsService.rejectSkillTestResult(tempPayrollId);
+    public ResponseEntity<String> rejectSkillTest(@PathVariable("tempPayrollId") String tempPayrollId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer updatedBy) {
+        log.info("Rejecting skill test for tempPayrollId: {} by user: {}", tempPayrollId, updatedBy);
+        skillTestDetailsService.rejectSkillTestResult(tempPayrollId, updatedBy);
         return ResponseEntity.ok("Skill Test Rejected successfully");
     }
 }

@@ -582,7 +582,7 @@ public class SkillTestDetailsService {
      * Helper to update skill test approval status
      */
     @Transactional
-    public void updateSkillTestStatus(String tempPayrollId, int statusId) {
+    public void updateSkillTestStatus(String tempPayrollId, int statusId, Integer updatedBy) {
         if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
             throw new ResourceNotFoundException("tempPayrollId is required");
         }
@@ -609,31 +609,31 @@ public class SkillTestDetailsService {
         // Ensure record stays active (User reported issues with it becoming inactive)
         latestResult.setIsActive(1);
 
-        // Use system user (1) or catch principal if available, defaulting to 1 for now
-        latestResult.setUpdatedBy(1);
+        // Use provided updatedBy or default to 1 (system) if null
+        latestResult.setUpdatedBy(updatedBy != null ? updatedBy : 1);
         latestResult.setUpdatedDate(LocalDateTime.now());
 
         log.info("Saving updates to EXISTING SkillTestResult ID: {}", latestResult.getSkillTestResultId());
         skilltestresultrepository.save(latestResult);
-        log.info("Successfully updated skill test result ID {} to status ID {}", latestResult.getSkillTestResultId(),
-                statusId);
+        log.info("Successfully updated skill test result ID {} to status ID {} by user {}",
+                latestResult.getSkillTestResultId(), statusId, latestResult.getUpdatedBy());
     }
 
     /**
      * Approve Skill Test Result
      */
     @Transactional
-    public void approveSkillTestResult(String tempPayrollId) {
+    public void approveSkillTestResult(String tempPayrollId, Integer updatedBy) {
         // ID 2 = Skill Test Approved
-        updateSkillTestStatus(tempPayrollId, 2);
+        updateSkillTestStatus(tempPayrollId, 2, updatedBy);
     }
 
     /**
      * Reject Skill Test Result
      */
     @Transactional
-    public void rejectSkillTestResult(String tempPayrollId) {
+    public void rejectSkillTestResult(String tempPayrollId, Integer updatedBy) {
         // ID 3 = Rejected
-        updateSkillTestStatus(tempPayrollId, 3);
+        updateSkillTestStatus(tempPayrollId, 3, updatedBy);
     }
 }

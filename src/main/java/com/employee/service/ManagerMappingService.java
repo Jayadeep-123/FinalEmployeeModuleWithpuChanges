@@ -1154,93 +1154,93 @@ public class ManagerMappingService {
     /**
      * CORE LOGIC: Converts Employee Entity to DTO
      */
-     private EmployeeCampusAddressDTO processSingleEmployee(Employee emp, List<String> inputIds) {
+    private EmployeeCampusAddressDTO processSingleEmployee(Employee emp, List<String> inputIds) {
         EmployeeCampusAddressDTO dto = new EmployeeCampusAddressDTO();
- 
+
         // 1. Core ID and Basic Info (Populate first to be safe)
         String displayId = emp.getPayRollId();
         if (displayId == null || (inputIds != null && !inputIds.contains(displayId))) {
             displayId = emp.getTempPayrollId();
         }
         dto.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
- 
+
         // 2. Populate Employee Mobile and Manager Info (Available immediately from
         // Employee entity)
         dto.setEmployeeMobileNo(emp.getPrimary_mobile_no() != 0 ? String.valueOf(emp.getPrimary_mobile_no()) : null);
- 
+
         if (emp.getEmployee_manager_id() != null) {
             dto.setManagerId(emp.getEmployee_manager_id().getEmp_id());
         }
- 
+
         if (emp.getEmployee_reporting_id() != null) {
             dto.setReportingManagerId(emp.getEmployee_reporting_id().getEmp_id());
         }
- 
+
         // Additional manager text info (names, etc.)
         mapManagerInfo(emp, dto);
- 
+
         // Populate Employee Name
         String fullName = emp.getFirst_name();
         if (emp.getLast_name() != null) {
             fullName += " " + emp.getLast_name();
         }
         dto.setEmployeeName(fullName);
- 
+
         // Populate Department Info
         if (emp.getDepartment() != null) {
             dto.setDepartmentId(emp.getDepartment().getDepartment_id());
             dto.setDepartmentName(emp.getDepartment().getDepartment_name());
         }
- 
+
         // Populate Designation Info
         if (emp.getDesignation() != null) {
             dto.setDesignationId(emp.getDesignation().getDesignation_id());
             dto.setDesignationName(emp.getDesignation().getDesignation_name());
         }
- 
+
         // 3. Try to fetch Campus and Address Info (Defensively)
         try {
             if (emp.getCampus_id() == null) {
                 dto.setFullAddress("Address: Campus not assigned");
                 return dto;
             }
- 
+
             Integer campusId = emp.getCampus_id().getCampusId();
             dto.setCampusId(campusId);
             dto.setCampusName(emp.getCampus_id().getCampusName());
- 
+
             City result = campusRepository.findByCampusId(campusId);
             if (result != null) {
                 dto.setCity(result.getCityName());
                 dto.setCityId(result.getCityId());
             }
- 
+
             // Fetch buildings
             List<Building> buildings = buildingRepository.findBuildingsByCampusId(campusId);
             if (buildings == null || buildings.isEmpty()) {
                 dto.setFullAddress("Address: No buildings found for campus");
                 return dto;
             }
- 
+
             // Pick main building logic
             Building selectedBuilding = buildings.stream()
                     .filter(b -> b.getIsMainBuilding() == 1)
                     .findFirst()
                     .orElse(buildings.get(0));
- 
+
             // Fetch address
             BuildingAddress buildingAddress = buildingAddressRepository.findByBuildingIdAndAddressType(
                     selectedBuilding.getBuildingId(), "address");
- 
+
             if (buildingAddress == null) {
                 buildingAddress = buildingAddressRepository.findAddressByBuildingId(selectedBuilding.getBuildingId());
             }
- 
+
             if (buildingAddress == null) {
                 dto.setFullAddress("Address: No address record found for building");
                 return dto;
             }
- 
+
             // Build Address String
             StringJoiner sj = new StringJoiner(", ");
             if (buildingAddress.getPlot_no() != null)
@@ -1253,18 +1253,16 @@ public class ManagerMappingService {
                 sj.add(buildingAddress.getLandmark());
             if (buildingAddress.getPin_code() != null)
                 sj.add(String.valueOf(buildingAddress.getPin_code()));
- 
+
             dto.setFullAddress(sj.toString());
             dto.setBuildingMobileNo(buildingAddress.getMobile_no());
- 
+
         } catch (Exception e) {
             dto.setFullAddress("Address Error: " + e.getMessage());
         }
- 
+
         return dto;
     }
- 
- 
 
     private void mapManagerInfo(Employee emp, EmployeeCampusAddressDTO dto) {
         // Direct Manager
@@ -1306,5 +1304,55 @@ public class ManagerMappingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Campus not found with ID: " + campusId));
         campus.setCampusName(campusName);
         return campusRepository.save(campus);
+    }
+
+    @Autowired
+    private com.employee.repository.CampusEmployeeRepository campusEmployeeRepository;
+
+    /**
+     * Saves a list of CampusEmployee records.
+     * 
+     * @param dtos The list of DTOs containing data to save
+     * @return The list of saved DTOs
+     */
+    @Transactional
+    public List<com.employee.dto.CampusEmployeeDTO> saveCampusEmployees(List<com.employee.dto.CampusEmployeeDTO> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            throw new IllegalArgumentException("Input list cannot be empty");
+        }
+
+        List<com.employee.dto.CampusEmployeeDTO> savedDtos = new ArrayList<>();
+
+        for (com.employee.dto.CampusEmployeeDTO dto : dtos) {
+            if (dto.getEmpId() == null) {
+                throw new IllegalArgumentException("empId is required");
+            }
+            if (dto.getCmpsId() == null) {
+                throw new IllegalArgumentException("cmpsId is required");
+            }
+
+            Employee employee = employeeRepository.findById(dto.getEmpId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with ID: " + dto.getEmpId()));
+
+            Campus campus = campusRepository.findById(dto.getCmpsId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Campus not found with ID: " + dto.getCmpsId()));
+
+            com.employee.entity.CampusEmployee entity = new com.employee.entity.CampusEmployee();
+            entity.setEmpId(employee);
+            entity.setCmpsId(campus);
+            entity.setRoleId(dto.getRoleId());
+            entity.setAttendanceStatus(dto.getAttendanceStatus());
+            entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : 1);
+            entity.setCreatedBy(dto.getCreatedBy() != null ? dto.getCreatedBy() : 1);
+            entity.setUpdatedBy(dto.getUpdatedBy());
+
+            // createdDate and updatedDate are handled by DB defaults or JPA listeners
+
+            com.employee.entity.CampusEmployee savedEntity = campusEmployeeRepository.save(entity);
+
+            dto.setCmpsEmployeeId(savedEntity.getCmpsEmployeeId());
+            savedDtos.add(dto);
+        }
+        return savedDtos;
     }
 }
