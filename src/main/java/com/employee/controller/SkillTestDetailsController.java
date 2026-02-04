@@ -108,7 +108,7 @@ public class SkillTestDetailsController {
         return ResponseEntity.ok(list);
     }
 
-    @PutMapping("/approve/{tempPayrollId}")
+    @PutMapping("/approvedorNot/{tempPayrollId}")
     public ResponseEntity<String> approveSkillTest(@PathVariable("tempPayrollId") String tempPayrollId) {
         log.info("Approving skill test for tempPayrollId: {}", tempPayrollId);
         skillTestDetailsService.approveSkillTestResult(tempPayrollId);

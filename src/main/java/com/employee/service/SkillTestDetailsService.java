@@ -443,10 +443,6 @@ public class SkillTestDetailsService {
 
         // 2. Filter & Map directly from SkillTestResult
         return testResults.stream()
-                .filter(result -> result.getSkillTestApprovalStatus() != null &&
-                        result.getSkillTestApprovalStatus().getStatusName() != null &&
-                        result.getSkillTestApprovalStatus().getStatusName().trim().toLowerCase()
-                                .startsWith("skill test approv"))
                 .filter(result -> result.getSkillTestDetlId() != null) // Prevent NullPointer
                 .map(result -> {
                     SkillTestDetailsResultDto dto = new SkillTestDetailsResultDto();
