@@ -2,7 +2,9 @@ package com.employee.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,12 +25,12 @@ public class CampusEmployeeService {
     private final CampusEmployeeRepository campusEmployeeRepository;
     private final EmployeeRepository employeeRepository;
     private final CampusRepository campusRepository;
-    private final SharedEmployeeRepository sharedEmployeeRepository; // Added this field declaration
+    private final SharedEmployeeRepository sharedEmployeeRepository;
 
     public CampusEmployeeService(CampusEmployeeRepository campusEmployeeRepository,
             EmployeeRepository employeeRepository,
             CampusRepository campusRepository,
-            com.employee.repository.SharedEmployeeRepository sharedEmployeeRepository) {
+            SharedEmployeeRepository sharedEmployeeRepository) {
         this.campusEmployeeRepository = campusEmployeeRepository;
         this.employeeRepository = employeeRepository;
         this.campusRepository = campusRepository;
@@ -68,8 +70,6 @@ public class CampusEmployeeService {
             // Audit fields
             if (entity.getCmpsEmployeeId() == null) {
                 entity.setCreatedBy(dto.getCreatedBy() != null ? dto.getCreatedBy() : 1);
-                // createdDate is handled by DB default or @PrePersist if JPA, but DB has
-                // default CURRENT_TIMESTAMP
             } else {
                 entity.setUpdatedBy(dto.getUpdatedBy());
                 entity.setUpdatedDate(LocalDateTime.now());
@@ -105,6 +105,26 @@ public class CampusEmployeeService {
     public com.employee.dto.EmployeeLocationDTO getEmployeeLocation(Integer empId) {
         com.employee.dto.EmployeeLocationDTO locationDTO = new com.employee.dto.EmployeeLocationDTO();
         List<com.employee.dto.CampusInfoDTO> campusInfoList = new java.util.ArrayList<>();
+        Set<Integer> addedCampusIds = new HashSet<>();
+
+        // Initialize State/City from Primary Campus if available
+        com.employee.entity.Employee employee = employeeRepository.findById(empId).orElse(null);
+        if (employee != null && employee.getCampus_id() != null) {
+            Campus primaryCampus = employee.getCampus_id();
+
+            if (primaryCampus.getState() != null) {
+                locationDTO.setStateId(primaryCampus.getState().getStateId());
+                locationDTO.setStateName(primaryCampus.getState().getStateName());
+            }
+            if (primaryCampus.getCity() != null) {
+                locationDTO.setCityId(primaryCampus.getCity().getCityId());
+                locationDTO.setCityName(primaryCampus.getCity().getCityName());
+            }
+
+            // Always add Primary Campus to the list first
+            addCampusToDTO(primaryCampus, campusInfoList, locationDTO);
+            addedCampusIds.add(primaryCampus.getCampusId());
+        }
 
         // Step 1: Check CampusEmployee table (New implementation for non-shared
         // multi-campus)
@@ -113,7 +133,10 @@ public class CampusEmployeeService {
         if (multiCampuses != null && !multiCampuses.isEmpty()) {
             // Case A: Found in CampusEmployee
             for (CampusEmployee ce : multiCampuses) {
-                addCampusToDTO(ce.getCmpsId(), campusInfoList, locationDTO);
+                if (ce.getCmpsId() != null && !addedCampusIds.contains(ce.getCmpsId().getCampusId())) {
+                    addCampusToDTO(ce.getCmpsId(), campusInfoList, locationDTO);
+                    addedCampusIds.add(ce.getCmpsId().getCampusId());
+                }
             }
         } else {
             // Step 2: Check SharedEmployee table (Legacy/Other shared implementation)
@@ -123,14 +146,10 @@ public class CampusEmployeeService {
             if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
                 // Case B: Found in SharedEmployee
                 for (com.employee.entity.SharedEmployee se : sharedEmployees) {
-                    addCampusToDTO(se.getCmpsId(), campusInfoList, locationDTO);
-                }
-            } else {
-                // Step 3: Check Employee table (Single Primary Campus)
-                com.employee.entity.Employee employee = employeeRepository.findById(empId).orElse(null);
-                if (employee != null && employee.getCampus_id() != null) {
-                    // Case C: Single Campus
-                    addCampusToDTO(employee.getCampus_id(), campusInfoList, locationDTO);
+                    if (se.getCmpsId() != null && !addedCampusIds.contains(se.getCmpsId().getCampusId())) {
+                        addCampusToDTO(se.getCmpsId(), campusInfoList, locationDTO);
+                        addedCampusIds.add(se.getCmpsId().getCampusId());
+                    }
                 }
             }
         }
