@@ -9,19 +9,38 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public class EmployeeBatchCampusDTO {
-    private String payrollId;
-    private String employeeName;
-    private List<CampusDetailDTO> campusDetails;
+  private String payrollId;
+  private String employeeName;
 
-    // Additional Fields
-    private String employeeType; // "Shared" or "Not Shared"
-    private Integer managerId;
-    private String managerName;
-    private Integer reportingManagerId;
-    private String reportingManagerName;
-    private Integer departmentId;
-    private String departmentName;
-    private Integer designationId;
-    private String designationName;
+  // Employee Mobile
+  private String employeeMobileNo;
+
+  // Manager Mobile
+  private String managerMobileNo;
+
+  // Reporting Manager Mobile
+  private String reportingManagerMobileNo;
+
+  // Primary Campus Info
+  private Integer campusId;
+  private String campusName;
+  private Integer cityId;
+  private String city;
+  private String fullAddress;
+  private String buildingMobileNo;
+
+  private List<CampusDetailDTO> campusDetails;
+
+  // Additional Fields
+  private String employeeType; // "Shared" or "Not Shared"
+  private Integer managerId;
+  private String managerName;
+  private Integer reportingManagerId;
+  private String reportingManagerName;
+  private Integer departmentId;
+  private String departmentName;
+  private Integer designationId;
+  private String designationName;
 }

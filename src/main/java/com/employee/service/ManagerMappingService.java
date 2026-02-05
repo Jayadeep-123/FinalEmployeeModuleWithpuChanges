@@ -1146,6 +1146,25 @@ public class ManagerMappingService {
 
             EmployeeBatchCampusDTO batchDTO = new EmployeeBatchCampusDTO();
 
+            // PRIMARY CAMPUS INFO (Top-Level Fields)
+            if (emp.getCampus_id() != null) {
+                try {
+                    EmployeeCampusAddressDTO primaryDTO = createDTOForCampus(emp, emp.getCampus_id(), payrollIds,
+                            false);
+                    batchDTO.setCampusId(primaryDTO.getCampusId());
+                    batchDTO.setCampusName(primaryDTO.getCampusName());
+                    batchDTO.setCityId(primaryDTO.getCityId());
+                    batchDTO.setCity(primaryDTO.getCity());
+                    batchDTO.setFullAddress(primaryDTO.getFullAddress());
+                    batchDTO.setBuildingMobileNo(primaryDTO.getBuildingMobileNo());
+                } catch (Exception e) {
+                    // Fallback or log if primary campus fails
+                    batchDTO.setFullAddress("Error fetching primary campus: " + e.getMessage());
+                }
+            } else {
+                batchDTO.setFullAddress("Address: Campus not assigned");
+            }
+
             // 1. Employee Basic Info
             String displayId = emp.getPayRollId();
             if (displayId == null || (payrollIds != null && !payrollIds.contains(displayId))) {
@@ -1207,11 +1226,13 @@ public class ManagerMappingService {
 
             batchDTO.setCampusDetails(details);
 
-            // 7. Set Employee Type
+            // 7. Set Employee Type and Hide campusDetails if Not Shared
             if (details.size() > 1) {
                 batchDTO.setEmployeeType("Shared");
+                batchDTO.setCampusDetails(details);
             } else {
                 batchDTO.setEmployeeType("Not Shared");
+                batchDTO.setCampusDetails(null); // Hide redundant details for single campus
             }
 
             return batchDTO;
