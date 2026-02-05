@@ -169,11 +169,10 @@ public class EmployeeSearchController {
     public ResponseEntity<?> advancedListSearchEmployees(
             @RequestParam(value = "stateId", required = false) Integer stateId,
             @RequestParam(value = "cityId", required = false) Integer cityId,
-            @RequestParam(value = "campusId", required = false) Integer campusId,
+            @RequestParam(value = "campusId", required = false) String campusId,
             @RequestParam(value = "employeeTypeId", required = false) Integer employeeTypeId,
             @RequestParam(value = "departmentId", required = false) Integer departmentId,
             @RequestParam(value = "cmpsCategory", required = false) String cmpsCategory,
-            @RequestParam(value = "campusName", required = false) String campusName,
             @RequestParam(value = "payrollId", required = false) String payrollId) {
 
         com.employee.dto.AdvancedEmployeeListSearchRequestDTO searchRequest = new com.employee.dto.AdvancedEmployeeListSearchRequestDTO();
@@ -184,7 +183,6 @@ public class EmployeeSearchController {
         searchRequest.setDepartmentId(departmentId);
         searchRequest.setPayrollId(payrollId);
         searchRequest.setCmpsCategory(cmpsCategory);
-        searchRequest.setCampusName(campusName);
 
         Pageable pageable = PageRequest.of(0, 2000, Sort.by(Sort.Direction.ASC, "emp_id"));
 

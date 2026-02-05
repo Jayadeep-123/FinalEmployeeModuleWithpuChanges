@@ -248,26 +248,31 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             predicates.add(cb.equal(city.get("cityId"), searchRequest.getCityId()));
         }
 
-        if (searchRequest.getCampusId() != null) {
-            predicates.add(cb.equal(c.get("campusId"), searchRequest.getCampusId()));
-        }
-
-        if (searchRequest.getEmployeeTypeId() != null) {
-            predicates.add(cb.equal(et.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
+        if (searchRequest.getCampusId() != null && !searchRequest.getCampusId().trim().isEmpty()) {
+            String searchValue = searchRequest.getCampusId().trim();
+            // Try to parse as integer to see if it's an ID
+            try {
+                int idVal = Integer.parseInt(searchValue);
+                Predicate idPredicate = cb.equal(c.get("campusId"), idVal);
+                Predicate namePredicate = cb.like(cb.lower(c.get("campusName")), "%" + searchValue.toLowerCase() + "%");
+                predicates.add(cb.or(idPredicate, namePredicate));
+            } catch (NumberFormatException nfe) {
+                // Not a number, perform name search only
+                predicates.add(cb.like(cb.lower(c.get("campusName")), "%" + searchValue.toLowerCase() + "%"));
+            }
         }
 
         if (searchRequest.getDepartmentId() != null) {
             predicates.add(cb.equal(d.get("department_id"), searchRequest.getDepartmentId()));
         }
 
+        if (searchRequest.getEmployeeTypeId() != null) {
+            predicates.add(cb.equal(et.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
+        }
+
         if (searchRequest.getCmpsCategory() != null && !searchRequest.getCmpsCategory().trim().isEmpty()) {
             predicates.add(cb.equal(cb.lower(bt_proj.get("businessTypeName")),
                     searchRequest.getCmpsCategory().trim().toLowerCase()));
-        }
-
-        if (searchRequest.getCampusName() != null && !searchRequest.getCampusName().trim().isEmpty()) {
-            predicates.add(cb.like(cb.lower(c.get("campusName")),
-                    "%" + searchRequest.getCampusName().trim().toLowerCase() + "%"));
         }
 
         query.where(predicates.toArray(new Predicate[0]));
@@ -292,6 +297,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         countPredicates.add(cb.equal(countRoot.get("is_active"), 1));
         countPredicates.add(cb.isNotNull(countRoot.get("payRollId"))); // Only show employees with generated payroll ID
 
+        // Combined Search: Multiple Payroll IDs OR (Single ID OR Name)
         if (searchRequest.getPayrollId() != null && !searchRequest.getPayrollId().trim().isEmpty()) {
             String searchValue = searchRequest.getPayrollId().trim();
             String[] ids = searchValue.split(",");
@@ -300,17 +306,13 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             } else {
                 String singleValue = ids[0].trim();
                 String namePattern = "%" + singleValue.toLowerCase() + "%";
-
                 Predicate payrollPredicate = cb.equal(countRoot.get("payRollId"), singleValue);
                 Predicate firstNamePredicate = cb.like(cb.lower(countRoot.get("first_name")), namePattern);
                 Predicate lastNamePredicate = cb.like(cb.lower(countRoot.get("last_name")), namePattern);
-
-                // Full Name match: check if pattern matches concatenated first + last name
                 Predicate fullNamePredicate = cb.like(
                         cb.lower(cb.concat(cb.concat(countRoot.get("first_name"), cb.literal(" ")),
                                 countRoot.get("last_name"))),
                         namePattern);
-
                 countPredicates.add(cb.or(payrollPredicate, firstNamePredicate, lastNamePredicate, fullNamePredicate));
             }
         }
@@ -318,8 +320,21 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             countPredicates.add(cb.equal(cst.get("stateId"), searchRequest.getStateId()));
         if (searchRequest.getCityId() != null)
             countPredicates.add(cb.equal(cct.get("cityId"), searchRequest.getCityId()));
-        if (searchRequest.getCampusId() != null)
-            countPredicates.add(cb.equal(cc.get("campusId"), searchRequest.getCampusId()));
+
+        // Count Query Campus Logic
+        if (searchRequest.getCampusId() != null && !searchRequest.getCampusId().trim().isEmpty()) {
+            String searchValue = searchRequest.getCampusId().trim();
+            try {
+                int idVal = Integer.parseInt(searchValue);
+                Predicate idPredicate = cb.equal(cc.get("campusId"), idVal);
+                Predicate namePredicate = cb.like(cb.lower(cc.get("campusName")),
+                        "%" + searchValue.toLowerCase() + "%");
+                countPredicates.add(cb.or(idPredicate, namePredicate));
+            } catch (NumberFormatException nfe) {
+                countPredicates.add(cb.like(cb.lower(cc.get("campusName")), "%" + searchValue.toLowerCase() + "%"));
+            }
+        }
+
         if (searchRequest.getEmployeeTypeId() != null)
             countPredicates.add(cb.equal(cet.get("emp_type_id"), searchRequest.getEmployeeTypeId()));
         if (searchRequest.getDepartmentId() != null)
@@ -330,11 +345,6 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             countPredicates.add(
                     cb.equal(cb.lower(countBt.get("businessTypeName")),
                             searchRequest.getCmpsCategory().trim().toLowerCase()));
-        }
-
-        if (searchRequest.getCampusName() != null && !searchRequest.getCampusName().trim().isEmpty()) {
-            countPredicates.add(cb.like(cb.lower(cc.get("campusName")),
-                    "%" + searchRequest.getCampusName().trim().toLowerCase() + "%"));
         }
 
         countQuery.select(cb.count(countRoot));

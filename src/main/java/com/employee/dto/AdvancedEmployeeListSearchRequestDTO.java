@@ -17,10 +17,9 @@ import lombok.NoArgsConstructor;
 public class AdvancedEmployeeListSearchRequestDTO {
     private Integer stateId; // Optional
     private Integer cityId; // Optional
-    private Integer campusId; // Optional
+    private String campusId; // Optional - can be ID or Name
     private Integer employeeTypeId; // Optional
     private Integer departmentId; // Optional
     private String payrollId; // Optional - can be a single ID or comma-separated IDs
     private String cmpsCategory; // Optional - filter by campus category (case-insensitive)
-    private String campusName; // Optional - filter by campus name
 }
