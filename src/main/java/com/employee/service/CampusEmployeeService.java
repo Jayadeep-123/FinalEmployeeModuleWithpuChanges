@@ -96,21 +96,25 @@ public class CampusEmployeeService {
     }
 
     /**
-     * Get Employee Location Details (State, City, Campus)
+     * Get Employee Location Details (CampusId, CampusName, CampusDetails)
      * Logic:
-     * 1. Check sce_cmps_emp table (CampusEmployee).
-     * 2. If nothing found, Check sce_shared_employee table (SharedEmployee).
-     * 3. If nothing found, Check Employee table (Return primary campus).
+     * 1. Initialize CampusId/Name from Primary Campus if available.
+     * 2. Add Campuses from CampusEmployee/SharedEmployee tables to list (if
+     * distinct and NOT primary).
      */
     public com.employee.dto.EmployeeLocationDTO getEmployeeLocation(Integer empId) {
         com.employee.dto.EmployeeLocationDTO locationDTO = new com.employee.dto.EmployeeLocationDTO();
-        List<com.employee.dto.CampusInfoDTO> campusInfoList = new java.util.ArrayList<>();
+        List<com.employee.dto.CampusInfoDTO> campusDetails = new java.util.ArrayList<>();
         Set<Integer> addedCampusIds = new HashSet<>();
 
-        // Initialize State/City from Primary Campus if available
+        // Initialize from Primary Campus if available
         com.employee.entity.Employee employee = employeeRepository.findById(empId).orElse(null);
         if (employee != null && employee.getCampus_id() != null) {
             Campus primaryCampus = employee.getCampus_id();
+
+            // Set Top-Level Fields
+            locationDTO.setCampusId(primaryCampus.getCampusId());
+            locationDTO.setCampusName(primaryCampus.getCampusName());
 
             if (primaryCampus.getState() != null) {
                 locationDTO.setStateId(primaryCampus.getState().getStateId());
@@ -121,40 +125,36 @@ public class CampusEmployeeService {
                 locationDTO.setCityName(primaryCampus.getCity().getCityName());
             }
 
-            // Always add Primary Campus to the list first
-            addCampusToDTO(primaryCampus, campusInfoList, locationDTO);
+            // Track Primary Campus ID to avoid adding it to the list later
             addedCampusIds.add(primaryCampus.getCampusId());
         }
 
-        // Step 1: Check CampusEmployee table (New implementation for non-shared
-        // multi-campus)
+        // Step 1: Check CampusEmployee table
         List<CampusEmployee> multiCampuses = campusEmployeeRepository.findByEmpId(empId);
 
         if (multiCampuses != null && !multiCampuses.isEmpty()) {
-            // Case A: Found in CampusEmployee
             for (CampusEmployee ce : multiCampuses) {
                 if (ce.getCmpsId() != null && !addedCampusIds.contains(ce.getCmpsId().getCampusId())) {
-                    addCampusToDTO(ce.getCmpsId(), campusInfoList, locationDTO);
+                    addCampusToDTO(ce.getCmpsId(), campusDetails, locationDTO);
                     addedCampusIds.add(ce.getCmpsId().getCampusId());
                 }
             }
         } else {
-            // Step 2: Check SharedEmployee table (Legacy/Other shared implementation)
+            // Step 2: Check SharedEmployee table
             List<com.employee.entity.SharedEmployee> sharedEmployees = sharedEmployeeRepository
                     .findActiveByEmpId(empId);
 
             if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
-                // Case B: Found in SharedEmployee
                 for (com.employee.entity.SharedEmployee se : sharedEmployees) {
                     if (se.getCmpsId() != null && !addedCampusIds.contains(se.getCmpsId().getCampusId())) {
-                        addCampusToDTO(se.getCmpsId(), campusInfoList, locationDTO);
+                        addCampusToDTO(se.getCmpsId(), campusDetails, locationDTO);
                         addedCampusIds.add(se.getCmpsId().getCampusId());
                     }
                 }
             }
         }
 
-        locationDTO.setCampuses(campusInfoList);
+        locationDTO.setCampusDetails(campusDetails);
         return locationDTO;
     }
 
@@ -162,18 +162,6 @@ public class CampusEmployeeService {
             com.employee.dto.EmployeeLocationDTO locationDTO) {
         if (campus != null) {
             list.add(new com.employee.dto.CampusInfoDTO(campus.getCampusId(), campus.getCampusName()));
-
-            // Set State/City from the first campus encountered
-            if (locationDTO.getStateId() == null) {
-                if (campus.getState() != null) {
-                    locationDTO.setStateId(campus.getState().getStateId());
-                    locationDTO.setStateName(campus.getState().getStateName());
-                }
-                if (campus.getCity() != null) {
-                    locationDTO.setCityId(campus.getCity().getCityId());
-                    locationDTO.setCityName(campus.getCity().getCityName());
-                }
-            }
         }
     }
 

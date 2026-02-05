@@ -9,9 +9,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmployeeLocationDTO {
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Integer campusId;
+    private String campusName;
     private Integer stateId;
     private String stateName;
     private Integer cityId;
     private String cityName;
-    private List<CampusInfoDTO> campuses;
+    private List<CampusInfoDTO> campusDetails;
 }
