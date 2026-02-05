@@ -248,17 +248,49 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
             predicates.add(cb.equal(city.get("cityId"), searchRequest.getCityId()));
         }
 
+        // Campus Search - Modified to handle Multiple Campus IDs (comma-separated)
         if (searchRequest.getCampusId() != null && !searchRequest.getCampusId().trim().isEmpty()) {
             String searchValue = searchRequest.getCampusId().trim();
-            // Try to parse as integer to see if it's an ID
-            try {
-                int idVal = Integer.parseInt(searchValue);
-                Predicate idPredicate = cb.equal(c.get("campusId"), idVal);
-                Predicate namePredicate = cb.like(cb.lower(c.get("campusName")), "%" + searchValue.toLowerCase() + "%");
-                predicates.add(cb.or(idPredicate, namePredicate));
-            } catch (NumberFormatException nfe) {
-                // Not a number, perform name search only
-                predicates.add(cb.like(cb.lower(c.get("campusName")), "%" + searchValue.toLowerCase() + "%"));
+            if (searchValue.contains(",")) {
+                // Multiple Value search (IDs or Names)
+                String[] splitValues = searchValue.split(",");
+                List<Integer> campusIds = new ArrayList<>();
+                List<String> campusNames = new ArrayList<>();
+
+                for (String val : splitValues) {
+                    val = val.trim();
+                    if (val.isEmpty())
+                        continue;
+                    try {
+                        campusIds.add(Integer.parseInt(val));
+                    } catch (NumberFormatException nfe2) {
+                        campusNames.add(val.toLowerCase());
+                    }
+                }
+
+                List<Predicate> campusPredicates = new ArrayList<>();
+                if (!campusIds.isEmpty()) {
+                    campusPredicates.add(c.get("campusId").in(campusIds));
+                }
+                for (String name : campusNames) {
+                    campusPredicates.add(cb.like(cb.lower(c.get("campusName")), "%" + name + "%"));
+                }
+
+                if (!campusPredicates.isEmpty()) {
+                    predicates.add(cb.or(campusPredicates.toArray(new Predicate[0])));
+                }
+            } else {
+                // Single Value logic (ID or Name)
+                try {
+                    int idVal = Integer.parseInt(searchValue);
+                    Predicate idPredicate = cb.equal(c.get("campusId"), idVal);
+                    Predicate namePredicate = cb.like(cb.lower(c.get("campusName")),
+                            "%" + searchValue.toLowerCase() + "%");
+                    predicates.add(cb.or(idPredicate, namePredicate));
+                } catch (NumberFormatException nfe) {
+                    // Not a number, perform name search only
+                    predicates.add(cb.like(cb.lower(c.get("campusName")), "%" + searchValue.toLowerCase() + "%"));
+                }
             }
         }
 
@@ -324,14 +356,44 @@ public class EmployeeRepositoryImpl implements EmployeeRepositoryCustom {
         // Count Query Campus Logic
         if (searchRequest.getCampusId() != null && !searchRequest.getCampusId().trim().isEmpty()) {
             String searchValue = searchRequest.getCampusId().trim();
-            try {
-                int idVal = Integer.parseInt(searchValue);
-                Predicate idPredicate = cb.equal(cc.get("campusId"), idVal);
-                Predicate namePredicate = cb.like(cb.lower(cc.get("campusName")),
-                        "%" + searchValue.toLowerCase() + "%");
-                countPredicates.add(cb.or(idPredicate, namePredicate));
-            } catch (NumberFormatException nfe) {
-                countPredicates.add(cb.like(cb.lower(cc.get("campusName")), "%" + searchValue.toLowerCase() + "%"));
+            if (searchValue.contains(",")) {
+                // Multiple Value search (IDs or Names)
+                String[] splitValues = searchValue.split(",");
+                List<Integer> campusIds = new ArrayList<>();
+                List<String> campusNames = new ArrayList<>();
+
+                for (String val : splitValues) {
+                    val = val.trim();
+                    if (val.isEmpty())
+                        continue;
+                    try {
+                        campusIds.add(Integer.parseInt(val));
+                    } catch (NumberFormatException nfe3) {
+                        campusNames.add(val.toLowerCase());
+                    }
+                }
+
+                List<Predicate> campusPredicates = new ArrayList<>();
+                if (!campusIds.isEmpty()) {
+                    campusPredicates.add(cc.get("campusId").in(campusIds));
+                }
+                for (String name : campusNames) {
+                    campusPredicates.add(cb.like(cb.lower(cc.get("campusName")), "%" + name + "%"));
+                }
+
+                if (!campusPredicates.isEmpty()) {
+                    countPredicates.add(cb.or(campusPredicates.toArray(new Predicate[0])));
+                }
+            } else {
+                try {
+                    int idVal = Integer.parseInt(searchValue);
+                    Predicate idPredicate = cb.equal(cc.get("campusId"), idVal);
+                    Predicate namePredicate = cb.like(cb.lower(cc.get("campusName")),
+                            "%" + searchValue.toLowerCase() + "%");
+                    countPredicates.add(cb.or(idPredicate, namePredicate));
+                } catch (NumberFormatException nfe) {
+                    countPredicates.add(cb.like(cb.lower(cc.get("campusName")), "%" + searchValue.toLowerCase() + "%"));
+                }
             }
         }
 
