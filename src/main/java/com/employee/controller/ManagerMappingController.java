@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
+import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
 import com.employee.dto.ManagerMappingDTO;
 import com.employee.dto.UnmappingDTO;
@@ -205,13 +206,13 @@ public class ManagerMappingController {
     }
 
     @PostMapping("/batch-campus-address")
-    public ResponseEntity<List<EmployeeCampusAddressDTO>> getBatchCampusAddresses(
+    public ResponseEntity<List<EmployeeBatchCampusDTO>> getBatchCampusAddresses(
             @RequestBody List<String> payrollIds) {
         if (payrollIds == null || payrollIds.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
-        List<EmployeeCampusAddressDTO> results = managerMappingService.getMultipleCampusAddresses(payrollIds);
+        List<EmployeeBatchCampusDTO> results = managerMappingService.getMultipleCampusAddresses(payrollIds);
         return ResponseEntity.ok(results);
     }
 

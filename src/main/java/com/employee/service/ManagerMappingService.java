@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
+import com.employee.dto.CampusDetailDTO;
 import com.employee.dto.CampusMappingDTO;
+import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
 import com.employee.dto.ManagerMappingDTO;
 import com.employee.dto.UnmappingDTO;
@@ -1130,7 +1132,7 @@ public class ManagerMappingService {
     /**
      * BATCH METHOD: Process multiple employees at once
      */
-    public List<EmployeeCampusAddressDTO> getMultipleCampusAddresses(List<String> payrollIds) {
+    public List<EmployeeBatchCampusDTO> getMultipleCampusAddresses(List<String> payrollIds) {
         if (payrollIds == null || payrollIds.isEmpty()) {
             return Collections.emptyList();
         }
@@ -1138,9 +1140,82 @@ public class ManagerMappingService {
         // Fetch all employees in the list at once (handles both temp and permanent IDs)
         List<Employee> employees = employeeRepository.findAllByPayRollIdInOrTempPayrollIdIn(payrollIds);
 
-        return employees.stream()
-                .map(emp -> processSingleEmployee(emp, payrollIds))
-                .collect(Collectors.toList());
+        return employees.stream().map(emp -> {
+            // Process to get flat list of campuses
+            List<EmployeeCampusAddressDTO> flatList = processSingleEmployee(emp, payrollIds, false);
+
+            EmployeeBatchCampusDTO batchDTO = new EmployeeBatchCampusDTO();
+
+            // 1. Employee Basic Info
+            String displayId = emp.getPayRollId();
+            if (displayId == null || (payrollIds != null && !payrollIds.contains(displayId))) {
+                displayId = emp.getTempPayrollId();
+            }
+            batchDTO.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
+
+            String fullName = emp.getFirst_name();
+            if (emp.getLast_name() != null) {
+                fullName += " " + emp.getLast_name();
+            }
+            batchDTO.setEmployeeName(fullName);
+
+            // 2. Manager Info
+            if (emp.getEmployee_manager_id() != null) {
+                Employee manager = emp.getEmployee_manager_id();
+                batchDTO.setManagerId(manager.getEmp_id());
+                String mgrName = manager.getFirst_name();
+                if (manager.getLast_name() != null) {
+                    mgrName += " " + manager.getLast_name();
+                }
+                batchDTO.setManagerName(mgrName);
+            }
+
+            // 3. Reporting Manager Info
+            if (emp.getEmployee_reporting_id() != null) {
+                Employee rManager = emp.getEmployee_reporting_id();
+                batchDTO.setReportingManagerId(rManager.getEmp_id());
+                String rMgrName = rManager.getFirst_name();
+                if (rManager.getLast_name() != null) {
+                    rMgrName += " " + rManager.getLast_name();
+                }
+                batchDTO.setReportingManagerName(rMgrName);
+            }
+
+            // 4. Department Info
+            if (emp.getDepartment() != null) {
+                batchDTO.setDepartmentId(emp.getDepartment().getDepartment_id());
+                batchDTO.setDepartmentName(emp.getDepartment().getDepartment_name());
+            }
+
+            // 5. Designation Info
+            if (emp.getDesignation() != null) {
+                batchDTO.setDesignationId(emp.getDesignation().getDesignation_id());
+                batchDTO.setDesignationName(emp.getDesignation().getDesignation_name());
+            }
+
+            // 6. Map to CampusDetailDTO
+            List<CampusDetailDTO> details = flatList.stream()
+                    .filter(flat -> flat.getCampusId() != null)
+                    .map(flat -> new CampusDetailDTO(
+                            flat.getCampusId(),
+                            flat.getCampusName(),
+                            flat.getCityId(),
+                            flat.getCity(),
+                            flat.getFullAddress(),
+                            flat.getBuildingMobileNo()))
+                    .collect(Collectors.toList());
+
+            batchDTO.setCampusDetails(details);
+
+            // 7. Set Employee Type
+            if (details.size() > 1) {
+                batchDTO.setEmployeeType("Shared");
+            } else {
+                batchDTO.setEmployeeType("Not Shared");
+            }
+
+            return batchDTO;
+        }).collect(Collectors.toList());
     }
 
     /**
@@ -1148,71 +1223,77 @@ public class ManagerMappingService {
      */
     public EmployeeCampusAddressDTO getCampusAddress(String payrollId) {
         Employee emp = findEmployeeByPayrollId(payrollId);
-        return processSingleEmployee(emp, Collections.singletonList(payrollId));
+        List<EmployeeCampusAddressDTO> results = processSingleEmployee(emp, Collections.singletonList(payrollId), true);
+        return results.isEmpty() ? new EmployeeCampusAddressDTO() : results.get(0);
     }
 
     /**
      * CORE LOGIC: Converts Employee Entity to DTO
      */
-    private EmployeeCampusAddressDTO processSingleEmployee(Employee emp, List<String> inputIds) {
-        EmployeeCampusAddressDTO dto = new EmployeeCampusAddressDTO();
+    /**
+     * CORE LOGIC: Converts Employee Entity to List of DTOs (Handling Multiple
+     * Campuses)
+     */
+    private List<EmployeeCampusAddressDTO> processSingleEmployee(Employee emp, List<String> inputIds,
+            boolean includeFullDetails) {
+        List<EmployeeCampusAddressDTO> dtoList = new ArrayList<>();
 
-        // 1. Core ID and Basic Info (Populate first to be safe)
-        String displayId = emp.getPayRollId();
-        if (displayId == null || (inputIds != null && !inputIds.contains(displayId))) {
-            displayId = emp.getTempPayrollId();
-        }
-        dto.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
-
-        // 2. Populate Employee Mobile and Manager Info (Available immediately from
-        // Employee entity)
-        dto.setEmployeeMobileNo(emp.getPrimary_mobile_no() != 0 ? String.valueOf(emp.getPrimary_mobile_no()) : null);
-
-        if (emp.getEmployee_manager_id() != null) {
-            dto.setManagerId(emp.getEmployee_manager_id().getEmp_id());
-        }
-
-        if (emp.getEmployee_reporting_id() != null) {
-            dto.setReportingManagerId(emp.getEmployee_reporting_id().getEmp_id());
-        }
-
-        // Additional manager text info (names, etc.)
-        mapManagerInfo(emp, dto);
-
-        // Populate Employee Name
-        String fullName = emp.getFirst_name();
-        if (emp.getLast_name() != null) {
-            fullName += " " + emp.getLast_name();
-        }
-        dto.setEmployeeName(fullName);
-
-        // Populate Department Info
-        if (emp.getDepartment() != null) {
-            dto.setDepartmentId(emp.getDepartment().getDepartment_id());
-            dto.setDepartmentName(emp.getDepartment().getDepartment_name());
-        }
-
-        // Populate Designation Info
-        if (emp.getDesignation() != null) {
-            dto.setDesignationId(emp.getDesignation().getDesignation_id());
-            dto.setDesignationName(emp.getDesignation().getDesignation_name());
-        }
-
-        // 3. Try to fetch Campus and Address Info (Defensively)
-        try {
-            if (emp.getCampus_id() == null) {
-                dto.setFullAddress("Address: Campus not assigned");
-                return dto;
+        // 1. Check CampusEmployee table (New Multi-Campus)
+        List<com.employee.entity.CampusEmployee> campusEmployees = campusEmployeeRepository
+                .findByEmpId(emp.getEmp_id());
+        if (campusEmployees != null && !campusEmployees.isEmpty()) {
+            for (com.employee.entity.CampusEmployee ce : campusEmployees) {
+                if (ce.getCmpsId() != null) {
+                    dtoList.add(createDTOForCampus(emp, ce.getCmpsId(), inputIds, includeFullDetails));
+                }
             }
+            return dtoList;
+        }
 
-            Integer campusId = emp.getCampus_id().getCampusId();
+        // 2. Check SharedEmployee table (Legacy/Other Multi-Campus)
+        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository.findActiveByEmpId(emp.getEmp_id());
+        if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
+            for (SharedEmployee se : sharedEmployees) {
+                if (se.getCmpsId() != null) {
+                    dtoList.add(createDTOForCampus(emp, se.getCmpsId(), inputIds, includeFullDetails));
+                }
+            }
+            return dtoList;
+        }
+
+        // 3. Fallback to Primary Campus
+        if (emp.getCampus_id() != null) {
+            dtoList.add(createDTOForCampus(emp, emp.getCampus_id(), inputIds, includeFullDetails));
+        } else {
+            // No campus assigned case
+            EmployeeCampusAddressDTO dto = createBaseDTO(emp, inputIds, includeFullDetails);
+            dto.setFullAddress("Address: Campus not assigned");
+            dtoList.add(dto);
+        }
+
+        return dtoList;
+    }
+
+    private EmployeeCampusAddressDTO createDTOForCampus(Employee emp, Campus campus, List<String> inputIds,
+            boolean includeFullDetails) {
+        EmployeeCampusAddressDTO dto = createBaseDTO(emp, inputIds, includeFullDetails);
+
+        try {
+            Integer campusId = campus.getCampusId();
             dto.setCampusId(campusId);
-            dto.setCampusName(emp.getCampus_id().getCampusName());
+            dto.setCampusName(campus.getCampusName());
 
-            City result = campusRepository.findByCampusId(campusId);
-            if (result != null) {
-                dto.setCity(result.getCityName());
-                dto.setCityId(result.getCityId());
+            // Populate City from Campus
+            if (campus.getCity() != null) {
+                dto.setCity(campus.getCity().getCityName());
+                dto.setCityId(campus.getCity().getCityId());
+            } else {
+                // Try fetching if lazy loaded or null
+                City result = campusRepository.findByCampusId(campusId);
+                if (result != null) {
+                    dto.setCity(result.getCityName());
+                    dto.setCityId(result.getCityId());
+                }
             }
 
             // Fetch buildings
@@ -1259,6 +1340,55 @@ public class ManagerMappingService {
 
         } catch (Exception e) {
             dto.setFullAddress("Address Error: " + e.getMessage());
+        }
+
+        return dto;
+    }
+
+    private EmployeeCampusAddressDTO createBaseDTO(Employee emp, List<String> inputIds, boolean includeFullDetails) {
+        EmployeeCampusAddressDTO dto = new EmployeeCampusAddressDTO();
+
+        // 1. Core ID and Basic Info
+        String displayId = emp.getPayRollId();
+        if (displayId == null || (inputIds != null && !inputIds.contains(displayId))) {
+            displayId = emp.getTempPayrollId();
+        }
+        dto.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
+
+        // Populate Employee Name (Always useful)
+        String fullName = emp.getFirst_name();
+        if (emp.getLast_name() != null) {
+            fullName += " " + emp.getLast_name();
+        }
+        dto.setEmployeeName(fullName);
+
+        if (includeFullDetails) {
+            // 2. Populate Employee Mobile and Manager Info
+            dto.setEmployeeMobileNo(
+                    emp.getPrimary_mobile_no() != 0 ? String.valueOf(emp.getPrimary_mobile_no()) : null);
+
+            if (emp.getEmployee_manager_id() != null) {
+                dto.setManagerId(emp.getEmployee_manager_id().getEmp_id());
+            }
+
+            if (emp.getEmployee_reporting_id() != null) {
+                dto.setReportingManagerId(emp.getEmployee_reporting_id().getEmp_id());
+            }
+
+            // Additional manager text info
+            mapManagerInfo(emp, dto);
+
+            // Populate Department Info
+            if (emp.getDepartment() != null) {
+                dto.setDepartmentId(emp.getDepartment().getDepartment_id());
+                dto.setDepartmentName(emp.getDepartment().getDepartment_name());
+            }
+
+            // Populate Designation Info
+            if (emp.getDesignation() != null) {
+                dto.setDesignationId(emp.getDesignation().getDesignation_id());
+                dto.setDesignationName(emp.getDesignation().getDesignation_name());
+            }
         }
 
         return dto;
