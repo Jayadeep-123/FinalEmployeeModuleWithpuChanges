@@ -817,22 +817,27 @@ public class ManagerMappingService {
                     + " does not have a campus assigned. Cannot perform unmapping.");
         }
 
-        // Step 7: Deactivate SharedEmployee records only if multiple campuses are
-        // selected
-        // Single campus unmapping doesn't use SharedEmployee table
-        if (useMultipleCampuses) {
+        // Step 7: Deactivate SharedEmployee records
+        // ALWAYS check/deactivate SharedEmployee records regardless of multiple
+        // campuses flag
+        if (campusIdsList != null && !campusIdsList.isEmpty()) {
             for (Integer campusId : campusIdsList) {
+                // Find all shared employee records for this employee and campus (active or
+                // inactive)
                 List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
                         .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
+
                 for (SharedEmployee sharedEmployee : sharedEmployees) {
-                    sharedEmployee.setIsActive(0);
-                    sharedEmployee.setUpdatedBy(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
-                    sharedEmployee.setUpdatedDate(LocalDateTime.now());
-                    sharedEmployeeRepository.save(sharedEmployee);
+                    if (sharedEmployee.getIsActive() == 1) {
+                        sharedEmployee.setIsActive(0);
+                        sharedEmployee
+                                .setUpdatedBy(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
+                        sharedEmployee.setUpdatedDate(LocalDateTime.now());
+                        sharedEmployeeRepository.save(sharedEmployee);
+                    }
                 }
             }
         }
-        // If single campus, no SharedEmployee table update needed
 
         // Step 8: Unmap manager
         // 0 means unmap regardless of who the current manager is
