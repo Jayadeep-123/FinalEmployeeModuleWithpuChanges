@@ -29,6 +29,13 @@ public class CampusEmployeeController {
         return new ResponseEntity<>(savedDTOs, HttpStatus.CREATED);
     }
 
+    @PostMapping("/unassign-multiple")
+    public ResponseEntity<List<CampusEmployeeDTO>> unassignCampusesFromEmployee(
+            @RequestBody List<CampusEmployeeDTO> campusEmployeeDTOs) {
+        List<CampusEmployeeDTO> updatedDTOs = campusEmployeeService.unassignCampusesFromEmployee(campusEmployeeDTOs);
+        return new ResponseEntity<>(updatedDTOs, HttpStatus.OK);
+    }
+
     @org.springframework.web.bind.annotation.GetMapping("/location/{empId}")
     public ResponseEntity<com.employee.dto.EmployeeLocationDTO> getEmployeeLocation(
             @org.springframework.web.bind.annotation.PathVariable("empId") Integer empId) {

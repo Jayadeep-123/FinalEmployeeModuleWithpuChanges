@@ -82,6 +82,57 @@ public class CampusEmployeeService {
         return savedDTOs;
     }
 
+    @Transactional
+    public List<CampusEmployeeDTO> unassignCampusesFromEmployee(List<CampusEmployeeDTO> campusEmployeeDTOs) {
+        if (campusEmployeeDTOs == null || campusEmployeeDTOs.isEmpty()) {
+            throw new IllegalArgumentException("Campus unassignment list cannot be empty");
+        }
+
+        List<CampusEmployeeDTO> updatedDTOs = new ArrayList<>();
+
+        for (CampusEmployeeDTO dto : campusEmployeeDTOs) {
+            boolean processed = false;
+
+            // 1. Check and deactivate CampusEmployee record
+            // Changed to return List to handle potential duplicates
+            // (IncorrectResultSizeDataAccessException)
+            java.util.List<CampusEmployee> campusEmployees = campusEmployeeRepository
+                    .findByEmpIdAndCmpsId(dto.getEmpId(), dto.getCmpsId());
+
+            if (campusEmployees != null && !campusEmployees.isEmpty()) {
+                for (CampusEmployee entity : campusEmployees) {
+                    entity.setIsActive(0); // Set active to 0
+                    entity.setUpdatedBy(dto.getUpdatedBy());
+                    entity.setUpdatedDate(LocalDateTime.now());
+
+                    CampusEmployee savedEntity = campusEmployeeRepository.save(entity);
+                    updatedDTOs.add(mapToDTO(savedEntity));
+                    processed = true;
+                }
+            }
+
+            // 2. Check and deactivate SharedEmployee record
+            // Use findAll to handle potential duplicates
+            java.util.List<com.employee.entity.SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                    .findAllByEmpIdAndCampusId(dto.getEmpId(), dto.getCmpsId());
+
+            if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
+                for (com.employee.entity.SharedEmployee sharedEntity : sharedEmployees) {
+                    sharedEntity.setIsActive(0); // Set active to 0
+                    sharedEntity.setUpdatedBy(dto.getUpdatedBy());
+                    sharedEntity.setUpdatedDate(LocalDateTime.now());
+                    sharedEmployeeRepository.save(sharedEntity);
+                }
+            }
+
+            if (!processed) {
+                // Log or handle case where neither record was found if needed
+            }
+        }
+
+        return updatedDTOs;
+    }
+
     // Helper method to convert Entity to DTO
     private com.employee.dto.CampusEmployeeDTO convertToDTO(CampusEmployee entity) {
         return new com.employee.dto.CampusEmployeeDTO(
