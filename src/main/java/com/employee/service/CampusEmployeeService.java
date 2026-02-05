@@ -15,6 +15,7 @@ import com.employee.exception.ResourceNotFoundException;
 import com.employee.repository.CampusEmployeeRepository;
 import com.employee.repository.CampusRepository;
 import com.employee.repository.EmployeeRepository;
+import com.employee.repository.SharedEmployeeRepository;
 
 @Service
 public class CampusEmployeeService {
@@ -22,13 +23,16 @@ public class CampusEmployeeService {
     private final CampusEmployeeRepository campusEmployeeRepository;
     private final EmployeeRepository employeeRepository;
     private final CampusRepository campusRepository;
+    private final SharedEmployeeRepository sharedEmployeeRepository; // Added this field declaration
 
     public CampusEmployeeService(CampusEmployeeRepository campusEmployeeRepository,
             EmployeeRepository employeeRepository,
-            CampusRepository campusRepository) {
+            CampusRepository campusRepository,
+            com.employee.repository.SharedEmployeeRepository sharedEmployeeRepository) {
         this.campusEmployeeRepository = campusEmployeeRepository;
         this.employeeRepository = employeeRepository;
         this.campusRepository = campusRepository;
+        this.sharedEmployeeRepository = sharedEmployeeRepository;
     }
 
     @Transactional
@@ -76,6 +80,82 @@ public class CampusEmployeeService {
         }
 
         return savedDTOs;
+    }
+
+    // Helper method to convert Entity to DTO
+    private com.employee.dto.CampusEmployeeDTO convertToDTO(CampusEmployee entity) {
+        return new com.employee.dto.CampusEmployeeDTO(
+                entity.getCmpsEmployeeId(),
+                entity.getEmpId().getEmp_id(),
+                entity.getCmpsId().getCampusId(),
+                entity.getRoleId(),
+                entity.getAttendanceStatus(),
+                entity.getIsActive(),
+                entity.getCreatedBy(),
+                entity.getUpdatedBy());
+    }
+
+    /**
+     * Get Employee Location Details (State, City, Campus)
+     * Logic:
+     * 1. Check sce_cmps_emp table (CampusEmployee).
+     * 2. If nothing found, Check sce_shared_employee table (SharedEmployee).
+     * 3. If nothing found, Check Employee table (Return primary campus).
+     */
+    public com.employee.dto.EmployeeLocationDTO getEmployeeLocation(Integer empId) {
+        com.employee.dto.EmployeeLocationDTO locationDTO = new com.employee.dto.EmployeeLocationDTO();
+        List<com.employee.dto.CampusInfoDTO> campusInfoList = new java.util.ArrayList<>();
+
+        // Step 1: Check CampusEmployee table (New implementation for non-shared
+        // multi-campus)
+        List<CampusEmployee> multiCampuses = campusEmployeeRepository.findByEmpId(empId);
+
+        if (multiCampuses != null && !multiCampuses.isEmpty()) {
+            // Case A: Found in CampusEmployee
+            for (CampusEmployee ce : multiCampuses) {
+                addCampusToDTO(ce.getCmpsId(), campusInfoList, locationDTO);
+            }
+        } else {
+            // Step 2: Check SharedEmployee table (Legacy/Other shared implementation)
+            List<com.employee.entity.SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                    .findActiveByEmpId(empId);
+
+            if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
+                // Case B: Found in SharedEmployee
+                for (com.employee.entity.SharedEmployee se : sharedEmployees) {
+                    addCampusToDTO(se.getCmpsId(), campusInfoList, locationDTO);
+                }
+            } else {
+                // Step 3: Check Employee table (Single Primary Campus)
+                com.employee.entity.Employee employee = employeeRepository.findById(empId).orElse(null);
+                if (employee != null && employee.getCampus_id() != null) {
+                    // Case C: Single Campus
+                    addCampusToDTO(employee.getCampus_id(), campusInfoList, locationDTO);
+                }
+            }
+        }
+
+        locationDTO.setCampuses(campusInfoList);
+        return locationDTO;
+    }
+
+    private void addCampusToDTO(Campus campus, List<com.employee.dto.CampusInfoDTO> list,
+            com.employee.dto.EmployeeLocationDTO locationDTO) {
+        if (campus != null) {
+            list.add(new com.employee.dto.CampusInfoDTO(campus.getCampusId(), campus.getCampusName()));
+
+            // Set State/City from the first campus encountered
+            if (locationDTO.getStateId() == null) {
+                if (campus.getState() != null) {
+                    locationDTO.setStateId(campus.getState().getStateId());
+                    locationDTO.setStateName(campus.getState().getStateName());
+                }
+                if (campus.getCity() != null) {
+                    locationDTO.setCityId(campus.getCity().getCityId());
+                    locationDTO.setCityName(campus.getCity().getCityName());
+                }
+            }
+        }
     }
 
     private CampusEmployeeDTO mapToDTO(CampusEmployee entity) {

@@ -28,4 +28,11 @@ public class CampusEmployeeController {
         List<CampusEmployeeDTO> savedDTOs = campusEmployeeService.assignCampusesToEmployee(campusEmployeeDTOs);
         return new ResponseEntity<>(savedDTOs, HttpStatus.CREATED);
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/location/{empId}")
+    public ResponseEntity<com.employee.dto.EmployeeLocationDTO> getEmployeeLocation(
+            @org.springframework.web.bind.annotation.PathVariable("empId") Integer empId) {
+        com.employee.dto.EmployeeLocationDTO locationDTO = campusEmployeeService.getEmployeeLocation(empId);
+        return new ResponseEntity<>(locationDTO, HttpStatus.OK);
+    }
 }
