@@ -134,6 +134,9 @@ public class DropDownService {
 	@Autowired
 	com.employee.repository.BusinessTypeRepository businessTypeRepository;
 
+	@Autowired
+	com.employee.repository.RoleRepository roleRepository;
+
 	private static final int ACTIVE_STATUS = 1;
 
 	public List<GenericDropdownDTO> getMaritalStatusTypes() {
@@ -199,6 +202,12 @@ public class DropDownService {
 		final int ACTIVE_STATUS = 1;
 		return designationRepo.findByDepartmentId_DepartmentIdAndIsActive(departmentId, ACTIVE_STATUS).stream()
 				// Change the getter calls to match your entity's field names
+				.map(d -> new GenericDropdownDTO(d.getDesignation_id(), d.getDesignation_name()))
+				.collect(Collectors.toList());
+	}
+
+	public List<GenericDropdownDTO> getActiveDesignations() {
+		return designationRepo.findByIsActive(ACTIVE_STATUS).stream()
 				.map(d -> new GenericDropdownDTO(d.getDesignation_id(), d.getDesignation_name()))
 				.collect(Collectors.toList());
 	}
@@ -517,6 +526,12 @@ public class DropDownService {
 	public List<GenericDropdownDTO> getActiveEmployeesWithPayrollByCampusId(Integer campusId) {
 		return employeeRepository.findActiveEmployeesWithPayrollByCampusId(campusId).stream()
 				.map(emp -> new GenericDropdownDTO(emp.getEmp_id(), emp.getFirst_name() + " " + emp.getLast_name()))
+				.collect(Collectors.toList());
+	}
+
+	public List<GenericDropdownDTO> getActiveRoles() {
+		return roleRepository.findByIsActive(ACTIVE_STATUS).stream()
+				.map(role -> new GenericDropdownDTO(role.getRoleId(), role.getRoleName()))
 				.collect(Collectors.toList());
 	}
 }

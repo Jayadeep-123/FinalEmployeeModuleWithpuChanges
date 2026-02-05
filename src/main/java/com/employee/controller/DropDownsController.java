@@ -141,6 +141,28 @@ public class DropDownsController {
 		return ResponseEntity.ok(designations);
 	}
 
+	@GetMapping("/designations/active")
+	public ResponseEntity<?> getActiveDesignations() {
+		List<GenericDropdownDTO> designations = empDropdownService.getActiveDesignations();
+
+		if (designations == null || designations.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No active designations found");
+		}
+
+		return ResponseEntity.ok(designations);
+	}
+
+	@GetMapping("/roles")
+	public ResponseEntity<?> getRoles() {
+		List<GenericDropdownDTO> roles = empDropdownService.getActiveRoles();
+
+		if (roles == null || roles.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No active roles found");
+		}
+
+		return ResponseEntity.ok(roles);
+	}
+
 	@GetMapping("/degree/{qualificationId}")
 	public ResponseEntity<?> getDegrees(@PathVariable int qualificationId) {
 		List<GenericDropdownDTO> degrees = empDropdownService.getDegrees(qualificationId);
