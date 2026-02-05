@@ -190,8 +190,6 @@ public class DropDownService {
 
 	public List<GenericDropdownDTO> getActiveDepartmentsByEmpTypeId(int empTypeId) {
 		List<Department> departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndIsActive(empTypeId, 1);
-		System.out.println("DEBUG: getActiveDepartmentsByEmpTypeId(" + empTypeId + ") returned " + departments.size()
-				+ " departments.");
 
 		return departments.stream()
 				// Change the getter calls to match your entity's field names

@@ -1185,6 +1185,22 @@ public class ManagerMappingService {
                 batchDTO.setDesignationName(emp.getDesignation().getDesignation_name());
             }
 
+            // Populate Role Info DIRECTLY (since flatList won't have it due to
+            // includeFullDetails=false)
+            try {
+                System.out.println("==================================================");
+                System.out.println("DEBUG: Fetching Role for EmpID: " + emp.getEmp_id());
+                List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
+                System.out.println("DEBUG RESULT: " + (roles != null ? roles.toString() : "NULL LIST"));
+                System.out.println("==================================================");
+
+                if (roles != null && !roles.isEmpty()) {
+                    batchDTO.setRole(roles.get(0));
+                }
+            } catch (Exception e) {
+                System.err.println("Error fetching role for emp " + emp.getEmp_id() + ": " + e.getMessage());
+            }
+
             // 6. Map to CampusDetailDTO
             List<CampusDetailDTO> details = flatList.stream()
                     .filter(flat -> flat.getCampusId() != null)
@@ -1382,6 +1398,23 @@ public class ManagerMappingService {
             if (emp.getDesignation() != null) {
                 dto.setDesignationId(emp.getDesignation().getDesignation_id());
                 dto.setDesignationName(emp.getDesignation().getDesignation_name());
+            }
+
+            // Populate Role Info from View
+            try {
+                System.out.println("==================================================");
+                System.out
+                        .println("DEBUG CHECKING ROLE FOR: " + emp.getFirst_name() + " (ID: " + emp.getEmp_id() + ")");
+                List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
+                System.out.println("DEBUG RESULT: " + (roles != null ? roles.toString() : "NULL LIST"));
+                System.out.println("==================================================");
+
+                if (roles != null && !roles.isEmpty()) {
+                    dto.setRole(roles.get(0));
+                }
+            } catch (Exception e) {
+                System.err.println("DEBUG ERROR: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+// @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
 public class EmployeeBatchCampusDTO {
   private String payrollId;
   private String employeeName;
@@ -43,4 +43,7 @@ public class EmployeeBatchCampusDTO {
   private String departmentName;
   private Integer designationId;
   private String designationName;
+
+  // @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+  private String role; // Role from sce_user_admin view
 }
