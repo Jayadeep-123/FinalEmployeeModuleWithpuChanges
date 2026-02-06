@@ -39,6 +39,7 @@ import com.employee.repository.DesignationRepository;
 import com.employee.repository.EmployeeRepository;
 import com.employee.repository.SharedEmployeeRepository;
 import com.employee.repository.SubjectRepository;
+import com.employee.repository.RoleRepository;
 
 /**
  * Service for Manager Mapping functionality.
@@ -74,6 +75,9 @@ public class ManagerMappingService {
 
     @Autowired
     private BuildingAddressRepository buildingAddressRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
 
     /**
      * Maps employee based on payrollId and updates their details.
@@ -1123,7 +1127,7 @@ public class ManagerMappingService {
             if (emp.getCampus_id() != null) {
                 try {
                     EmployeeCampusAddressDTO primaryDTO = createDTOForCampus(emp, emp.getCampus_id(), payrollIds,
-                            false);
+                            false, null);
                     batchDTO.setCampusId(primaryDTO.getCampusId());
                     batchDTO.setCampusName(primaryDTO.getCampusName());
                     batchDTO.setCityId(primaryDTO.getCityId());
@@ -1210,7 +1214,13 @@ public class ManagerMappingService {
                             flat.getCityId(),
                             flat.getCity(),
                             flat.getFullAddress(),
-                            flat.getBuildingMobileNo()))
+                            flat.getBuildingMobileNo(),
+                            flat.getSubjectId(),
+                            flat.getSubjectName(),
+                            flat.getDesignationId(),
+                            flat.getDesignationName(),
+                            flat.getRoleId(),
+                            flat.getRoleName()))
                     .collect(Collectors.toList());
 
             batchDTO.setCampusDetails(details);
@@ -1254,7 +1264,7 @@ public class ManagerMappingService {
         if (campusEmployees != null && !campusEmployees.isEmpty()) {
             for (com.employee.entity.CampusEmployee ce : campusEmployees) {
                 if (ce.getCmpsId() != null) {
-                    dtoList.add(createDTOForCampus(emp, ce.getCmpsId(), inputIds, includeFullDetails));
+                    dtoList.add(createDTOForCampus(emp, ce.getCmpsId(), inputIds, includeFullDetails, ce));
                 }
             }
             return dtoList;
@@ -1265,7 +1275,7 @@ public class ManagerMappingService {
         if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
             for (SharedEmployee se : sharedEmployees) {
                 if (se.getCmpsId() != null) {
-                    dtoList.add(createDTOForCampus(emp, se.getCmpsId(), inputIds, includeFullDetails));
+                    dtoList.add(createDTOForCampus(emp, se.getCmpsId(), inputIds, includeFullDetails, se));
                 }
             }
             return dtoList;
@@ -1273,7 +1283,7 @@ public class ManagerMappingService {
 
         // 3. Fallback to Primary Campus
         if (emp.getCampus_id() != null) {
-            dtoList.add(createDTOForCampus(emp, emp.getCampus_id(), inputIds, includeFullDetails));
+            dtoList.add(createDTOForCampus(emp, emp.getCampus_id(), inputIds, includeFullDetails, null));
         } else {
             // No campus assigned case
             EmployeeCampusAddressDTO dto = createBaseDTO(emp, inputIds, includeFullDetails);
@@ -1285,13 +1295,78 @@ public class ManagerMappingService {
     }
 
     private EmployeeCampusAddressDTO createDTOForCampus(Employee emp, Campus campus, List<String> inputIds,
-            boolean includeFullDetails) {
+            boolean includeFullDetails, Object mappingEntity) {
         EmployeeCampusAddressDTO dto = createBaseDTO(emp, inputIds, includeFullDetails);
 
         try {
             Integer campusId = campus.getCampusId();
             dto.setCampusId(campusId);
             dto.setCampusName(campus.getCampusName());
+
+            // Extract details from mapping entity (SharedEmployee or CampusEmployee)
+            if (mappingEntity instanceof SharedEmployee) {
+                SharedEmployee se = (SharedEmployee) mappingEntity;
+                if (se.getSubjectId() != null) {
+                    dto.setSubjectId(se.getSubjectId().getSubject_id());
+                    dto.setSubjectName(se.getSubjectId().getSubject_name());
+                }
+                if (se.getDesignationId() != null) {
+                    dto.setDesignationId(se.getDesignationId().getDesignation_id());
+                    dto.setDesignationName(se.getDesignationId().getDesignation_name());
+                }
+                // SharedEmployee doesn't have roleId directly, fetch global role
+                try {
+                    List<Integer> info = employeeRepository.findRoleIdByEmpId(emp.getEmp_id());
+                    if (info != null && !info.isEmpty()) {
+                        dto.setRoleId(info.get(0));
+                    }
+                    List<String> roleNames = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
+                    if (roleNames != null && !roleNames.isEmpty()) {
+                        dto.setRoleName(roleNames.get(0));
+                    }
+                } catch (Exception e) {
+                    // Ignore
+                }
+
+            } else if (mappingEntity instanceof com.employee.entity.CampusEmployee) {
+                com.employee.entity.CampusEmployee ce = (com.employee.entity.CampusEmployee) mappingEntity;
+                if (ce.getRoleId() != null) {
+                    dto.setRoleId(ce.getRoleId());
+                    // Fetch Role Name if possible
+                    try {
+                        roleRepository.findById(ce.getRoleId()).ifPresent(role -> {
+                            dto.setRoleName(role.getRoleName());
+                        });
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                }
+                // CampusEmployee doesn't have Subject/Designation, fall back to Employee's
+                // primary
+                if (emp.getDesignation() != null) {
+                    dto.setDesignationId(emp.getDesignation().getDesignation_id());
+                    dto.setDesignationName(emp.getDesignation().getDesignation_name());
+                }
+            } else {
+                // Fallback for primary campus (null mappingEntity)
+                if (emp.getDesignation() != null) {
+                    dto.setDesignationId(emp.getDesignation().getDesignation_id());
+                    dto.setDesignationName(emp.getDesignation().getDesignation_name());
+                }
+                // Fetch global role
+                try {
+                    List<Integer> info = employeeRepository.findRoleIdByEmpId(emp.getEmp_id());
+                    if (info != null && !info.isEmpty()) {
+                        dto.setRoleId(info.get(0));
+                    }
+                    List<String> roleNames = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
+                    if (roleNames != null && !roleNames.isEmpty()) {
+                        dto.setRoleName(roleNames.get(0));
+                    }
+                } catch (Exception e) {
+                    // Ignore
+                }
+            }
 
             // Populate City from Campus
             if (campus.getCity() != null) {

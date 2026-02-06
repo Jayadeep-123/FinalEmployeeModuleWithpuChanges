@@ -14,4 +14,11 @@ public class CampusDetailDTO {
     private String city;
     private String fullAddress;
     private String buildingMobileNo;
+
+    private Integer subjectId;
+    private String subjectName;
+    private Integer designationId;
+    private String designationName;
+    private Integer roleId;
+    private String roleName;
 }

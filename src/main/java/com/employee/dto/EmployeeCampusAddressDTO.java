@@ -29,5 +29,11 @@ public class EmployeeCampusAddressDTO {
     private Integer designationId;
     private String designationName;
     private String employeeName;
-    private String role;
+    private String role; // Existing field, kept for backward compatibility if used elsewhere
+
+    // New fields for internal processing / detailed response
+    private Integer subjectId;
+    private String subjectName;
+    private Integer roleId;
+    private String roleName;
 }
