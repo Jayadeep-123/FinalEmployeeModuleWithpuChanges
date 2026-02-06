@@ -188,13 +188,37 @@ public class DropDownService {
 				.collect(Collectors.toList());
 	}
 
-	public List<GenericDropdownDTO> getActiveDepartmentsByEmpTypeId(int empTypeId) {
-		List<Department> departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndIsActive(empTypeId, 1);
+//	public List<GenericDropdownDTO> getDepartments(Integer empTypeId) {
+//		List<Department> departments;
+//
+//		if (empTypeId == null) {
+//			departments = departmentRepo.findByIsActive(1);
+//		} else {
+//			departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndIsActive(empTypeId, 1);
+//		}
+//
+//		return departments.stream()
+//				// Change the getter calls to match your entity's field names
+//				.map(dept -> new GenericDropdownDTO(dept.getDepartment_id(), dept.getDepartment_name()))
+//				.collect(Collectors.toList());
+//	}
+	
+	public List<GenericDropdownDTO> getDepartments(Integer empTypeId) {
+	    List<Department> departments;
 
-		return departments.stream()
-				// Change the getter calls to match your entity's field names
-				.map(dept -> new GenericDropdownDTO(dept.getDepartment_id(), dept.getDepartment_name()))
-				.collect(Collectors.toList());
+	    if (empTypeId == null) {
+	        // 1. If ID is null (not passed), fetch ALL active departments
+	        departments = departmentRepo.findByIsActive(1);
+	    } else {
+	        // 2. If ID is passed, fetch departments specific to that Employee Type
+	        // Note: This relies on the Department entity having a relationship named 'empTypeId'
+	        departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndIsActive(empTypeId, 1);
+	    }
+
+	    // 3. Convert Entity list to DTO list
+	    return departments.stream()
+	            .map(dept -> new GenericDropdownDTO(dept.getDepartment_id(), dept.getDepartment_name()))
+	            .collect(Collectors.toList());
 	}
 
 	public List<GenericDropdownDTO> getDesignations(int departmentId) {

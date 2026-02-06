@@ -1,3 +1,44 @@
+//package com.employee.repository;
+//
+//import java.util.List;
+//import java.util.Optional;
+//
+//import org.springframework.data.jpa.repository.JpaRepository;
+//import org.springframework.data.jpa.repository.Query;
+//import org.springframework.data.repository.query.Param;
+//import org.springframework.stereotype.Repository;
+//
+//import com.employee.entity.Department;
+//
+//@Repository
+//public interface DepartmentRepository extends JpaRepository<Department, Integer> {
+//
+//    // Find by ID and is_active = 1
+//    @Query("SELECT d FROM Department d WHERE d.department_id = :id AND d.isActive = :isActive")
+//    Optional<Department> findByIdAndIsActive(@Param("id") Integer id, @Param("isActive") Integer isActive);
+//
+//    /**
+//     * Finds all active departments that are associated with a specific employee
+//     * type.
+//     * CORRECTED: This now uses a manual @Query because Spring cannot
+//     * auto-generate this query from the method name.
+//     */
+//    /**
+//     * Finds all active departments that are associated with a specific employee
+//     * type.
+//     */
+//    @Query("SELECT d FROM Department d " +
+//            "WHERE d.empTypeId.emp_type_id = :empTypeId " +
+//            "AND d.isActive = :isActive")
+//    List<Department> findByEmpTypeId_EmpTypeIdAndIsActive(
+//            @Param("empTypeId") int empTypeId,
+//            @Param("isActive") Integer isActive);
+//
+//    List<Department> findByIsActive(Integer isActive);
+//
+//}
+
+
 package com.employee.repository;
 
 import java.util.List;
@@ -13,27 +54,30 @@ import com.employee.entity.Department;
 @Repository
 public interface DepartmentRepository extends JpaRepository<Department, Integer> {
 
-    // Find by ID and is_active = 1
+    // 1. Fetch ALL active departments
+    List<Department> findByIsActive(Integer isActive);
+
+    // 2. Fetch active department by ID
     @Query("SELECT d FROM Department d WHERE d.department_id = :id AND d.isActive = :isActive")
     Optional<Department> findByIdAndIsActive(@Param("id") Integer id, @Param("isActive") Integer isActive);
 
-    /**
-     * Finds all active departments that are associated with a specific employee
-     * type.
-     * CORRECTED: This now uses a manual @Query because Spring cannot
-     * auto-generate this query from the method name.
-     */
-    /**
-     * Finds all active departments that are associated with a specific employee
-     * type.
-     */
+    // 3. Fetch departments filtered by Employee Type (Corrected with @Query)
     @Query("SELECT d FROM Department d " +
-            "WHERE d.empTypeId.emp_type_id = :empTypeId " +
-            "AND d.isActive = :isActive")
+           "WHERE d.empTypeId.emp_type_id = :empTypeId " +
+           "AND d.isActive = :isActive")
     List<Department> findByEmpTypeId_EmpTypeIdAndIsActive(
             @Param("empTypeId") int empTypeId,
             @Param("isActive") Integer isActive);
 
-    List<Department> findByIsActive(Integer isActive);
+    // --- NEWLY ADDED METHODS ---
 
+    // 4. Find department by Name (Useful for duplicate checks during save)
+    @Query("SELECT d FROM Department d WHERE d.department_name = :deptName AND d.isActive = :isActive")
+    Optional<Department> findByDepartmentNameAndIsActive(
+            @Param("deptName") String deptName, 
+            @Param("isActive") int isActive);
+
+    // 5. Check if department exists by Name (Boolean return)
+    @Query("SELECT CASE WHEN COUNT(d) > 0 THEN true ELSE false END FROM Department d WHERE d.department_name = :deptName AND d.isActive = 1")
+    boolean existsByDepartmentName(@Param("deptName") String deptName);
 }

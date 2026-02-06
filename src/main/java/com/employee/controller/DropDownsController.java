@@ -117,16 +117,13 @@ public class DropDownsController {
 		return ResponseEntity.ok(paymentTypes);
 	}
 
-	@GetMapping("/department/{empTypeId}")
-	public ResponseEntity<?> getDepartments(@PathVariable int empTypeId) {
-		List<GenericDropdownDTO> departments = empDropdownService.getActiveDepartmentsByEmpTypeId(empTypeId);
+	@GetMapping({ "/department", "/department/{empTypeId}" }) 
+	public ResponseEntity<?> getDepartments(@RequestParam(required = false)  Integer empTypeId) {
+	    
+	    // The service determines whether to fetch ALL or FILTER based on if empTypeId is null
+	    List<GenericDropdownDTO> departments = empDropdownService.getDepartments(empTypeId);
 
-		if (departments == null || departments.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("No active departments found for employee type ID: " + empTypeId);
-		}
-
-		return ResponseEntity.ok(departments);
+	    return ResponseEntity.ok(departments);
 	}
 
 	@GetMapping("/designation/{departmentId}")
