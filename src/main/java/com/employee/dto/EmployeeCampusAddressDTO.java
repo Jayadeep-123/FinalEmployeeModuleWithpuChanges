@@ -36,4 +36,7 @@ public class EmployeeCampusAddressDTO {
     private String subjectName;
     private Integer roleId;
     private String roleName;
+
+    private Integer employeeTypeId;
+    private String employeeTypeName;
 }

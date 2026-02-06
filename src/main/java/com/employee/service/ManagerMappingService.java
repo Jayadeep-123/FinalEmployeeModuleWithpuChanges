@@ -1491,6 +1491,12 @@ public class ManagerMappingService {
                 System.err.println("DEBUG ERROR: " + e.getMessage());
                 e.printStackTrace();
             }
+
+            // Populate Employee Type Info
+            if (emp.getEmployee_type_id() != null) {
+                dto.setEmployeeTypeId(emp.getEmployee_type_id().getEmp_type_id());
+                dto.setEmployeeTypeName(emp.getEmployee_type_id().getEmp_type());
+            }
         }
 
         return dto;
