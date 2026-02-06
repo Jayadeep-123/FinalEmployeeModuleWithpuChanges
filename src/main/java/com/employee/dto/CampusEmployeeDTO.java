@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CampusEmployeeDTO {
-    private Integer cmpsEmployeeId;
-    private Integer empId;
+    private String payrollId;
     private Integer cmpsId;
     private Integer roleId;
     private Integer attendanceStatus;

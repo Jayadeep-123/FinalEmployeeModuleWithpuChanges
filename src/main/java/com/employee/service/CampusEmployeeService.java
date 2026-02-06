@@ -46,31 +46,42 @@ public class CampusEmployeeService {
         List<CampusEmployeeDTO> savedDTOs = new ArrayList<>();
 
         for (CampusEmployeeDTO dto : campusEmployeeDTOs) {
-            // Validate Employee
-            Employee employee = employeeRepository.findById(dto.getEmpId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with ID: " + dto.getEmpId()));
+            // Validate Employee by payrollId
+            if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
+                throw new IllegalArgumentException("Payroll ID is required");
+            }
+
+            Employee employee = employeeRepository.findByPayrollId(dto.getPayrollId())
+                    .orElseGet(() -> employeeRepository.findByTempPayrollId(dto.getPayrollId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Employee not found with Payroll ID: " + dto.getPayrollId())));
 
             // Validate Campus
             Campus campus = campusRepository.findById(dto.getCmpsId())
                     .orElseThrow(() -> new ResourceNotFoundException("Campus not found with ID: " + dto.getCmpsId()));
 
-            CampusEmployee entity = new CampusEmployee();
-            // If updating existing mapping
-            if (dto.getCmpsEmployeeId() != null && dto.getCmpsEmployeeId() > 0) {
-                entity = campusEmployeeRepository.findById(dto.getCmpsEmployeeId())
-                        .orElse(new CampusEmployee());
+            // Check if mapping already exists
+            List<CampusEmployee> existingMappings = campusEmployeeRepository.findByEmpIdAndCmpsId(employee.getEmp_id(),
+                    campus.getCampusId());
+
+            CampusEmployee entity;
+            if (existingMappings != null && !existingMappings.isEmpty()) {
+                // Update existing mapping (take the first one if multiples exist)
+                entity = existingMappings.get(0);
+            } else {
+                // Create new mapping
+                entity = new CampusEmployee();
+                entity.setEmpId(employee);
+                entity.setCmpsId(campus);
+                entity.setCreatedBy(dto.getCreatedBy() != null ? dto.getCreatedBy() : 1);
             }
 
-            entity.setEmpId(employee);
-            entity.setCmpsId(campus);
             entity.setRoleId(dto.getRoleId());
             entity.setAttendanceStatus(dto.getAttendanceStatus());
             entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : 1);
 
             // Audit fields
-            if (entity.getCmpsEmployeeId() == null) {
-                entity.setCreatedBy(dto.getCreatedBy() != null ? dto.getCreatedBy() : 1);
-            } else {
+            if (entity.getCmpsEmployeeId() != null) {
                 entity.setUpdatedBy(dto.getUpdatedBy());
                 entity.setUpdatedDate(LocalDateTime.now());
             }
@@ -93,11 +104,20 @@ public class CampusEmployeeService {
         for (CampusEmployeeDTO dto : campusEmployeeDTOs) {
             boolean processed = false;
 
+            if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
+                throw new IllegalArgumentException("Payroll ID is required");
+            }
+
+            Employee employee = employeeRepository.findByPayrollId(dto.getPayrollId())
+                    .orElseGet(() -> employeeRepository.findByTempPayrollId(dto.getPayrollId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Employee not found with Payroll ID: " + dto.getPayrollId())));
+
             // 1. Check and deactivate CampusEmployee record
             // Changed to return List to handle potential duplicates
             // (IncorrectResultSizeDataAccessException)
             java.util.List<CampusEmployee> campusEmployees = campusEmployeeRepository
-                    .findByEmpIdAndCmpsId(dto.getEmpId(), dto.getCmpsId());
+                    .findByEmpIdAndCmpsId(employee.getEmp_id(), dto.getCmpsId());
 
             if (campusEmployees != null && !campusEmployees.isEmpty()) {
                 for (CampusEmployee entity : campusEmployees) {
@@ -114,7 +134,7 @@ public class CampusEmployeeService {
             // 2. Check and deactivate SharedEmployee record
             // Use findAll to handle potential duplicates
             java.util.List<com.employee.entity.SharedEmployee> sharedEmployees = sharedEmployeeRepository
-                    .findAllByEmpIdAndCampusId(dto.getEmpId(), dto.getCmpsId());
+                    .findAllByEmpIdAndCampusId(employee.getEmp_id(), dto.getCmpsId());
 
             if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
                 for (com.employee.entity.SharedEmployee sharedEntity : sharedEmployees) {
@@ -135,9 +155,12 @@ public class CampusEmployeeService {
 
     // Helper method to convert Entity to DTO
     private com.employee.dto.CampusEmployeeDTO convertToDTO(CampusEmployee entity) {
+        String payrollId = entity.getEmpId().getPayRollId();
+        if (payrollId == null) {
+            payrollId = entity.getEmpId().getTempPayrollId();
+        }
         return new com.employee.dto.CampusEmployeeDTO(
-                entity.getCmpsEmployeeId(),
-                entity.getEmpId().getEmp_id(),
+                payrollId,
                 entity.getCmpsId().getCampusId(),
                 entity.getRoleId(),
                 entity.getAttendanceStatus(),
@@ -217,9 +240,12 @@ public class CampusEmployeeService {
     }
 
     private CampusEmployeeDTO mapToDTO(CampusEmployee entity) {
+        String payrollId = entity.getEmpId().getPayRollId();
+        if (payrollId == null) {
+            payrollId = entity.getEmpId().getTempPayrollId();
+        }
         return new CampusEmployeeDTO(
-                entity.getCmpsEmployeeId(),
-                entity.getEmpId().getEmp_id(),
+                payrollId,
                 entity.getCmpsId().getCampusId(),
                 entity.getRoleId(),
                 entity.getAttendanceStatus(),

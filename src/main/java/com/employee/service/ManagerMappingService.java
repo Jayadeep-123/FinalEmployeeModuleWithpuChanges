@@ -1573,15 +1573,17 @@ public class ManagerMappingService {
         List<com.employee.dto.CampusEmployeeDTO> savedDtos = new ArrayList<>();
 
         for (com.employee.dto.CampusEmployeeDTO dto : dtos) {
-            if (dto.getEmpId() == null) {
-                throw new IllegalArgumentException("empId is required");
+            if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
+                throw new IllegalArgumentException("Payroll ID is required");
             }
             if (dto.getCmpsId() == null) {
                 throw new IllegalArgumentException("cmpsId is required");
             }
 
-            Employee employee = employeeRepository.findById(dto.getEmpId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with ID: " + dto.getEmpId()));
+            Employee employee = employeeRepository.findByPayrollId(dto.getPayrollId())
+                    .orElseGet(() -> employeeRepository.findByTempPayrollId(dto.getPayrollId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Employee not found with Payroll ID: " + dto.getPayrollId())));
 
             Campus campus = campusRepository.findById(dto.getCmpsId())
                     .orElseThrow(() -> new ResourceNotFoundException("Campus not found with ID: " + dto.getCmpsId()));
@@ -1599,7 +1601,6 @@ public class ManagerMappingService {
 
             com.employee.entity.CampusEmployee savedEntity = campusEmployeeRepository.save(entity);
 
-            dto.setCmpsEmployeeId(savedEntity.getCmpsEmployeeId());
             savedDtos.add(dto);
         }
         return savedDtos;
