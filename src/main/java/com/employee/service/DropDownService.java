@@ -16,6 +16,7 @@ import com.employee.entity.Building;
 import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
 import com.employee.entity.Department;
+import com.employee.entity.Designation;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeType;
 import com.employee.entity.OrgBank;
@@ -557,5 +558,16 @@ public class DropDownService {
 		return roleRepository.findByIsActive(ACTIVE_STATUS).stream()
 				.map(role -> new GenericDropdownDTO(role.getRoleId(), role.getRoleName()))
 				.collect(Collectors.toList());
+	}
+	public List<GenericDropdownDTO> getDesignationsByEmployeeType(Integer empTypeId) {
+		 
+	    List<Designation> designations =
+	            designationRepo.findDesignationsByEmpType(empTypeId);
+ 
+	    return designations.stream()
+	            .map(d -> new GenericDropdownDTO(
+	                    d.getDesignation_id(),
+	                    d.getDesignation_name()))
+	            .toList();
 	}
 }

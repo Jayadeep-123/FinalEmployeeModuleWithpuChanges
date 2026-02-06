@@ -32,4 +32,11 @@ public interface DesignationRepository extends JpaRepository<Designation, Intege
 
     // Find all active designations
     List<Designation> findByIsActive(int isActive);
+    
+    @Query("""
+ 	       SELECT d FROM Designation d
+ 	       WHERE (:empTypeId IS NULL
+ 	              OR d.department.empTypeId.emp_type_id = :empTypeId)
+ 	       """)
+ 	List<Designation> findDesignationsByEmpType(@Param("empTypeId") Integer empTypeId);
 }

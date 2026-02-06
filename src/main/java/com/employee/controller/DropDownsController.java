@@ -545,4 +545,10 @@ public class DropDownsController {
 
 		return ResponseEntity.ok(employees);
 	}
+	@GetMapping("/designationsByEmpTypeId")
+	public List<GenericDropdownDTO> getDesignationsByEmployeeType(
+	        @RequestParam(required = false) Integer empTypeId) {
+ 
+	    return empDropdownService.getDesignationsByEmployeeType(empTypeId);
+	}
 }
