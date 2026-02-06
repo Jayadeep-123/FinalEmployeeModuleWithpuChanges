@@ -1025,10 +1025,34 @@ public class ManagerMappingService {
 
                     EmployeeBatchCampusDTO batchDTO = new EmployeeBatchCampusDTO();
 
-                    // Populate Top-Level Fields from the FIRST prioritized active campus (Primary
-                    // if exists)
-                    if (!flatList.isEmpty()) {
-                        EmployeeCampusAddressDTO top = flatList.get(0);
+                    // Populate Top-Level Fields strictly from the PRIMARY campus (Employee table)
+                    if (emp.getCampus_id() != null && Integer.valueOf(1).equals(emp.getCampus_id().getIsActive())) {
+                        int primaryCampusId = emp.getCampus_id().getCampusId();
+                        Object matchingMapping = null;
+
+                        // Fetch shared mappings to enrich primary campus details if they exist
+                        List<com.employee.entity.CampusEmployee> campusEmployees = campusEmployeeRepository
+                                .findByEmpId(emp.getEmp_id());
+                        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                                .findActiveByEmpId(emp.getEmp_id());
+
+                        if (sharedEmployees != null) {
+                            matchingMapping = sharedEmployees.stream()
+                                    .filter(se -> se.getCmpsId() != null
+                                            && se.getCmpsId().getCampusId() == primaryCampusId)
+                                    .findFirst().orElse(null);
+                        }
+                        if (matchingMapping == null && campusEmployees != null) {
+                            matchingMapping = campusEmployees.stream()
+                                    .filter(ce -> ce.getCmpsId() != null
+                                            && ce.getCmpsId().getCampusId() == primaryCampusId)
+                                    .findFirst().orElse(null);
+                        }
+
+                        // Create detailed DTO for primary campus
+                        EmployeeCampusAddressDTO top = createDTOForCampus(emp, emp.getCampus_id(), payrollIds, false,
+                                matchingMapping);
+
                         batchDTO.setCampusId(top.getCampusId());
                         batchDTO.setCampusName(top.getCampusName());
                         batchDTO.setCityId(top.getCityId());
@@ -1036,12 +1060,11 @@ public class ManagerMappingService {
                         batchDTO.setFullAddress(top.getFullAddress());
                         batchDTO.setBuildingMobileNo(top.getBuildingMobileNo());
 
-                        // Keep the top-level designation/department consistent with the first mapping
                         batchDTO.setDesignationId(top.getDesignationId());
                         batchDTO.setDesignationName(top.getDesignationName());
-                        // Department info is not in EmployeeCampusAddressDTO when
-                        // includeFullDetails=false
-                        // But batchDTO needs it. We'll fetch from emp directly.
+                    } else {
+                        // Fallback if no primary campus
+                        batchDTO.setFullAddress("Address: Primary campus not assigned or inactive");
                     }
 
                     // 1. Employee Basic Info
@@ -1120,12 +1143,11 @@ public class ManagerMappingService {
                             .collect(Collectors.toList());
 
                     // 7. Set Employee Type and Shared Details logic
-                    if (details.size() > 1) {
+                    batchDTO.setCampusDetails(details);
+                    if (details != null && !details.isEmpty()) {
                         batchDTO.setEmployeeType("Shared");
-                        batchDTO.setCampusDetails(details);
                     } else {
                         batchDTO.setEmployeeType("Not Shared");
-                        batchDTO.setCampusDetails(null);
                     }
 
                     return batchDTO;
@@ -1155,16 +1177,16 @@ public class ManagerMappingService {
         // mappings
         Map<Integer, EmployeeCampusAddressDTO> uniqueCampuses = new LinkedHashMap<>();
 
-        // 1. Add Primary Campus if it exists and is active
-        if (emp.getCampus_id() != null && Integer.valueOf(1).equals(emp.getCampus_id().getIsActive())) {
-            EmployeeCampusAddressDTO primaryDto = createDTOForCampus(emp, emp.getCampus_id(), inputIds,
-                    includeFullDetails, null);
-            uniqueCampuses.put(primaryDto.getCampusId(), primaryDto);
-        }
-
-        // 2. Add CampusEmployee mappings (Active only)
+        // 0. Fetch mapping records upfront to enrich primary campus details if possible
         List<com.employee.entity.CampusEmployee> campusEmployees = campusEmployeeRepository
                 .findByEmpId(emp.getEmp_id());
+        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository.findActiveByEmpId(emp.getEmp_id());
+
+        // 1. Logic changed: We no longer add the primary campus to this list.
+        // The list returned by this method will exclusively contain additional
+        // mappings.
+
+        // 2. Add CampusEmployee mappings (Active only)
         if (campusEmployees != null) {
             for (com.employee.entity.CampusEmployee ce : campusEmployees) {
                 if (ce.getCmpsId() != null && Integer.valueOf(1).equals(ce.getCmpsId().getIsActive())
@@ -1176,7 +1198,6 @@ public class ManagerMappingService {
         }
 
         // 3. Add SharedEmployee mappings (Active only)
-        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository.findActiveByEmpId(emp.getEmp_id());
         if (sharedEmployees != null) {
             for (SharedEmployee se : sharedEmployees) {
                 if (se.getCmpsId() != null && Integer.valueOf(1).equals(se.getCmpsId().getIsActive())
