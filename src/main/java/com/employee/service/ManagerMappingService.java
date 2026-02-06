@@ -1017,117 +1017,119 @@ public class ManagerMappingService {
         // Fetch all employees in the list at once (handles both temp and permanent IDs)
         List<Employee> employees = employeeRepository.findAllByPayRollIdInOrTempPayrollIdIn(payrollIds);
 
-        return employees.stream().map(emp -> {
-            // Process to get prioritized and consolidated list of active campuses
-            List<EmployeeCampusAddressDTO> flatList = processSingleEmployee(emp, payrollIds, false);
+        return employees.stream()
+                .filter(emp -> emp.getIs_active() == 1) // Only process active employees
+                .map(emp -> {
+                    // Process to get prioritized and consolidated list of active campuses
+                    List<EmployeeCampusAddressDTO> flatList = processSingleEmployee(emp, payrollIds, false);
 
-            EmployeeBatchCampusDTO batchDTO = new EmployeeBatchCampusDTO();
+                    EmployeeBatchCampusDTO batchDTO = new EmployeeBatchCampusDTO();
 
-            // Populate Top-Level Fields from the FIRST prioritized active campus (Primary
-            // if exists)
-            if (!flatList.isEmpty()) {
-                EmployeeCampusAddressDTO top = flatList.get(0);
-                batchDTO.setCampusId(top.getCampusId());
-                batchDTO.setCampusName(top.getCampusName());
-                batchDTO.setCityId(top.getCityId());
-                batchDTO.setCity(top.getCity());
-                batchDTO.setFullAddress(top.getFullAddress());
-                batchDTO.setBuildingMobileNo(top.getBuildingMobileNo());
+                    // Populate Top-Level Fields from the FIRST prioritized active campus (Primary
+                    // if exists)
+                    if (!flatList.isEmpty()) {
+                        EmployeeCampusAddressDTO top = flatList.get(0);
+                        batchDTO.setCampusId(top.getCampusId());
+                        batchDTO.setCampusName(top.getCampusName());
+                        batchDTO.setCityId(top.getCityId());
+                        batchDTO.setCity(top.getCity());
+                        batchDTO.setFullAddress(top.getFullAddress());
+                        batchDTO.setBuildingMobileNo(top.getBuildingMobileNo());
 
-                // Keep the top-level designation/department consistent with the first mapping
-                batchDTO.setDesignationId(top.getDesignationId());
-                batchDTO.setDesignationName(top.getDesignationName());
-                // Department info is not in EmployeeCampusAddressDTO when
-                // includeFullDetails=false
-                // But batchDTO needs it. We'll fetch from emp directly.
-            }
+                        // Keep the top-level designation/department consistent with the first mapping
+                        batchDTO.setDesignationId(top.getDesignationId());
+                        batchDTO.setDesignationName(top.getDesignationName());
+                        // Department info is not in EmployeeCampusAddressDTO when
+                        // includeFullDetails=false
+                        // But batchDTO needs it. We'll fetch from emp directly.
+                    }
 
-            // 1. Employee Basic Info
-            String displayId = emp.getPayRollId();
-            if (displayId == null || (payrollIds != null && !payrollIds.contains(displayId))) {
-                displayId = emp.getTempPayrollId();
-            }
-            batchDTO.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
+                    // 1. Employee Basic Info
+                    String displayId = emp.getPayRollId();
+                    if (displayId == null || (payrollIds != null && !payrollIds.contains(displayId))) {
+                        displayId = emp.getTempPayrollId();
+                    }
+                    batchDTO.setPayrollId(displayId != null ? displayId : emp.getPayRollId());
 
-            String fullName = emp.getFirst_name();
-            if (emp.getLast_name() != null) {
-                fullName += " " + emp.getLast_name();
-            }
-            batchDTO.setEmployeeName(fullName);
+                    String fullName = emp.getFirst_name();
+                    if (emp.getLast_name() != null) {
+                        fullName += " " + emp.getLast_name();
+                    }
+                    batchDTO.setEmployeeName(fullName);
 
-            // 2. Manager Info
-            if (emp.getEmployee_manager_id() != null) {
-                Employee manager = emp.getEmployee_manager_id();
-                batchDTO.setManagerId(manager.getEmp_id());
-                String mgrName = manager.getFirst_name();
-                if (manager.getLast_name() != null) {
-                    mgrName += " " + manager.getLast_name();
-                }
-                batchDTO.setManagerName(mgrName);
-            }
+                    // 2. Manager Info
+                    if (emp.getEmployee_manager_id() != null) {
+                        Employee manager = emp.getEmployee_manager_id();
+                        batchDTO.setManagerId(manager.getEmp_id());
+                        String mgrName = manager.getFirst_name();
+                        if (manager.getLast_name() != null) {
+                            mgrName += " " + manager.getLast_name();
+                        }
+                        batchDTO.setManagerName(mgrName);
+                    }
 
-            // 3. Reporting Manager Info
-            if (emp.getEmployee_reporting_id() != null) {
-                Employee rManager = emp.getEmployee_reporting_id();
-                batchDTO.setReportingManagerId(rManager.getEmp_id());
-                String rMgrName = rManager.getFirst_name();
-                if (rManager.getLast_name() != null) {
-                    rMgrName += " " + rManager.getLast_name();
-                }
-                batchDTO.setReportingManagerName(rMgrName);
-            }
+                    // 3. Reporting Manager Info
+                    if (emp.getEmployee_reporting_id() != null) {
+                        Employee rManager = emp.getEmployee_reporting_id();
+                        batchDTO.setReportingManagerId(rManager.getEmp_id());
+                        String rMgrName = rManager.getFirst_name();
+                        if (rManager.getLast_name() != null) {
+                            rMgrName += " " + rManager.getLast_name();
+                        }
+                        batchDTO.setReportingManagerName(rMgrName);
+                    }
 
-            // 4. Department Info
-            if (emp.getDepartment() != null) {
-                batchDTO.setDepartmentId(emp.getDepartment().getDepartment_id());
-                batchDTO.setDepartmentName(emp.getDepartment().getDepartment_name());
-            }
+                    // 4. Department Info
+                    if (emp.getDepartment() != null) {
+                        batchDTO.setDepartmentId(emp.getDepartment().getDepartment_id());
+                        batchDTO.setDepartmentName(emp.getDepartment().getDepartment_name());
+                    }
 
-            // 5. Designation Info (If not already set from flatList top record)
-            if (batchDTO.getDesignationId() == null && emp.getDesignation() != null) {
-                batchDTO.setDesignationId(emp.getDesignation().getDesignation_id());
-                batchDTO.setDesignationName(emp.getDesignation().getDesignation_name());
-            }
+                    // 5. Designation Info (If not already set from flatList top record)
+                    if (batchDTO.getDesignationId() == null && emp.getDesignation() != null) {
+                        batchDTO.setDesignationId(emp.getDesignation().getDesignation_id());
+                        batchDTO.setDesignationName(emp.getDesignation().getDesignation_name());
+                    }
 
-            // Fetch Role Info (as requested in previous steps)
-            try {
-                List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
-                if (roles != null && !roles.isEmpty()) {
-                    batchDTO.setRole(roles.get(0));
-                }
-            } catch (Exception e) {
-                // Ignore
-            }
+                    // Fetch Role Info (as requested in previous steps)
+                    try {
+                        List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
+                        if (roles != null && !roles.isEmpty()) {
+                            batchDTO.setRole(roles.get(0));
+                        }
+                    } catch (Exception e) {
+                        // Ignore
+                    }
 
-            // 6. Map to CampusDetailDTO for Shared employees
-            List<CampusDetailDTO> details = flatList.stream()
-                    .filter(flat -> flat.getCampusId() != null)
-                    .map(flat -> new CampusDetailDTO(
-                            flat.getCampusId(),
-                            flat.getCampusName(),
-                            flat.getCityId(),
-                            flat.getCity(),
-                            flat.getFullAddress(),
-                            flat.getBuildingMobileNo(),
-                            flat.getSubjectId(),
-                            flat.getSubjectName(),
-                            flat.getDesignationId(),
-                            flat.getDesignationName(),
-                            flat.getRoleId(),
-                            flat.getRoleName()))
-                    .collect(Collectors.toList());
+                    // 6. Map to CampusDetailDTO for Shared employees
+                    List<CampusDetailDTO> details = flatList.stream()
+                            .filter(flat -> flat.getCampusId() != null)
+                            .map(flat -> new CampusDetailDTO(
+                                    flat.getCampusId(),
+                                    flat.getCampusName(),
+                                    flat.getCityId(),
+                                    flat.getCity(),
+                                    flat.getFullAddress(),
+                                    flat.getBuildingMobileNo(),
+                                    flat.getSubjectId(),
+                                    flat.getSubjectName(),
+                                    flat.getDesignationId(),
+                                    flat.getDesignationName(),
+                                    flat.getRoleId(),
+                                    flat.getRoleName()))
+                            .collect(Collectors.toList());
 
-            // 7. Set Employee Type and Shared Details logic
-            if (details.size() > 1) {
-                batchDTO.setEmployeeType("Shared");
-                batchDTO.setCampusDetails(details);
-            } else {
-                batchDTO.setEmployeeType("Not Shared");
-                batchDTO.setCampusDetails(null);
-            }
+                    // 7. Set Employee Type and Shared Details logic
+                    if (details.size() > 1) {
+                        batchDTO.setEmployeeType("Shared");
+                        batchDTO.setCampusDetails(details);
+                    } else {
+                        batchDTO.setEmployeeType("Not Shared");
+                        batchDTO.setCampusDetails(null);
+                    }
 
-            return batchDTO;
-        }).collect(Collectors.toList());
+                    return batchDTO;
+                }).collect(Collectors.toList());
     }
 
     /**
@@ -1153,8 +1155,8 @@ public class ManagerMappingService {
         // mappings
         Map<Integer, EmployeeCampusAddressDTO> uniqueCampuses = new LinkedHashMap<>();
 
-        // 1. Add Primary Campus if it exists
-        if (emp.getCampus_id() != null) {
+        // 1. Add Primary Campus if it exists and is active
+        if (emp.getCampus_id() != null && Integer.valueOf(1).equals(emp.getCampus_id().getIsActive())) {
             EmployeeCampusAddressDTO primaryDto = createDTOForCampus(emp, emp.getCampus_id(), inputIds,
                     includeFullDetails, null);
             uniqueCampuses.put(primaryDto.getCampusId(), primaryDto);
@@ -1165,7 +1167,8 @@ public class ManagerMappingService {
                 .findByEmpId(emp.getEmp_id());
         if (campusEmployees != null) {
             for (com.employee.entity.CampusEmployee ce : campusEmployees) {
-                if (ce.getCmpsId() != null && !uniqueCampuses.containsKey(ce.getCmpsId().getCampusId())) {
+                if (ce.getCmpsId() != null && Integer.valueOf(1).equals(ce.getCmpsId().getIsActive())
+                        && !uniqueCampuses.containsKey(ce.getCmpsId().getCampusId())) {
                     uniqueCampuses.put(ce.getCmpsId().getCampusId(),
                             createDTOForCampus(emp, ce.getCmpsId(), inputIds, includeFullDetails, ce));
                 }
@@ -1176,7 +1179,8 @@ public class ManagerMappingService {
         List<SharedEmployee> sharedEmployees = sharedEmployeeRepository.findActiveByEmpId(emp.getEmp_id());
         if (sharedEmployees != null) {
             for (SharedEmployee se : sharedEmployees) {
-                if (se.getCmpsId() != null && !uniqueCampuses.containsKey(se.getCmpsId().getCampusId())) {
+                if (se.getCmpsId() != null && Integer.valueOf(1).equals(se.getCmpsId().getIsActive())
+                        && !uniqueCampuses.containsKey(se.getCmpsId().getCampusId())) {
                     uniqueCampuses.put(se.getCmpsId().getCampusId(),
                             createDTOForCampus(emp, se.getCmpsId(), inputIds, includeFullDetails, se));
                 }
