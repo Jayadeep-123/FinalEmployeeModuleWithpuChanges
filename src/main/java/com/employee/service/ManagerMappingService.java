@@ -3,8 +3,10 @@ package com.employee.service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
@@ -114,8 +116,6 @@ public class ManagerMappingService {
             throw new IllegalArgumentException("campusMappings array is required and cannot be empty");
         }
 
-        boolean useMultipleCampuses = campusMappingsList.size() > 1;
-
         // Step 4: Find Employee by payrollId
         Employee employee = findEmployeeByPayrollId(mappingDTO.getPayrollId());
 
@@ -125,84 +125,20 @@ public class ManagerMappingService {
                     "Employee with payrollId " + mappingDTO.getPayrollId() + " is not active");
         }
 
-        // Step 6: Get employee's existing campus
+        // Step 6: Get employee's existing campus (for validation context)
         Campus employeeCampus = employee.getCampus_id();
-        // Removed validation to allow first-time mapping
 
-        // Step 7: Handle single campus or multiple campuses
-        // ALWAYS create/update SharedEmployee records regardless of list size
-        Designation designation;
-
-        // Step 3: Process campus mappings and validate
-        Department department = null;
-
-        // Use the first campus as the primary campus for the Employee table
+        // Use the first campus as the primary campus for context if employee has none
         CampusMappingDTO firstMapping = campusMappingsList.get(0);
-        Campus requestedPrimaryCampus = campusRepository
-                .findByCampusIdAndIsActive(firstMapping.getCampusId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Active Campus not found with ID: " + firstMapping.getCampusId()));
-
-        // Only update the local helper variable if employee doesn't have a campus
         if (employeeCampus == null) {
-            employeeCampus = requestedPrimaryCampus;
+            employeeCampus = campusRepository
+                    .findByCampusIdAndIsActive(firstMapping.getCampusId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Campus not found with ID: " + firstMapping.getCampusId()));
         }
 
-        // Verify primary department/designation for Employee table
-        Department primaryDepartment = departmentRepository
-                .findByIdAndIsActive(firstMapping.getDepartmentId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Active Department not found with ID: " + firstMapping.getDepartmentId()));
-        department = primaryDepartment;
-
-        Designation primaryDesignation = designationRepository
-                .findByIdAndIsActive(firstMapping.getDesignationId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Active Designation not found with ID: " + firstMapping.getDesignationId()));
-        designation = primaryDesignation;
-
-        // Deactivate ALL existing active mappings for this employee before adding new
-        // ones
-        deactivateExistingMappings(employee, mappingDTO.getUpdatedBy());
-
-        // Loop through ALL mappings (whether 1 or many) and insert NEW SharedEmployee
-        // records
-        for (CampusMappingDTO campusMapping : campusMappingsList) {
-            // Validate Department exists and is active
-            // (Re-validating loop items to ensure data integrity for SharedEmployee)
-            Department campusDepartment = departmentRepository
-                    .findByIdAndIsActive(campusMapping.getDepartmentId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Department not found with ID: " + campusMapping.getDepartmentId()));
-
-            // Validate Campus is active and exists in the City
-            Campus campus = campusRepository.findByCampusIdAndIsActive(campusMapping.getCampusId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Campus not found with ID: " + campusMapping.getCampusId()));
-
-            if (campus.getCity() == null || campus.getCity().getCityId() != mappingDTO.getCityId()) {
-                throw new ResourceNotFoundException(
-                        String.format("Campus with ID %d is not assigned to City with ID %d",
-                                campusMapping.getCampusId(), mappingDTO.getCityId()));
-            }
-
-            // Validate Designation exists, is active, and belongs to the Department
-            Designation campusDesignation = designationRepository
-                    .findByIdAndIsActive(campusMapping.getDesignationId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Designation not found with ID: " + campusMapping.getDesignationId()));
-
-            if (campusDesignation.getDepartment() == null
-                    || campusDesignation.getDepartment().getDepartment_id() != campusMapping.getDepartmentId()) {
-                throw new ResourceNotFoundException(
-                        String.format("Designation with ID %d does not belong to Department with ID %d",
-                                campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
-            }
-
-            // Create NEW SharedEmployee record
-            createNewSharedEmployee(employee, campus, campusDesignation, campusMapping.getSubjectId(),
-                    mappingDTO.getUpdatedBy());
-        }
+        // Step 7: Process campus mappings (Update/Insert/Deactivate)
+        processCampusMappings(employee, campusMappingsList, mappingDTO.getUpdatedBy());
 
         // Step 8: Assign Manager - only if provided
         // Treat 0 as null
@@ -262,40 +198,8 @@ public class ManagerMappingService {
             }
         }
 
-        // Step 8: Update employee fields
-
-        // Only update primary campus/dept/designation if employee didn't have a campus
-        if (employee.getCampus_id() == null) {
-            employee.setCampus_id(employeeCampus);
-            employee.setDepartment(department);
-            employee.setDesignation(designation);
-        }
-
-        // Update manager_id if provided
-        if (manager != null) {
-            employee.setEmployee_manager_id(manager);
-        }
-
-        // Update reporting_manager_id if provided
-        if (reportingManager != null) {
-            employee.setEmployee_reporting_id(reportingManager);
-        }
-        // Update contract_start_date with workStartingDate
-        employee.setContract_start_date(mappingDTO.getWorkStartingDate());
-        employee.setUpdated_by(mappingDTO.getUpdatedBy() != null ? mappingDTO.getUpdatedBy() : 1);
-        employee.setUpdated_date(LocalDateTime.now());
-
-        // Update remarks: if value exists and is not empty, set it; otherwise set to
-        // null
-        // Treat null, empty string, whitespace-only, or string "null" as null
-        String remarkValue = mappingDTO.getRemark();
-        if (remarkValue != null && !remarkValue.trim().isEmpty() && !remarkValue.trim().equalsIgnoreCase("null")) {
-            employee.setRemarks(remarkValue.trim());
-        } else {
-            employee.setRemarks(null);
-        }
-
-        employeeRepository.save(employee);
+        // Step 8: Update employee fields (SKIPPED - strictly only touching
+        // SharedEmployee data as per requirement)
 
         return mappingDTO; // Return the request DTO
     }
@@ -487,8 +391,6 @@ public class ManagerMappingService {
 
                 // Process each campus mapping for this employee
                 // Only store in SharedEmployee table if multiple campuses are selected
-                boolean isMultipleCampuses = campusMappings.size() > 1;
-
                 // Validate campus matching for bulk operations
                 if (employeeCampus == null) {
                     // Assign first campus if null
@@ -502,88 +404,11 @@ public class ManagerMappingService {
 
                 // (No else override)
 
-                // Deactivate ALL existing active mappings for this employee
-                deactivateExistingMappings(employee, bulkMappingDTO.getUpdatedBy());
+                // Process campus mappings (Update/Insert/Deactivate)
+                processCampusMappings(employee, campusMappings, bulkMappingDTO.getUpdatedBy());
 
-                // (No else override)
-
-                for (CampusMappingDTO campusMapping : campusMappings) {
-                    Campus campus = campusRepository.findByCampusIdAndIsActive(campusMapping.getCampusId(), 1)
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Active Campus not found with ID: " + campusMapping.getCampusId()));
-
-                    Designation designation = designationRepository
-                            .findByIdAndIsActive(campusMapping.getDesignationId(), 1)
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Active Designation not found with ID: " + campusMapping.getDesignationId()));
-
-                    // Validate designation belongs to department (already validated in
-                    // pre-validation step, but double-check)
-                    if (designation.getDepartment() == null
-                            || designation.getDepartment().getDepartment_id() != campusMapping.getDepartmentId()) {
-                        throw new ResourceNotFoundException(
-                                String.format("Designation with ID %d does not belong to Department with ID %d",
-                                        campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
-                    }
-
-                    // Always Create NEW SharedEmployee record regardless of list size
-                    createNewSharedEmployee(employee, campus, designation, campusMapping.getSubjectId(),
-                            bulkMappingDTO.getUpdatedBy());
-                }
-
-                // Update employee fields
-
-                // Only update primary fields if employee didn't have a campus
-                if (employee.getCampus_id() == null) {
-                    employee.setCampus_id(employeeCampus);
-
-                    // Use first department from campusMappings (primary department)
-                    if (!campusMappings.isEmpty()) {
-                        Department primaryDepartment = departmentRepository
-                                .findByIdAndIsActive(campusMappings.get(0).getDepartmentId(), 1)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                        "Active Department not found with ID: "
-                                                + campusMappings.get(0).getDepartmentId()));
-                        employee.setDepartment(primaryDepartment);
-                    }
-                    // Set primary designation from first campus mapping (for backward
-                    // compatibility)
-                    if (!campusMappings.isEmpty()) {
-                        Designation primaryDesignation = designationRepository
-                                .findByIdAndIsActive(campusMappings.get(0).getDesignationId(), 1)
-                                .orElseThrow(
-                                        () -> new ResourceNotFoundException("Active Designation not found with ID: "
-                                                + campusMappings.get(0).getDesignationId()));
-                        employee.setDesignation(primaryDesignation);
-                    }
-                }
-
-                // Update manager_id if provided
-                if (employeeManager != null) {
-                    employee.setEmployee_manager_id(employeeManager);
-                }
-
-                // Update reporting_manager_id if provided
-                if (employeeReportingManager != null) {
-                    employee.setEmployee_reporting_id(employeeReportingManager);
-                }
-                // Update contract_start_date with workStartingDate
-                employee.setContract_start_date(bulkMappingDTO.getWorkStartingDate());
-                employee.setUpdated_by(bulkMappingDTO.getUpdatedBy() != null ? bulkMappingDTO.getUpdatedBy() : 1);
-                employee.setUpdated_date(LocalDateTime.now());
-
-                // Update remarks: if value exists and is not empty, set it; otherwise set to
-                // null
-                // Treat null, empty string, whitespace-only, or string "null" as null
-                String remarkValue = bulkMappingDTO.getRemark();
-                if (remarkValue != null && !remarkValue.trim().isEmpty()
-                        && !remarkValue.trim().equalsIgnoreCase("null")) {
-                    employee.setRemarks(remarkValue.trim());
-                } else {
-                    employee.setRemarks(null);
-                }
-
-                employeeRepository.save(employee);
+                // Update employee fields (SKIPPED - strictly only touching SharedEmployee data
+                // as per requirement)
                 processedPayrollIds.add(payrollId);
 
             } catch (ResourceNotFoundException e) {
@@ -633,16 +458,83 @@ public class ManagerMappingService {
      * Deactivates all existing active shared employee mappings for the given
      * employee.
      */
-    private void deactivateExistingMappings(Employee employee, Integer updatedBy) {
+    /**
+     * Processes campus mappings for an employee:
+     * 1. Updates existing active mappings if campus matches.
+     * 2. Creates new mappings for new campuses.
+     * 3. Deactivates mappings that are not in the new list.
+     */
+    private void processCampusMappings(Employee employee, List<CampusMappingDTO> newMappings, Integer updatedBy) {
+        // 1. Get currently active mappings
         List<com.employee.entity.SharedEmployee> activeMappings = sharedEmployeeRepository
                 .findActiveByEmpId(employee.getEmp_id());
 
-        if (activeMappings != null && !activeMappings.isEmpty()) {
-            for (com.employee.entity.SharedEmployee mapping : activeMappings) {
-                mapping.setIsActive(0);
-                mapping.setUpdatedBy(updatedBy);
-                mapping.setUpdatedDate(LocalDateTime.now());
-                sharedEmployeeRepository.save(mapping);
+        Set<Integer> processedSharedEmployeeIds = new HashSet<>();
+
+        for (CampusMappingDTO dto : newMappings) {
+            boolean matched = false;
+
+            // Validation
+            Department campusDepartment = departmentRepository.findByIdAndIsActive(dto.getDepartmentId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Department not found with ID: " + dto.getDepartmentId()));
+
+            Campus campus = campusRepository.findByCampusIdAndIsActive(dto.getCampusId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Campus not found with ID: " + dto.getCampusId()));
+
+            Designation designation = designationRepository.findByIdAndIsActive(dto.getDesignationId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active Designation not found with ID: " + dto.getDesignationId()));
+
+            if (designation.getDepartment() == null
+                    || designation.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
+                throw new ResourceNotFoundException(
+                        String.format("Designation with ID %d does not belong to Department with ID %d",
+                                dto.getDesignationId(), dto.getDepartmentId()));
+            }
+
+            // Check if this campus is already active for the employee
+            if (activeMappings != null) {
+                for (com.employee.entity.SharedEmployee existing : activeMappings) {
+                    if (existing.getCmpsId().getCampusId() == dto.getCampusId()
+                            && !processedSharedEmployeeIds.contains(existing.getSharedEmployeeId())) {
+                        // Match found! Update this record instead of creating new
+                        existing.setDesignationId(designation);
+                        if (dto.getSubjectId() != null && dto.getSubjectId() != 0) {
+                            Subject subject = subjectRepository.findById(dto.getSubjectId())
+                                    .orElseThrow(() -> new ResourceNotFoundException(
+                                            "Subject not found with ID: " + dto.getSubjectId()));
+                            existing.setSubjectId(subject);
+                        } else {
+                            existing.setSubjectId(null);
+                        }
+                        existing.setUpdatedBy(updatedBy);
+                        existing.setUpdatedDate(LocalDateTime.now());
+
+                        sharedEmployeeRepository.save(existing);
+                        processedSharedEmployeeIds.add(existing.getSharedEmployeeId());
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!matched) {
+                // New Switch or New Assignment
+                createNewSharedEmployee(employee, campus, designation, dto.getSubjectId(), updatedBy);
+            }
+        }
+
+        // Deactivate remaining active mappings that were NOT in the new list
+        if (activeMappings != null) {
+            for (com.employee.entity.SharedEmployee existing : activeMappings) {
+                if (!processedSharedEmployeeIds.contains(existing.getSharedEmployeeId())) {
+                    existing.setIsActive(0);
+                    existing.setUpdatedBy(updatedBy);
+                    existing.setUpdatedDate(LocalDateTime.now());
+                    sharedEmployeeRepository.save(existing);
+                }
             }
         }
     }
