@@ -78,7 +78,7 @@ public class CampusEmployeeService {
 
             entity.setRoleId(dto.getRoleId());
             entity.setAttendanceStatus(dto.getAttendanceStatus());
-            entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : 1);
+            entity.setIsActive(1); // Auto-set active to 1
 
             // Audit fields
             if (entity.getCmpsEmployeeId() != null) {
@@ -164,7 +164,6 @@ public class CampusEmployeeService {
                 entity.getCmpsId().getCampusId(),
                 entity.getRoleId(),
                 entity.getAttendanceStatus(),
-                entity.getIsActive(),
                 entity.getCreatedBy(),
                 entity.getUpdatedBy());
     }
@@ -249,7 +248,6 @@ public class CampusEmployeeService {
                 entity.getCmpsId().getCampusId(),
                 entity.getRoleId(),
                 entity.getAttendanceStatus(),
-                entity.getIsActive(),
                 entity.getCreatedBy(),
                 entity.getUpdatedBy());
     }

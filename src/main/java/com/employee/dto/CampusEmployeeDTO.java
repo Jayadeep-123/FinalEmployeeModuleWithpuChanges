@@ -12,7 +12,6 @@ public class CampusEmployeeDTO {
     private Integer cmpsId;
     private Integer roleId;
     private Integer attendanceStatus;
-    private Integer isActive;
     private Integer createdBy;
     private Integer updatedBy;
 }

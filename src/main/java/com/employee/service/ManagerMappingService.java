@@ -1593,13 +1593,13 @@ public class ManagerMappingService {
             entity.setCmpsId(campus);
             entity.setRoleId(dto.getRoleId());
             entity.setAttendanceStatus(dto.getAttendanceStatus());
-            entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : 1);
+            entity.setIsActive(1);
             entity.setCreatedBy(dto.getCreatedBy() != null ? dto.getCreatedBy() : 1);
             entity.setUpdatedBy(dto.getUpdatedBy());
 
             // createdDate and updatedDate are handled by DB defaults or JPA listeners
 
-            com.employee.entity.CampusEmployee savedEntity = campusEmployeeRepository.save(entity);
+            campusEmployeeRepository.save(entity);
 
             savedDtos.add(dto);
         }
