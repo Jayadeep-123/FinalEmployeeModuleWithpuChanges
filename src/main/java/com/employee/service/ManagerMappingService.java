@@ -161,7 +161,12 @@ public class ManagerMappingService {
                         "Active Designation not found with ID: " + firstMapping.getDesignationId()));
         designation = primaryDesignation;
 
-        // Loop through ALL mappings (whether 1 or many) and update SharedEmployee table
+        // Deactivate ALL existing active mappings for this employee before adding new
+        // ones
+        deactivateExistingMappings(employee, mappingDTO.getUpdatedBy());
+
+        // Loop through ALL mappings (whether 1 or many) and insert NEW SharedEmployee
+        // records
         for (CampusMappingDTO campusMapping : campusMappingsList) {
             // Validate Department exists and is active
             // (Re-validating loop items to ensure data integrity for SharedEmployee)
@@ -194,8 +199,8 @@ public class ManagerMappingService {
                                 campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
             }
 
-            // Create or update SharedEmployee record for ALL campuses
-            saveOrUpdateSharedEmployee(employee, campus, campusDesignation, campusMapping.getSubjectId(),
+            // Create NEW SharedEmployee record
+            createNewSharedEmployee(employee, campus, campusDesignation, campusMapping.getSubjectId(),
                     mappingDTO.getUpdatedBy());
         }
 
@@ -497,6 +502,11 @@ public class ManagerMappingService {
 
                 // (No else override)
 
+                // Deactivate ALL existing active mappings for this employee
+                deactivateExistingMappings(employee, bulkMappingDTO.getUpdatedBy());
+
+                // (No else override)
+
                 for (CampusMappingDTO campusMapping : campusMappings) {
                     Campus campus = campusRepository.findByCampusIdAndIsActive(campusMapping.getCampusId(), 1)
                             .orElseThrow(() -> new ResourceNotFoundException(
@@ -516,8 +526,8 @@ public class ManagerMappingService {
                                         campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
                     }
 
-                    // Always create or update SharedEmployee record regardless of list size
-                    saveOrUpdateSharedEmployee(employee, campus, designation, campusMapping.getSubjectId(),
+                    // Always Create NEW SharedEmployee record regardless of list size
+                    createNewSharedEmployee(employee, campus, designation, campusMapping.getSubjectId(),
                             bulkMappingDTO.getUpdatedBy());
                 }
 
@@ -617,50 +627,48 @@ public class ManagerMappingService {
      * Creates or updates a SharedEmployee record for an employee working in
      * multiple campuses.
      * 
-     * @param employee    The employee
-     * @param campus      The campus
-     * @param designation The designation
-     * @param subjectId   Optional subject ID (can be null)
-     * @param updatedBy   User ID performing the update
-     * @return The created or updated SharedEmployee
+     * 
+     * 
+     * /**
+     * Deactivates all existing active shared employee mappings for the given
+     * employee.
      */
-    private SharedEmployee saveOrUpdateSharedEmployee(Employee employee, Campus campus, Designation designation,
-            Integer subjectId, Integer updatedBy) {
-        // Check if SharedEmployee record already exists for this employee and campus
-        Optional<SharedEmployee> existing = sharedEmployeeRepository.findByEmpIdAndCampusId(
-                employee.getEmp_id(), campus.getCampusId());
+    private void deactivateExistingMappings(Employee employee, Integer updatedBy) {
+        List<com.employee.entity.SharedEmployee> activeMappings = sharedEmployeeRepository
+                .findActiveByEmpId(employee.getEmp_id());
 
-        SharedEmployee sharedEmployee;
-        if (existing.isPresent()) {
-            // Update existing record
-            sharedEmployee = existing.get();
-            sharedEmployee.setIsActive(1); // Reactivate if it was deactivated
-        } else {
-            // Create new record
-            sharedEmployee = new SharedEmployee();
-            sharedEmployee.setEmpId(employee);
-            sharedEmployee.setCmpsId(campus);
-            sharedEmployee.setCreatedBy(updatedBy != null ? updatedBy : 1);
-            sharedEmployee.setCreatedDate(LocalDateTime.now());
+        if (activeMappings != null && !activeMappings.isEmpty()) {
+            for (com.employee.entity.SharedEmployee mapping : activeMappings) {
+                mapping.setIsActive(0);
+                mapping.setUpdatedBy(updatedBy);
+                mapping.setUpdatedDate(LocalDateTime.now());
+                sharedEmployeeRepository.save(mapping);
+            }
         }
+    }
 
-        // Update designation
+    /**
+     * Creates a NEW SharedEmployee record (always active=1).
+     */
+    private void createNewSharedEmployee(Employee employee, Campus campus, Designation designation, Integer subjectId,
+            Integer createdBy) {
+        com.employee.entity.SharedEmployee sharedEmployee = new com.employee.entity.SharedEmployee();
+        sharedEmployee.setEmpId(employee);
+        sharedEmployee.setCmpsId(campus);
         sharedEmployee.setDesignationId(designation);
+        sharedEmployee.setIsActive(1); // Always active for new record
+        sharedEmployee.setCreatedBy(createdBy != null ? createdBy : 1);
+        sharedEmployee.setCreatedDate(LocalDateTime.now());
+        sharedEmployee.setUpdatedBy(createdBy != null ? createdBy : 1);
+        sharedEmployee.setUpdatedDate(LocalDateTime.now());
 
-        // Update subject if provided
-        if (subjectId != null && subjectId > 0) {
+        if (subjectId != null && subjectId != 0) {
             Subject subject = subjectRepository.findById(subjectId)
                     .orElseThrow(() -> new ResourceNotFoundException("Subject not found with ID: " + subjectId));
             sharedEmployee.setSubjectId(subject);
-        } else {
-            sharedEmployee.setSubjectId(null);
         }
 
-        // Update audit fields
-        sharedEmployee.setUpdatedBy(updatedBy != null ? updatedBy : 1);
-        sharedEmployee.setUpdatedDate(LocalDateTime.now());
-
-        return sharedEmployeeRepository.save(sharedEmployee);
+        sharedEmployeeRepository.save(sharedEmployee);
     }
 
     /**
