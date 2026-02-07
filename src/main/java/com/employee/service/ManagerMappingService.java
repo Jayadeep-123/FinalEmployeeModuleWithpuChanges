@@ -112,11 +112,7 @@ public class ManagerMappingService {
                 .orElseThrow(() -> new ResourceNotFoundException("City not found with ID: " + mappingDTO.getCityId()));
 
         // Step 2: Check if using multiple campuses or single campus
-        // Always use campusMappings array - required field
         List<CampusMappingDTO> campusMappingsList = mappingDTO.getCampusMappings();
-        if (campusMappingsList == null || campusMappingsList.isEmpty()) {
-            throw new IllegalArgumentException("campusMappings array is required and cannot be empty");
-        }
 
         // Step 4: Find Employee by payrollId
         Employee employee = findEmployeeByPayrollId(mappingDTO.getPayrollId());
@@ -131,8 +127,8 @@ public class ManagerMappingService {
         Campus employeeCampus = employee.getCampus_id();
 
         // Use the first campus as the primary campus for context if employee has none
-        CampusMappingDTO firstMapping = campusMappingsList.get(0);
-        if (employeeCampus == null) {
+        if (employeeCampus == null && campusMappingsList != null && !campusMappingsList.isEmpty()) {
+            CampusMappingDTO firstMapping = campusMappingsList.get(0);
             employeeCampus = campusRepository
                     .findByCampusIdAndIsActive(firstMapping.getCampusId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -140,14 +136,14 @@ public class ManagerMappingService {
         }
 
         // Step 7: Process campus mappings (Update/Insert/Deactivate)
-        processCampusMappings(employee, campusMappingsList, mappingDTO.getUpdatedBy());
+        if (campusMappingsList != null && !campusMappingsList.isEmpty()) {
+            processCampusMappings(employee, campusMappingsList, mappingDTO.getUpdatedBy());
+        }
 
         // Step 8: Assign Manager - only if provided
-        // Treat 0 as null
         Employee manager = null;
         Integer managerIdValue = mappingDTO.getManagerId();
         if (managerIdValue != null && managerIdValue != 0) {
-            // Manager ID provided - validate it
             final Integer managerId = managerIdValue;
             manager = employeeRepository.findById(managerId)
                     .orElseThrow(() -> new ResourceNotFoundException("Manager not found with ID: " + managerId));
@@ -156,13 +152,17 @@ public class ManagerMappingService {
                 throw new ResourceNotFoundException("Manager with ID " + managerId + " is not active");
             }
 
-            // Validate manager is from the same CITY as employee (primary campus city)
+            // Validate manager is from the same CITY as employee
+            Integer targetCityId = (employeeCampus != null && employeeCampus.getCity() != null)
+                    ? employeeCampus.getCity().getCityId()
+                    : mappingDTO.getCityId();
+
             if (manager.getCampus_id() == null || manager.getCampus_id().getCity() == null
-                    || manager.getCampus_id().getCity().getCityId() != employeeCampus.getCity().getCityId()) {
+                    || manager.getCampus_id().getCity().getCityId() != targetCityId) {
                 throw new ResourceNotFoundException(
                         String.format(
-                                "Manager with ID %d is not from the same CITY as employee. Employee city ID: %d, Manager city ID: %s",
-                                managerId, employeeCampus.getCity().getCityId(),
+                                "Manager with ID %d is not from the same CITY as employee. Target city ID: %d, Manager city ID: %s",
+                                managerId, targetCityId,
                                 (manager.getCampus_id() != null && manager.getCampus_id().getCity() != null)
                                         ? String.valueOf(manager.getCampus_id().getCity().getCityId())
                                         : "null"));
@@ -170,11 +170,9 @@ public class ManagerMappingService {
         }
 
         // Step 9: Assign Reporting Manager - only if provided
-        // Treat 0 as null
         Employee reportingManager = null;
         Integer reportingManagerIdValue = mappingDTO.getReportingManagerId();
         if (reportingManagerIdValue != null && reportingManagerIdValue != 0) {
-            // Reporting Manager ID provided - validate it
             final Integer reportingManagerId = reportingManagerIdValue;
             reportingManager = employeeRepository.findById(reportingManagerId)
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -185,14 +183,17 @@ public class ManagerMappingService {
                         "Reporting Manager with ID " + reportingManagerId + " is not active");
             }
 
-            // Validate reporting manager is from the same CITY as employee (primary campus
-            // city)
+            // Validate reporting manager is from the same CITY as employee
+            Integer targetCityId = (employeeCampus != null && employeeCampus.getCity() != null)
+                    ? employeeCampus.getCity().getCityId()
+                    : mappingDTO.getCityId();
+
             if (reportingManager.getCampus_id() == null || reportingManager.getCampus_id().getCity() == null
-                    || reportingManager.getCampus_id().getCity().getCityId() != employeeCampus.getCity().getCityId()) {
+                    || reportingManager.getCampus_id().getCity().getCityId() != targetCityId) {
                 throw new ResourceNotFoundException(
                         String.format(
-                                "Reporting Manager with ID %d is not from the same CITY as employee. Employee city ID: %d, Reporting Manager city ID: %s",
-                                reportingManagerId, employeeCampus.getCity().getCityId(),
+                                "Reporting Manager with ID %d is not from the same CITY as employee. Target city ID: %d, Reporting Manager city ID: %s",
+                                reportingManagerId, targetCityId,
                                 (reportingManager.getCampus_id() != null
                                         && reportingManager.getCampus_id().getCity() != null)
                                                 ? String.valueOf(reportingManager.getCampus_id().getCity().getCityId())
@@ -200,10 +201,26 @@ public class ManagerMappingService {
             }
         }
 
-        // Step 8: Update employee fields (SKIPPED - strictly only touching
-        // SharedEmployee data as per requirement)
+        // Step 10: Update employee fields
+        if (managerIdValue != null) {
+            employee.setEmployee_manager_id(manager);
+        }
+        if (reportingManagerIdValue != null) {
+            employee.setEmployee_reporting_id(reportingManager);
+        }
 
-        return mappingDTO; // Return the request DTO
+        employee.setContract_start_date(mappingDTO.getWorkStartingDate());
+
+        if (mappingDTO.getRemark() != null && !mappingDTO.getRemark().trim().isEmpty()) {
+            employee.setRemarks(mappingDTO.getRemark().trim());
+        }
+
+        employee.setUpdated_by(mappingDTO.getUpdatedBy());
+        employee.setUpdated_date(LocalDateTime.now());
+
+        employeeRepository.save(employee);
+
+        return mappingDTO;
     }
 
     /**
@@ -237,46 +254,46 @@ public class ManagerMappingService {
                 .orElseThrow(
                         () -> new ResourceNotFoundException("City not found with ID: " + bulkMappingDTO.getCityId()));
 
-        // Step 2: Always use campusMappings array - required field
+        // Step 2: Campus mappings array
         List<CampusMappingDTO> campusMappings = bulkMappingDTO.getCampusMappings();
-        if (campusMappings == null || campusMappings.isEmpty()) {
-            throw new IllegalArgumentException("campusMappings array is required and cannot be empty");
-        }
 
-        // Step 3: Pre-validate all campuses, departments, and designations
+        // Step 3: Pre-validate all campuses, departments, and designations if provided
         Department department = null;
-        for (CampusMappingDTO campusMapping : campusMappings) {
-            // Validate Department exists and is active
-            Department campusDepartment = departmentRepository.findByIdAndIsActive(campusMapping.getDepartmentId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Department not found with ID: " + campusMapping.getDepartmentId()));
+        if (campusMappings != null && !campusMappings.isEmpty()) {
+            for (CampusMappingDTO campusMapping : campusMappings) {
+                // Validate Department exists and is active
+                Department campusDepartment = departmentRepository
+                        .findByIdAndIsActive(campusMapping.getDepartmentId(), 1)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Active Department not found with ID: " + campusMapping.getDepartmentId()));
 
-            // Validate Campus is active and exists in the City
-            Campus campus = campusRepository.findByCampusIdAndIsActive(campusMapping.getCampusId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Campus not found with ID: " + campusMapping.getCampusId()));
+                // Validate Campus is active and exists in the City
+                Campus campus = campusRepository.findByCampusIdAndIsActive(campusMapping.getCampusId(), 1)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Active Campus not found with ID: " + campusMapping.getCampusId()));
 
-            if (campus.getCity() == null || campus.getCity().getCityId() != bulkMappingDTO.getCityId()) {
-                throw new ResourceNotFoundException(
-                        String.format("Campus with ID %d is not assigned to City with ID %d",
-                                campusMapping.getCampusId(), bulkMappingDTO.getCityId()));
-            }
+                if (campus.getCity() == null || campus.getCity().getCityId() != bulkMappingDTO.getCityId()) {
+                    throw new ResourceNotFoundException(
+                            String.format("Campus with ID %d is not assigned to City with ID %d",
+                                    campusMapping.getCampusId(), bulkMappingDTO.getCityId()));
+                }
 
-            // Validate Designation exists, is active, and belongs to the Department
-            Designation designation = designationRepository.findByIdAndIsActive(campusMapping.getDesignationId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Designation not found with ID: " + campusMapping.getDesignationId()));
+                // Validate Designation exists, is active, and belongs to the Department
+                Designation designation = designationRepository.findByIdAndIsActive(campusMapping.getDesignationId(), 1)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Active Designation not found with ID: " + campusMapping.getDesignationId()));
 
-            if (designation.getDepartment() == null
-                    || designation.getDepartment().getDepartment_id() != campusMapping.getDepartmentId()) {
-                throw new ResourceNotFoundException(
-                        String.format("Designation with ID %d does not belong to Department with ID %d",
-                                campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
-            }
+                if (designation.getDepartment() == null
+                        || designation.getDepartment().getDepartment_id() != campusMapping.getDepartmentId()) {
+                    throw new ResourceNotFoundException(
+                            String.format("Designation with ID %d does not belong to Department with ID %d",
+                                    campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
+                }
 
-            // Use first department for employee table (primary department)
-            if (department == null) {
-                department = campusDepartment;
+                // Use first department for employee table if needed
+                if (department == null) {
+                    department = campusDepartment;
+                }
             }
         }
 
@@ -407,10 +424,28 @@ public class ManagerMappingService {
                 // (No else override)
 
                 // Process campus mappings (Update/Insert/Deactivate)
-                processCampusMappings(employee, campusMappings, bulkMappingDTO.getUpdatedBy());
+                if (campusMappings != null && !campusMappings.isEmpty()) {
+                    processCampusMappings(employee, campusMappings, bulkMappingDTO.getUpdatedBy());
+                }
 
-                // Update employee fields (SKIPPED - strictly only touching SharedEmployee data
-                // as per requirement)
+                // Update employee fields
+                if (managerIdValue != null) {
+                    employee.setEmployee_manager_id(employeeManager);
+                }
+                if (reportingManagerIdValue != null) {
+                    employee.setEmployee_reporting_id(employeeReportingManager);
+                }
+
+                employee.setContract_start_date(bulkMappingDTO.getWorkStartingDate());
+
+                if (bulkMappingDTO.getRemark() != null && !bulkMappingDTO.getRemark().trim().isEmpty()) {
+                    employee.setRemarks(bulkMappingDTO.getRemark().trim());
+                }
+
+                employee.setUpdated_by(bulkMappingDTO.getUpdatedBy());
+                employee.setUpdated_date(LocalDateTime.now());
+
+                employeeRepository.save(employee);
                 processedPayrollIds.add(payrollId);
 
             } catch (ResourceNotFoundException e) {
@@ -469,6 +504,10 @@ public class ManagerMappingService {
      * 3. Does NOT deactivate other existing records (Additive behavior).
      */
     private void processCampusMappings(Employee employee, List<CampusMappingDTO> newMappings, Integer updatedBy) {
+        if (newMappings == null || newMappings.isEmpty()) {
+            return;
+        }
+
         // 1. Get currently active mappings
         List<com.employee.entity.SharedEmployee> activeMappings = sharedEmployeeRepository
                 .findActiveByEmpId(employee.getEmp_id());
@@ -504,8 +543,27 @@ public class ManagerMappingService {
                     if (existing.getCmpsId().getCampusId() == dto.getCampusId()
                             && !processedSharedEmployeeIds.contains(existing.getSharedEmployeeId())) {
 
-                        // Match found! Deactivate the old record and create a NEW one to preserve
-                        // history
+                        // --- OPTIMIZATION ---
+                        // Check if data is actually different (Designation and Subject)
+                        Integer existingSubjectId = (existing.getSubjectId() != null)
+                                ? existing.getSubjectId().getSubject_id()
+                                : null;
+                        Integer newSubjectId = (dto.getSubjectId() != null && dto.getSubjectId() != 0)
+                                ? dto.getSubjectId()
+                                : null;
+
+                        boolean subjectsMatch = java.util.Objects.equals(existingSubjectId, newSubjectId);
+
+                        if (existing.getDesignationId().getDesignation_id() == dto.getDesignationId()
+                                && subjectsMatch) {
+                            // No change for this campus, skip update/re-insertion
+                            processedSharedEmployeeIds.add(existing.getSharedEmployeeId());
+                            matched = true;
+                            break;
+                        }
+
+                        // Match found but data is different! Deactivate the old record and create a NEW
+                        // one
                         existing.setIsActive(0);
                         existing.setUpdatedBy(updatedBy);
                         existing.setUpdatedDate(LocalDateTime.now());
@@ -525,8 +583,6 @@ public class ManagerMappingService {
                 createNewSharedEmployee(employee, campus, designation, dto.getSubjectId(), updatedBy);
             }
         }
-
-        // REMOVED: Bulk deactivation of non-present mappings to support ADDITIVE logic
     }
 
     /**
@@ -573,25 +629,30 @@ public class ManagerMappingService {
             throw new IllegalArgumentException("workStartingDate is required");
         }
 
-        // Validate campusMappings array - always required
+        // Validate campusMappings array - required only if no manager info is provided
         List<CampusMappingDTO> campusMappingsForValidation = mappingDTO.getCampusMappings();
-        if (campusMappingsForValidation == null || campusMappingsForValidation.isEmpty()) {
-            throw new IllegalArgumentException("campusMappings array is required and cannot be empty");
+        boolean hasManagerInfo = (mappingDTO.getManagerId() != null && mappingDTO.getManagerId() != 0) ||
+                (mappingDTO.getReportingManagerId() != null && mappingDTO.getReportingManagerId() != 0);
+
+        if ((campusMappingsForValidation == null || campusMappingsForValidation.isEmpty()) && !hasManagerInfo) {
+            throw new IllegalArgumentException("Either campusMappings array or manager info is required");
         }
 
-        // Validate each campus mapping
-        for (CampusMappingDTO campusMapping : campusMappingsForValidation) {
-            if (campusMapping.getCampusId() == null || campusMapping.getCampusId() <= 0) {
-                throw new IllegalArgumentException(
-                        "Valid campusId (greater than 0) is required in each campusMapping object");
-            }
-            if (campusMapping.getDepartmentId() == null || campusMapping.getDepartmentId() <= 0) {
-                throw new IllegalArgumentException(
-                        "Valid departmentId (greater than 0) is required in each campusMapping object");
-            }
-            if (campusMapping.getDesignationId() == null || campusMapping.getDesignationId() <= 0) {
-                throw new IllegalArgumentException(
-                        "Valid designationId (greater than 0) is required in each campusMapping object");
+        // Validate each campus mapping if present
+        if (campusMappingsForValidation != null) {
+            for (CampusMappingDTO campusMapping : campusMappingsForValidation) {
+                if (campusMapping.getCampusId() == null || campusMapping.getCampusId() <= 0) {
+                    throw new IllegalArgumentException(
+                            "Valid campusId (greater than 0) is required in each campusMapping object");
+                }
+                if (campusMapping.getDepartmentId() == null || campusMapping.getDepartmentId() <= 0) {
+                    throw new IllegalArgumentException(
+                            "Valid departmentId (greater than 0) is required in each campusMapping object");
+                }
+                if (campusMapping.getDesignationId() == null || campusMapping.getDesignationId() <= 0) {
+                    throw new IllegalArgumentException(
+                            "Valid designationId (greater than 0) is required in each campusMapping object");
+                }
             }
         }
     }
@@ -610,25 +671,30 @@ public class ManagerMappingService {
             throw new IllegalArgumentException("cityId is required");
         }
 
-        // Validate campusMappings array - always required
+        // Validate campusMappings array - required only if no manager info is provided
         List<CampusMappingDTO> campusMappingsForValidation = bulkMappingDTO.getCampusMappings();
-        if (campusMappingsForValidation == null || campusMappingsForValidation.isEmpty()) {
-            throw new IllegalArgumentException("campusMappings array is required and cannot be empty");
+        boolean hasManagerInfo = (bulkMappingDTO.getManagerId() != null && bulkMappingDTO.getManagerId() != 0) ||
+                (bulkMappingDTO.getReportingManagerId() != null && bulkMappingDTO.getReportingManagerId() != 0);
+
+        if ((campusMappingsForValidation == null || campusMappingsForValidation.isEmpty()) && !hasManagerInfo) {
+            throw new IllegalArgumentException("Either campusMappings array or manager info is required");
         }
 
-        // Validate each campus mapping
-        for (CampusMappingDTO campusMapping : campusMappingsForValidation) {
-            if (campusMapping.getCampusId() == null || campusMapping.getCampusId() <= 0) {
-                throw new IllegalArgumentException(
-                        "Valid campusId (greater than 0) is required in each campusMapping object");
-            }
-            if (campusMapping.getDepartmentId() == null || campusMapping.getDepartmentId() <= 0) {
-                throw new IllegalArgumentException(
-                        "Valid departmentId (greater than 0) is required in each campusMapping object");
-            }
-            if (campusMapping.getDesignationId() == null || campusMapping.getDesignationId() <= 0) {
-                throw new IllegalArgumentException(
-                        "Valid designationId (greater than 0) is required in each campusMapping object");
+        // Validate each campus mapping if present
+        if (campusMappingsForValidation != null) {
+            for (CampusMappingDTO campusMapping : campusMappingsForValidation) {
+                if (campusMapping.getCampusId() == null || campusMapping.getCampusId() <= 0) {
+                    throw new IllegalArgumentException(
+                            "Valid campusId (greater than 0) is required in each campusMapping object");
+                }
+                if (campusMapping.getDepartmentId() == null || campusMapping.getDepartmentId() <= 0) {
+                    throw new IllegalArgumentException(
+                            "Valid departmentId (greater than 0) is required in each campusMapping object");
+                }
+                if (campusMapping.getDesignationId() == null || campusMapping.getDesignationId() <= 0) {
+                    throw new IllegalArgumentException(
+                            "Valid designationId (greater than 0) is required in each campusMapping object");
+                }
             }
         }
         if (bulkMappingDTO.getPayrollIds() == null || bulkMappingDTO.getPayrollIds().isEmpty()) {
