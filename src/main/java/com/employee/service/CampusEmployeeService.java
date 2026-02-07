@@ -115,7 +115,6 @@ public class CampusEmployeeService {
 
             // 1. Check and deactivate CampusEmployee record
             // Changed to return List to handle potential duplicates
-            // (IncorrectResultSizeDataAccessException)
             java.util.List<CampusEmployee> campusEmployees = campusEmployeeRepository
                     .findByEmpIdAndCmpsId(employee.getEmp_id(), dto.getCmpsId());
 
@@ -131,22 +130,8 @@ public class CampusEmployeeService {
                 }
             }
 
-            // 2. Check and deactivate SharedEmployee record
-            // Use findAll to handle potential duplicates
-            java.util.List<com.employee.entity.SharedEmployee> sharedEmployees = sharedEmployeeRepository
-                    .findAllByEmpIdAndCampusId(employee.getEmp_id(), dto.getCmpsId());
-
-            if (sharedEmployees != null && !sharedEmployees.isEmpty()) {
-                for (com.employee.entity.SharedEmployee sharedEntity : sharedEmployees) {
-                    sharedEntity.setIsActive(0); // Set active to 0
-                    sharedEntity.setUpdatedBy(dto.getUpdatedBy());
-                    sharedEntity.setUpdatedDate(LocalDateTime.now());
-                    sharedEmployeeRepository.save(sharedEntity);
-                }
-            }
-
             if (!processed) {
-                // Log or handle case where neither record was found if needed
+                // Log or handle case where record was not found if needed
             }
         }
 
