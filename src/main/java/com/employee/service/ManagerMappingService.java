@@ -848,18 +848,22 @@ public class ManagerMappingService {
                     "Employee with payrollId " + unmappingDTO.getPayrollId() + " is not active");
         }
 
-        // Step 6: Get employee's existing campus (do not change it)
+        // Step 6: Get employee's existing campus
         Campus employeeCampus = employee.getCampus_id();
-        if (employeeCampus == null) {
-            throw new ResourceNotFoundException("Employee with payrollId " + unmappingDTO.getPayrollId()
-                    + " does not have a campus assigned. Cannot perform unmapping.");
-        }
+        // We no longer fail if primary campus is null, as they might have shared
+        // campuses to unmap
 
         // Step 7: Deactivate SharedEmployee records
         // ALWAYS check/deactivate SharedEmployee records regardless of multiple
         // campuses flag
         if (campusIdsList != null && !campusIdsList.isEmpty()) {
             for (Integer campusId : campusIdsList) {
+                // Check if this matches the PRIMARY campus on the Employee table
+                // If so, "unmap" it by setting it to null
+                if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
+                    employee.setCampus_id(null);
+                }
+
                 // Find all shared employee records for this employee and campus (active or
                 // inactive)
                 List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
@@ -1037,21 +1041,25 @@ public class ManagerMappingService {
                     continue;
                 }
 
-                // Get employee's existing campus (do not change it)
+                // Get employee's existing campus
                 Campus employeeCampus = employee.getCampus_id();
-                if (employeeCampus == null) {
-                    failedPayrollIds.add(payrollId + " (no campus assigned)");
-                    continue;
-                }
+                // We no longer fail if primary campus is null, as they might have shared
+                // campuses to unmap
 
                 // Deactivate SharedEmployee records for the specified campuses
-                // Only deactivate if multiple campuses are selected (single campus doesn't use
-                // SharedEmployee table)
-                if (useMultipleCampuses) {
-                    for (Integer campusId : campusIdsToUnmap) {
-                        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
-                                .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
-                        for (SharedEmployee sharedEmployee : sharedEmployees) {
+                // ALWAYS check/deactivate SharedEmployee records regardless of multiple
+                // campuses flag
+                for (Integer campusId : campusIdsToUnmap) {
+                    // Check if this matches the PRIMARY campus on the Employee table
+                    // If so, "unmap" it by setting it to null
+                    if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
+                        employee.setCampus_id(null);
+                    }
+
+                    List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                            .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
+                    for (SharedEmployee sharedEmployee : sharedEmployees) {
+                        if (sharedEmployee.getIsActive() == 1) {
                             sharedEmployee.setIsActive(0);
                             sharedEmployee.setUpdatedBy(
                                     bulkUnmappingDTO.getUpdatedBy() != null ? bulkUnmappingDTO.getUpdatedBy() : 1);
