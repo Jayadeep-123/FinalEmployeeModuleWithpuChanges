@@ -111,114 +111,122 @@ public class ManagerMappingService {
         cityRepository.findById(mappingDTO.getCityId())
                 .orElseThrow(() -> new ResourceNotFoundException("City not found with ID: " + mappingDTO.getCityId()));
 
-        // Step 2: Check if using multiple campuses or single campus
-        List<CampusMappingDTO> campusMappingsList = mappingDTO.getCampusMappings();
-
-        // Step 4: Find Employee by payrollId
+        // Step 2: Find Employee by payrollId
         Employee employee = findEmployeeByPayrollId(mappingDTO.getPayrollId());
 
-        // Step 5: Validate Employee is active
+        // Step 3: Validate Employee is active
         if (employee.getIs_active() != 1) {
             throw new ResourceNotFoundException(
                     "Employee with payrollId " + mappingDTO.getPayrollId() + " is not active");
         }
 
-        // Step 6: Get employee's existing campus (for validation context)
+        boolean employeeChanged = false;
         Campus employeeCampus = employee.getCampus_id();
+        List<CampusMappingDTO> campusMappingsList = mappingDTO.getCampusMappings();
 
-        // Use the first campus as the primary campus for context if employee has none
-        if (employeeCampus == null && campusMappingsList != null && !campusMappingsList.isEmpty()) {
-            CampusMappingDTO firstMapping = campusMappingsList.get(0);
-            employeeCampus = campusRepository
-                    .findByCampusIdAndIsActive(firstMapping.getCampusId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Campus not found with ID: " + firstMapping.getCampusId()));
+        // Step 4: Differentiate Primary vs Shared mapping
+        List<CampusMappingDTO> sharedMappings = new ArrayList<>();
+
+        if (campusMappingsList != null) {
+            for (CampusMappingDTO dto : campusMappingsList) {
+                // If this mapping matches the Primary Campus in the Employee table
+                if (employeeCampus != null && employeeCampus.getCampusId() == dto.getCampusId()) {
+                    // Check if Department or Designation changed for Primary record
+                    if (employee.getDepartment() == null
+                            || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
+                        Department newDept = departmentRepository.findByIdAndIsActive(dto.getDepartmentId(), 1)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                        "Active Department not found: " + dto.getDepartmentId()));
+                        employee.setDepartment(newDept);
+                        employeeChanged = true;
+                    }
+
+                    if (employee.getDesignation() == null
+                            || employee.getDesignation().getDesignation_id() != dto.getDesignationId()) {
+                        Designation newDesig = designationRepository.findByIdAndIsActive(dto.getDesignationId(), 1)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                        "Active Designation not found: " + dto.getDesignationId()));
+                        employee.setDesignation(newDesig);
+                        employeeChanged = true;
+                    }
+                    // Note: Subject is not stored in Employee table, strictly SharedEmployee
+                } else {
+                    // Not the primary campus, add to shared mappings list
+                    sharedMappings.add(dto);
+                }
+            }
         }
 
-        // Step 7: Process campus mappings (Update/Insert/Deactivate)
-        if (campusMappingsList != null && !campusMappingsList.isEmpty()) {
-            processCampusMappings(employee, campusMappingsList, mappingDTO.getUpdatedBy());
+        // Step 5: Process shared campus mappings
+        if (!sharedMappings.isEmpty()) {
+            processCampusMappings(employee, sharedMappings, mappingDTO.getUpdatedBy());
         }
 
-        // Step 8: Assign Manager - only if provided
-        Employee manager = null;
+        // Step 6: Assign Manager - only if provided and different
         Integer managerIdValue = mappingDTO.getManagerId();
-        if (managerIdValue != null && managerIdValue != 0) {
-            final Integer managerId = managerIdValue;
-            manager = employeeRepository.findById(managerId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Manager not found with ID: " + managerId));
-
-            if (manager.getIs_active() != 1) {
-                throw new ResourceNotFoundException("Manager with ID " + managerId + " is not active");
-            }
-
-            // Validate manager is from the same CITY as employee
-            Integer targetCityId = (employeeCampus != null && employeeCampus.getCity() != null)
-                    ? employeeCampus.getCity().getCityId()
-                    : mappingDTO.getCityId();
-
-            if (manager.getCampus_id() == null || manager.getCampus_id().getCity() == null
-                    || manager.getCampus_id().getCity().getCityId() != targetCityId) {
-                throw new ResourceNotFoundException(
-                        String.format(
-                                "Manager with ID %d is not from the same CITY as employee. Target city ID: %d, Manager city ID: %s",
-                                managerId, targetCityId,
-                                (manager.getCampus_id() != null && manager.getCampus_id().getCity() != null)
-                                        ? String.valueOf(manager.getCampus_id().getCity().getCityId())
-                                        : "null"));
-            }
-        }
-
-        // Step 9: Assign Reporting Manager - only if provided
-        Employee reportingManager = null;
-        Integer reportingManagerIdValue = mappingDTO.getReportingManagerId();
-        if (reportingManagerIdValue != null && reportingManagerIdValue != 0) {
-            final Integer reportingManagerId = reportingManagerIdValue;
-            reportingManager = employeeRepository.findById(reportingManagerId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Reporting Manager not found with ID: " + reportingManagerId));
-
-            if (reportingManager.getIs_active() != 1) {
-                throw new ResourceNotFoundException(
-                        "Reporting Manager with ID " + reportingManagerId + " is not active");
-            }
-
-            // Validate reporting manager is from the same CITY as employee
-            Integer targetCityId = (employeeCampus != null && employeeCampus.getCity() != null)
-                    ? employeeCampus.getCity().getCityId()
-                    : mappingDTO.getCityId();
-
-            if (reportingManager.getCampus_id() == null || reportingManager.getCampus_id().getCity() == null
-                    || reportingManager.getCampus_id().getCity().getCityId() != targetCityId) {
-                throw new ResourceNotFoundException(
-                        String.format(
-                                "Reporting Manager with ID %d is not from the same CITY as employee. Target city ID: %d, Reporting Manager city ID: %s",
-                                reportingManagerId, targetCityId,
-                                (reportingManager.getCampus_id() != null
-                                        && reportingManager.getCampus_id().getCity() != null)
-                                                ? String.valueOf(reportingManager.getCampus_id().getCity().getCityId())
-                                                : "null"));
-            }
-        }
-
-        // Step 10: Update employee fields
         if (managerIdValue != null) {
-            employee.setEmployee_manager_id(manager);
+            if (managerIdValue == 0) {
+                if (employee.getEmployee_manager_id() != null) {
+                    employee.setEmployee_manager_id(null);
+                    employeeChanged = true;
+                }
+            } else {
+                if (employee.getEmployee_manager_id() == null
+                        || employee.getEmployee_manager_id().getEmp_id() != managerIdValue) {
+                    Employee manager = employeeRepository.findById(managerIdValue)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Manager not found with ID: " + managerIdValue));
+                    if (manager.getIs_active() != 1)
+                        throw new ResourceNotFoundException("Manager ID " + managerIdValue + " is not active");
+
+                    employee.setEmployee_manager_id(manager);
+                    employeeChanged = true;
+                }
+            }
         }
+
+        // Step 7: Assign Reporting Manager
+        Integer reportingManagerIdValue = mappingDTO.getReportingManagerId();
         if (reportingManagerIdValue != null) {
-            employee.setEmployee_reporting_id(reportingManager);
+            if (reportingManagerIdValue == 0) {
+                if (employee.getEmployee_reporting_id() != null) {
+                    employee.setEmployee_reporting_id(null);
+                    employeeChanged = true;
+                }
+            } else {
+                if (employee.getEmployee_reporting_id() == null
+                        || employee.getEmployee_reporting_id().getEmp_id() != reportingManagerIdValue) {
+                    Employee rManager = employeeRepository.findById(reportingManagerIdValue)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Reporting Manager not found: " + reportingManagerIdValue));
+                    if (rManager.getIs_active() != 1)
+                        throw new ResourceNotFoundException(
+                                "Reporting Manager ID " + reportingManagerIdValue + " is not active");
+
+                    employee.setEmployee_reporting_id(rManager);
+                    employeeChanged = true;
+                }
+            }
         }
 
-        employee.setContract_start_date(mappingDTO.getWorkStartingDate());
-
-        if (mappingDTO.getRemark() != null && !mappingDTO.getRemark().trim().isEmpty()) {
-            employee.setRemarks(mappingDTO.getRemark().trim());
+        // Step 8: Update other fields
+        if (mappingDTO.getWorkStartingDate() != null
+                && !java.util.Objects.equals(employee.getContract_start_date(), mappingDTO.getWorkStartingDate())) {
+            employee.setContract_start_date(mappingDTO.getWorkStartingDate());
+            employeeChanged = true;
         }
 
-        employee.setUpdated_by(mappingDTO.getUpdatedBy());
-        employee.setUpdated_date(LocalDateTime.now());
+        String cleanRemark = (mappingDTO.getRemark() != null) ? mappingDTO.getRemark().trim() : null;
+        if (!java.util.Objects.equals(employee.getRemarks(), cleanRemark)) {
+            employee.setRemarks(cleanRemark);
+            employeeChanged = true;
+        }
 
-        employeeRepository.save(employee);
+        if (employeeChanged) {
+            employee.setUpdated_by(mappingDTO.getUpdatedBy());
+            employee.setUpdated_date(LocalDateTime.now());
+            employeeRepository.save(employee);
+        }
 
         return mappingDTO;
     }
@@ -423,29 +431,89 @@ public class ManagerMappingService {
 
                 // (No else override)
 
-                // Process campus mappings (Update/Insert/Deactivate)
-                if (campusMappings != null && !campusMappings.isEmpty()) {
-                    processCampusMappings(employee, campusMappings, bulkMappingDTO.getUpdatedBy());
+                boolean empChangedForBulk = false;
+                Campus empCampusForBulk = employee.getCampus_id();
+
+                // Separate mappings: Primary vs Shared
+                List<CampusMappingDTO> bulkSharedMappings = new ArrayList<>();
+                if (campusMappings != null) {
+                    for (CampusMappingDTO dto : campusMappings) {
+                        if (empCampusForBulk != null && empCampusForBulk.getCampusId() == dto.getCampusId()) {
+                            // Primary Campus mapping found in request
+                            if (employee.getDepartment() == null
+                                    || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
+                                Department newBulkDept = departmentRepository
+                                        .findByIdAndIsActive(dto.getDepartmentId(), 1)
+                                        .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Active Department not found: " + dto.getDepartmentId()));
+                                employee.setDepartment(newBulkDept);
+                                empChangedForBulk = true;
+                            }
+                            if (employee.getDesignation() == null
+                                    || employee.getDesignation().getDesignation_id() != dto.getDesignationId()) {
+                                Designation newBulkDesig = designationRepository
+                                        .findByIdAndIsActive(dto.getDesignationId(), 1)
+                                        .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Active Designation not found: " + dto.getDesignationId()));
+                                employee.setDesignation(newBulkDesig);
+                                empChangedForBulk = true;
+                            }
+                        } else {
+                            bulkSharedMappings.add(dto);
+                        }
+                    }
                 }
 
-                // Update employee fields
+                // Process Shared mappings
+                if (!bulkSharedMappings.isEmpty()) {
+                    processCampusMappings(employee, bulkSharedMappings, bulkMappingDTO.getUpdatedBy());
+                }
+
+                // Update Manager/Reporting Manager
                 if (managerIdValue != null) {
-                    employee.setEmployee_manager_id(employeeManager);
+                    if (employeeManager == null) {
+                        if (employee.getEmployee_manager_id() != null) {
+                            employee.setEmployee_manager_id(null);
+                            empChangedForBulk = true;
+                        }
+                    } else if (employee.getEmployee_manager_id() == null
+                            || employee.getEmployee_manager_id().getEmp_id() != employeeManager.getEmp_id()) {
+                        employee.setEmployee_manager_id(employeeManager);
+                        empChangedForBulk = true;
+                    }
                 }
+
                 if (reportingManagerIdValue != null) {
-                    employee.setEmployee_reporting_id(employeeReportingManager);
+                    if (employeeReportingManager == null) {
+                        if (employee.getEmployee_reporting_id() != null) {
+                            employee.setEmployee_reporting_id(null);
+                            empChangedForBulk = true;
+                        }
+                    } else if (employee.getEmployee_reporting_id() == null || employee.getEmployee_reporting_id()
+                            .getEmp_id() != employeeReportingManager.getEmp_id()) {
+                        employee.setEmployee_reporting_id(employeeReportingManager);
+                        empChangedForBulk = true;
+                    }
                 }
 
-                employee.setContract_start_date(bulkMappingDTO.getWorkStartingDate());
-
-                if (bulkMappingDTO.getRemark() != null && !bulkMappingDTO.getRemark().trim().isEmpty()) {
-                    employee.setRemarks(bulkMappingDTO.getRemark().trim());
+                if (bulkMappingDTO.getWorkStartingDate() != null && !java.util.Objects
+                        .equals(employee.getContract_start_date(), bulkMappingDTO.getWorkStartingDate())) {
+                    employee.setContract_start_date(bulkMappingDTO.getWorkStartingDate());
+                    empChangedForBulk = true;
                 }
 
-                employee.setUpdated_by(bulkMappingDTO.getUpdatedBy());
-                employee.setUpdated_date(LocalDateTime.now());
+                String cleanBulkRemark = (bulkMappingDTO.getRemark() != null) ? bulkMappingDTO.getRemark().trim()
+                        : null;
+                if (!java.util.Objects.equals(employee.getRemarks(), cleanBulkRemark)) {
+                    employee.setRemarks(cleanBulkRemark);
+                    empChangedForBulk = true;
+                }
 
-                employeeRepository.save(employee);
+                if (empChangedForBulk) {
+                    employee.setUpdated_by(bulkMappingDTO.getUpdatedBy());
+                    employee.setUpdated_date(LocalDateTime.now());
+                    employeeRepository.save(employee);
+                }
                 processedPayrollIds.add(payrollId);
 
             } catch (ResourceNotFoundException e) {
