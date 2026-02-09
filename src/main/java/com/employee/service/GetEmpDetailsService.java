@@ -33,6 +33,7 @@ import com.employee.dto.SameInstituteEmployeesDTO;
 import com.employee.dto.WorkingInfoDTO;
 import com.employee.entity.BankDetails;
 import com.employee.entity.EmpChequeDetails;
+import com.employee.entity.EmpDetails;
 import com.employee.entity.EmpDocuments;
 import com.employee.entity.EmpExperienceDetails;
 import com.employee.entity.EmpFamilyDetails;
@@ -80,6 +81,9 @@ public class GetEmpDetailsService {
 
 	@Autowired
 	EmpPfDetailsRepository empPfDetailsRepository;
+
+	@Autowired
+	EmpDetailsRepository empDetailsRepository;
 
 	GetEmpDetailsService(EmpQualificationRepository empQualificationRepository) {
 		this.empQualificationRepository = empQualificationRepository;
@@ -918,19 +922,28 @@ public class GetEmpDetailsService {
 				.orElseThrow(
 						() -> new ResourceNotFoundException("Employee not found for tempPayrollId: " + tempPayrollId));
 
-		// Fetch active PF details
+		// Fetch UAN from EmpDetails table
+		Long uanNo = null;
+		Optional<EmpDetails> empDetailsOpt = empDetailsRepository.findByEmployeeId(employee.getEmp_id());
+		if (empDetailsOpt.isPresent()) {
+			uanNo = empDetailsOpt.get().getUanNo();
+		}
+
+		// Fetch PF/ESI details from EmpPfDetails table
 		Optional<com.employee.entity.EmpPfDetails> pfDetailsOpt = empPfDetailsRepository
 				.findByEmployeeIdAndIsActive(employee.getEmp_id(), 1);
 
 		if (pfDetailsOpt.isEmpty()) {
-			return new EmpPfEsiResponseDTO(); // Return empty object if not found
+			// Return DTO with only UAN if PF/ESI details not found
+			return new EmpPfEsiResponseDTO(uanNo, null, null, null);
 		}
 
 		com.employee.entity.EmpPfDetails pfDetails = pfDetailsOpt.get();
 		return new EmpPfEsiResponseDTO(
-				pfDetails.getUan_no(),
-				pfDetails.getEsi_no(),
-				pfDetails.getPf_no());
+				uanNo, // UAN from emp_details table
+				pfDetails.getEsi_no(), // Current ESI from pf_esi_uan table
+				pfDetails.getPre_esi_no(), // Previous ESI from pf_esi_uan table
+				pfDetails.getPf_no()); // PF number from pf_esi_uan table
 	}
 
 }

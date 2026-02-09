@@ -10,5 +10,6 @@ import lombok.NoArgsConstructor;
 public class EmpPfEsiResponseDTO {
     private Long uanNo;
     private Long esiNo;
+    private Long preEsiNo;
     private String pfNo;
 }
