@@ -842,28 +842,19 @@ public class ManagerMappingService {
         // Step 4: Find Employee by payrollId
         Employee employee = findEmployeeByPayrollId(unmappingDTO.getPayrollId());
 
-        // Step 5: Validate Employee is active
+        // Step 6: Validate Employee is active
         if (employee.getIs_active() != 1) {
             throw new ResourceNotFoundException(
                     "Employee with payrollId " + unmappingDTO.getPayrollId() + " is not active");
         }
 
-        // Step 6: Get employee's existing campus
-        Campus employeeCampus = employee.getCampus_id();
-        // We no longer fail if primary campus is null, as they might have shared
-        // campuses to unmap
-
         // Step 7: Deactivate SharedEmployee records
         // ALWAYS check/deactivate SharedEmployee records regardless of multiple
         // campuses flag
+        // NOTE: Primary campus in Employee table remains unchanged - only shared
+        // campuses are deactivated
         if (campusIdsList != null && !campusIdsList.isEmpty()) {
             for (Integer campusId : campusIdsList) {
-                // Check if this matches the PRIMARY campus on the Employee table
-                // If so, "unmap" it by setting it to null
-                if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
-                    employee.setCampus_id(null);
-                }
-
                 // Find all shared employee records for this employee and campus (active or
                 // inactive)
                 List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
