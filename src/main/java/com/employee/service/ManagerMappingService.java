@@ -882,23 +882,17 @@ public class ManagerMappingService {
         }
 
         // Step 8: Unmap manager
-        // 0 means unmap regardless of who the current manager is
+        // null or 0 means do nothing - preserve current assignment
         // > 0 means check for match and unmap
-        // null means do nothing
         Integer managerIdValue = unmappingDTO.getManagerId();
-        if (managerIdValue != null) {
-            if (managerIdValue == 0) {
-                // Clear manager regardless of who it is
-                employee.setEmployee_manager_id(null);
-            } else if (employee.getEmployee_manager_id() != null &&
+        if (managerIdValue != null && managerIdValue > 0) {
+            if (employee.getEmployee_manager_id() != null &&
                     employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
                 // Validate and clear specific manager
                 employee.setEmployee_manager_id(null);
             } else if (employee.getEmployee_manager_id() == null) {
-                // If it was already null, no error for 0, but error for specific ID (safety)
-                if (managerIdValue > 0) {
-                    throw new ResourceNotFoundException("Employee does not have a manager assigned to unmap");
-                }
+                // Specific ID provided but no manager assigned
+                throw new ResourceNotFoundException("Employee does not have a manager assigned to unmap");
             } else {
                 // Specific ID mismatch
                 throw new ResourceNotFoundException(
@@ -906,26 +900,19 @@ public class ManagerMappingService {
                                 employee.getEmployee_manager_id().getEmp_id(), managerIdValue));
             }
         }
-        // If managerId is null or 0, don't touch the manager field
 
         // Step 9: Unmap reporting manager
-        // 0 means unmap regardless of who the current reporting manager is
+        // null or 0 means do nothing - preserve current assignment
         // > 0 means check for match and unmap
-        // null means do nothing
         Integer reportingManagerIdValue = unmappingDTO.getReportingManagerId();
-        if (reportingManagerIdValue != null) {
-            if (reportingManagerIdValue == 0) {
-                // Clear reporting manager regardless of who it is
-                employee.setEmployee_reporting_id(null);
-            } else if (employee.getEmployee_reporting_id() != null &&
+        if (reportingManagerIdValue != null && reportingManagerIdValue > 0) {
+            if (employee.getEmployee_reporting_id() != null &&
                     employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
                 // Validate and clear specific manager
                 employee.setEmployee_reporting_id(null);
             } else if (employee.getEmployee_reporting_id() == null) {
-                // If it was already null, no error for 0, but error for specific ID (safety)
-                if (reportingManagerIdValue > 0) {
-                    throw new ResourceNotFoundException("Employee does not have a reporting manager assigned to unmap");
-                }
+                // Specific ID provided but no reporting manager assigned
+                throw new ResourceNotFoundException("Employee does not have a reporting manager assigned to unmap");
             } else {
                 // Specific ID mismatch
                 throw new ResourceNotFoundException(
@@ -1070,20 +1057,16 @@ public class ManagerMappingService {
                 }
 
                 // Unmap manager
-                // 0 means unmap regardless of current ID
+                // null or 0 means do nothing - preserve current assignment
                 // > 0 means check match for safety
                 Integer managerIdValue = bulkUnmappingDTO.getManagerId();
-                if (managerIdValue != null) {
-                    if (managerIdValue == 0) {
-                        employee.setEmployee_manager_id(null);
-                    } else if (employee.getEmployee_manager_id() != null &&
+                if (managerIdValue != null && managerIdValue > 0) {
+                    if (employee.getEmployee_manager_id() != null &&
                             employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
                         employee.setEmployee_manager_id(null);
                     } else if (employee.getEmployee_manager_id() == null) {
-                        if (managerIdValue > 0) {
-                            failedPayrollIds.add(payrollId + " (no manager assigned to unmap)");
-                            continue;
-                        }
+                        failedPayrollIds.add(payrollId + " (no manager assigned to unmap)");
+                        continue;
                     } else {
                         failedPayrollIds.add(payrollId + " (manager ID mismatch: current=" +
                                 employee.getEmployee_manager_id().getEmp_id() +
@@ -1091,23 +1074,18 @@ public class ManagerMappingService {
                         continue;
                     }
                 }
-                // If managerId is null or 0, don't touch the manager field
 
                 // Unmap reporting manager
-                // 0 means unmap regardless of current ID
+                // null or 0 means do nothing - preserve current assignment
                 // > 0 means check match for safety
                 Integer reportingManagerIdValue = bulkUnmappingDTO.getReportingManagerId();
-                if (reportingManagerIdValue != null) {
-                    if (reportingManagerIdValue == 0) {
-                        employee.setEmployee_reporting_id(null);
-                    } else if (employee.getEmployee_reporting_id() != null &&
+                if (reportingManagerIdValue != null && reportingManagerIdValue > 0) {
+                    if (employee.getEmployee_reporting_id() != null &&
                             employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
                         employee.setEmployee_reporting_id(null);
                     } else if (employee.getEmployee_reporting_id() == null) {
-                        if (reportingManagerIdValue > 0) {
-                            failedPayrollIds.add(payrollId + " (no reporting manager assigned to unmap)");
-                            continue;
-                        }
+                        failedPayrollIds.add(payrollId + " (no reporting manager assigned to unmap)");
+                        continue;
                     } else {
                         failedPayrollIds.add(payrollId + " (reporting manager ID mismatch: current=" +
                                 employee.getEmployee_reporting_id().getEmp_id() +
