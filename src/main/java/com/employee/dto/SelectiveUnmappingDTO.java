@@ -1,40 +1,32 @@
 package com.employee.dto;
 
-import java.sql.Date;
-import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO for Unmapping request.
+ * DTO for Selective Unmapping request.
  * 
  * Uses boolean flags to control what gets unmapped:
  * - unmapManager: If true, removes manager assignment
  * - unmapReportingManager: If true, removes reporting manager assignment
  * 
- * Always use campusIds array for shared campus unmapping:
- * - Single Campus: campusIds with 1 item
- * - Multiple Campuses: campusIds with 2+ items
+ * Frontend sends checkboxes as boolean values to indicate what should be
+ * unmapped.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UnmappingDTO {
+public class SelectiveUnmappingDTO {
 
-    private Integer cityId;
-
-    // Always use this array - even for single campus
-    // Single campus: [ campusId1 ]
-    // Multiple campuses: [ campusId1, campusId2, ... ]
-    private List<Integer> campusIds;
-
+    /**
+     * Employee payroll ID (required)
+     */
     private String payrollId;
 
     /**
-     * If true, remove manager assignment
-     * If false or null, preserve current manager assignment
+     * If true, remove manager assignment (employee_manager_id = null)
+     * If false, preserve current manager assignment
      */
     private Boolean unmapManager = false;
 
@@ -46,8 +38,8 @@ public class UnmappingDTO {
     private Integer managerId;
 
     /**
-     * If true, remove reporting manager assignment
-     * If false or null, preserve current reporting manager assignment
+     * If true, remove reporting manager assignment (employee_reporting_id = null)
+     * If false, preserve current reporting manager assignment
      */
     private Boolean unmapReportingManager = false;
 
@@ -58,7 +50,13 @@ public class UnmappingDTO {
      */
     private Integer reportingManagerId;
 
-    private Date lastDate;
+    /**
+     * Optional: Reason for unmapping
+     */
     private String remark;
+
+    /**
+     * User ID making the change (required for audit)
+     */
     private Integer updatedBy;
 }

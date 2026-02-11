@@ -20,9 +20,12 @@ import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
 import com.employee.dto.CampusDetailDTO;
 import com.employee.dto.CampusMappingDTO;
+import com.employee.dto.CompleteUnassignDTO;
+import com.employee.dto.CompleteUnassignResponseDTO;
 import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
 import com.employee.dto.ManagerMappingDTO;
+import com.employee.dto.SelectiveUnmappingDTO;
 import com.employee.dto.UnmappingDTO;
 import com.employee.entity.Building;
 import com.employee.entity.BuildingAddress;
@@ -848,18 +851,19 @@ public class ManagerMappingService {
                     "Employee with payrollId " + unmappingDTO.getPayrollId() + " is not active");
         }
 
-        // Step 7: Deactivate SharedEmployee records
-        // ALWAYS check/deactivate SharedEmployee records regardless of multiple
-        // campuses flag
-        // NOTE: Primary campus in Employee table remains unchanged - only shared
-        // campuses are deactivated
+        // Step 7: Process campus unmapping
+        // For each campus ID:
+        // - If it's a shared campus: Deactivate in SharedEmployee table
+        // - If it's the primary campus: Set to null in Employee table
         if (campusIdsList != null && !campusIdsList.isEmpty()) {
             for (Integer campusId : campusIdsList) {
-                // Find all shared employee records for this employee and campus (active or
-                // inactive)
+                boolean isSharedCampus = false;
+
+                // Check if this campus is a shared campus
                 List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
                         .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
 
+                // Deactivate shared campus records if they exist
                 for (SharedEmployee sharedEmployee : sharedEmployees) {
                     if (sharedEmployee.getIsActive() == 1) {
                         sharedEmployee.setIsActive(0);
@@ -867,52 +871,64 @@ public class ManagerMappingService {
                                 .setUpdatedBy(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
                         sharedEmployee.setUpdatedDate(LocalDateTime.now());
                         sharedEmployeeRepository.save(sharedEmployee);
+                        isSharedCampus = true;
+                    }
+                }
+
+                // If not a shared campus, check if it's the primary campus
+                if (!isSharedCampus) {
+                    if (employee.getCampus_id() != null &&
+                            employee.getCampus_id().getCampusId() == campusId) {
+                        // This is the primary campus - set to null
+                        employee.setCampus_id(null);
                     }
                 }
             }
         }
 
-        // Step 8: Unmap manager
-        // null or 0 means do nothing - preserve current assignment
-        // > 0 means check for match and unmap
-        Integer managerIdValue = unmappingDTO.getManagerId();
-        if (managerIdValue != null && managerIdValue > 0) {
-            if (employee.getEmployee_manager_id() != null &&
-                    employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
-                // Validate and clear specific manager
-                employee.setEmployee_manager_id(null);
-            } else if (employee.getEmployee_manager_id() == null) {
-                // Specific ID provided but no manager assigned
-                throw new ResourceNotFoundException("Employee does not have a manager assigned to unmap");
-            } else {
-                // Specific ID mismatch
+        // Step 8: Unmap manager if flag is true
+        if (Boolean.TRUE.equals(unmappingDTO.getUnmapManager())) {
+            if (employee.getEmployee_manager_id() == null) {
                 throw new ResourceNotFoundException(
-                        String.format("Employee's current manager ID (%d) does not match the provided managerId (%d)",
-                                employee.getEmployee_manager_id().getEmp_id(), managerIdValue));
+                        "Cannot unmap manager: Employee with payrollId '" + unmappingDTO.getPayrollId() +
+                                "' does not have a manager assigned");
             }
+
+            // If managerId is provided, validate it matches the current manager
+            if (unmappingDTO.getManagerId() != null) {
+                Integer currentManagerId = employee.getEmployee_manager_id().getEmp_id();
+                if (!currentManagerId.equals(unmappingDTO.getManagerId())) {
+                    throw new ResourceNotFoundException(
+                            "Cannot unmap manager: Employee's current manager ID (" + currentManagerId +
+                                    ") does not match the provided manager ID (" + unmappingDTO.getManagerId() + ")");
+                }
+            }
+
+            employee.setEmployee_manager_id(null);
         }
 
-        // Step 9: Unmap reporting manager
-        // null or 0 means do nothing - preserve current assignment
-        // > 0 means check for match and unmap
-        Integer reportingManagerIdValue = unmappingDTO.getReportingManagerId();
-        if (reportingManagerIdValue != null && reportingManagerIdValue > 0) {
-            if (employee.getEmployee_reporting_id() != null &&
-                    employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
-                // Validate and clear specific manager
-                employee.setEmployee_reporting_id(null);
-            } else if (employee.getEmployee_reporting_id() == null) {
-                // Specific ID provided but no reporting manager assigned
-                throw new ResourceNotFoundException("Employee does not have a reporting manager assigned to unmap");
-            } else {
-                // Specific ID mismatch
+        // Step 9: Unmap reporting manager if flag is true
+        if (Boolean.TRUE.equals(unmappingDTO.getUnmapReportingManager())) {
+            if (employee.getEmployee_reporting_id() == null) {
                 throw new ResourceNotFoundException(
-                        String.format(
-                                "Employee's current reporting manager ID (%d) does not match the provided reportingManagerId (%d)",
-                                employee.getEmployee_reporting_id().getEmp_id(), reportingManagerIdValue));
+                        "Cannot unmap reporting manager: Employee with payrollId '" + unmappingDTO.getPayrollId() +
+                                "' does not have a reporting manager assigned");
             }
+
+            // If reportingManagerId is provided, validate it matches the current reporting
+            // manager
+            if (unmappingDTO.getReportingManagerId() != null) {
+                Integer currentReportingManagerId = employee.getEmployee_reporting_id().getEmp_id();
+                if (!currentReportingManagerId.equals(unmappingDTO.getReportingManagerId())) {
+                    throw new ResourceNotFoundException(
+                            "Cannot unmap reporting manager: Employee's current reporting manager ID (" +
+                                    currentReportingManagerId + ") does not match the provided reporting manager ID (" +
+                                    unmappingDTO.getReportingManagerId() + ")");
+                }
+            }
+
+            employee.setEmployee_reporting_id(null);
         }
-        // If reportingManagerId is null or 0, don't touch the reporting manager field
 
         // Step 10: Update last date of working (contract end date)
         employee.setContract_end_date(unmappingDTO.getLastDate());
@@ -1630,5 +1646,227 @@ public class ManagerMappingService {
             savedDtos.add(dto);
         }
         return savedDtos;
+    }
+
+    /**
+     * Selectively unmaps manager, reporting manager, and/or shared campuses based
+     * on boolean flags.
+     * 
+     * This method provides fine-grained control over what gets unmapped:
+     * - If unmapManager is true: Sets employee_manager_id to null
+     * - If unmapReportingManager is true: Sets employee_reporting_id to null
+     * - If unmapSharedCampuses is true: Deactivates shared campus assignments
+     * - If campusIds is provided: Only deactivates those specific campuses
+     * - If campusIds is null/empty: Deactivates ALL shared campuses
+     * 
+     * @param dto The selective unmapping request DTO with boolean flags
+     * @return The same SelectiveUnmappingDTO that was passed in
+     * @throws ResourceNotFoundException if employee not found or not active
+     * @throws IllegalArgumentException  if required fields are missing
+     */
+    @Transactional
+    public SelectiveUnmappingDTO selectiveUnmapEmployee(SelectiveUnmappingDTO dto) {
+        // Validate required fields
+        if (dto == null) {
+            throw new IllegalArgumentException("SelectiveUnmappingDTO cannot be null");
+        }
+        if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
+            throw new IllegalArgumentException("payrollId is required");
+        }
+
+        // Find Employee by payrollId
+        Employee employee = findEmployeeByPayrollId(dto.getPayrollId());
+
+        // Validate Employee is active
+        if (employee.getIs_active() != 1) {
+            throw new ResourceNotFoundException(
+                    "Employee with payrollId " + dto.getPayrollId() + " is not active");
+        }
+
+        boolean employeeChanged = false;
+
+        // Step 1: Unmap Manager if flag is true
+        if (Boolean.TRUE.equals(dto.getUnmapManager())) {
+            if (employee.getEmployee_manager_id() == null) {
+                throw new ResourceNotFoundException(
+                        "Cannot unmap manager: Employee with payrollId '" + dto.getPayrollId() +
+                                "' does not have a manager assigned");
+            }
+
+            // If managerId is provided, validate it matches the current manager
+            if (dto.getManagerId() != null) {
+                Integer currentManagerId = employee.getEmployee_manager_id().getEmp_id();
+                if (!currentManagerId.equals(dto.getManagerId())) {
+                    throw new ResourceNotFoundException(
+                            "Cannot unmap manager: Employee's current manager ID (" + currentManagerId +
+                                    ") does not match the provided manager ID (" + dto.getManagerId() + ")");
+                }
+            }
+
+            employee.setEmployee_manager_id(null);
+            employeeChanged = true;
+        }
+
+        // Step 2: Unmap Reporting Manager if flag is true
+        if (Boolean.TRUE.equals(dto.getUnmapReportingManager())) {
+            if (employee.getEmployee_reporting_id() == null) {
+                throw new ResourceNotFoundException(
+                        "Cannot unmap reporting manager: Employee with payrollId '" + dto.getPayrollId() +
+                                "' does not have a reporting manager assigned");
+            }
+
+            // If reportingManagerId is provided, validate it matches the current reporting
+            // manager
+            if (dto.getReportingManagerId() != null) {
+                Integer currentReportingManagerId = employee.getEmployee_reporting_id().getEmp_id();
+                if (!currentReportingManagerId.equals(dto.getReportingManagerId())) {
+                    throw new ResourceNotFoundException(
+                            "Cannot unmap reporting manager: Employee's current reporting manager ID (" +
+                                    currentReportingManagerId + ") does not match the provided reporting manager ID (" +
+                                    dto.getReportingManagerId() + ")");
+                }
+            }
+
+            employee.setEmployee_reporting_id(null);
+            employeeChanged = true;
+        }
+
+        // Step 3: Update remarks if provided
+        String remarkValue = dto.getRemark();
+        if (remarkValue != null && !remarkValue.trim().isEmpty() && !remarkValue.trim().equalsIgnoreCase("null")) {
+            employee.setRemarks(remarkValue.trim());
+            employeeChanged = true;
+        }
+
+        // Step 5: Update audit fields if employee changed
+        if (employeeChanged) {
+            employee.setUpdated_by(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+            employee.setUpdated_date(LocalDateTime.now());
+            employeeRepository.save(employee);
+        }
+
+        return dto;
+    }
+
+    /**
+     * Complete Unassign - Unassigns ALL assignments from an employee
+     * 
+     * This method:
+     * 1. Collects current assignments (for frontend auto-population)
+     * 2. Sets manager to null
+     * 3. Sets reporting manager to null
+     * 4. Sets primary campus to null
+     * 5. Deactivates ALL shared campus records
+     * 6. Updates remarks and audit fields
+     * 
+     * @param dto CompleteUnassignDTO containing payrollId, remark, and updatedBy
+     * @return CompleteUnassignResponseDTO with current assignments and success
+     *         message
+     */
+    @Transactional
+    public CompleteUnassignResponseDTO completeUnassign(CompleteUnassignDTO dto) {
+        // Validate required fields
+        if (dto == null) {
+            throw new IllegalArgumentException("CompleteUnassignDTO cannot be null");
+        }
+        if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
+            throw new IllegalArgumentException("payrollId is required");
+        }
+
+        // Find Employee by payrollId
+        Employee employee = findEmployeeByPayrollId(dto.getPayrollId());
+
+        // Validate Employee is active
+        if (employee.getIs_active() != 1) {
+            throw new ResourceNotFoundException(
+                    "Employee with payrollId " + dto.getPayrollId() + " is not active");
+        }
+
+        // Prepare response DTO
+        CompleteUnassignResponseDTO response = new CompleteUnassignResponseDTO();
+        response.setPayrollId(dto.getPayrollId());
+
+        // Step 1: Collect current manager information
+        if (employee.getEmployee_manager_id() != null) {
+            response.setManagerId(employee.getEmployee_manager_id().getEmp_id());
+            response.setManagerName(employee.getEmployee_manager_id().getFirst_name() + " " +
+                    employee.getEmployee_manager_id().getLast_name());
+        }
+
+        // Step 2: Collect current reporting manager information
+        if (employee.getEmployee_reporting_id() != null) {
+            response.setReportingManagerId(employee.getEmployee_reporting_id().getEmp_id());
+            response.setReportingManagerName(employee.getEmployee_reporting_id().getFirst_name() + " " +
+                    employee.getEmployee_reporting_id().getLast_name());
+        }
+
+        // Step 3: Collect current primary campus information
+        if (employee.getCampus_id() != null) {
+            response.setPrimaryCampusId(employee.getCampus_id().getCampusId());
+            response.setPrimaryCampusName(employee.getCampus_id().getCampusName());
+        }
+
+        // Step 4: Collect shared campus information
+        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository.findActiveByEmpId(employee.getEmp_id());
+        List<CompleteUnassignResponseDTO.SharedCampusInfo> sharedCampusList = new ArrayList<>();
+
+        for (SharedEmployee sharedEmployee : sharedEmployees) {
+            if (sharedEmployee.getCmpsId() != null) {
+                CompleteUnassignResponseDTO.SharedCampusInfo campusInfo = new CompleteUnassignResponseDTO.SharedCampusInfo();
+                campusInfo.setCampusId(sharedEmployee.getCmpsId().getCampusId());
+                campusInfo.setCampusName(sharedEmployee.getCmpsId().getCampusName());
+                sharedCampusList.add(campusInfo);
+            }
+        }
+        response.setSharedCampuses(sharedCampusList);
+
+        // Step 5: Perform complete unassignment
+        boolean employeeChanged = false;
+
+        // Unassign manager
+        if (employee.getEmployee_manager_id() != null) {
+            employee.setEmployee_manager_id(null);
+            employeeChanged = true;
+        }
+
+        // Unassign reporting manager
+        if (employee.getEmployee_reporting_id() != null) {
+            employee.setEmployee_reporting_id(null);
+            employeeChanged = true;
+        }
+
+        // Unassign primary campus
+        if (employee.getCampus_id() != null) {
+            employee.setCampus_id(null);
+            employeeChanged = true;
+        }
+
+        // Deactivate ALL shared campuses
+        for (SharedEmployee sharedEmployee : sharedEmployees) {
+            sharedEmployee.setIsActive(0);
+            sharedEmployee.setUpdatedBy(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+            sharedEmployee.setUpdatedDate(LocalDateTime.now());
+            sharedEmployeeRepository.save(sharedEmployee);
+        }
+
+        // Step 6: Update remarks if provided
+        String remarkValue = dto.getRemark();
+        if (remarkValue != null && !remarkValue.trim().isEmpty() && !remarkValue.trim().equalsIgnoreCase("null")) {
+            employee.setRemarks(remarkValue.trim());
+            employeeChanged = true;
+        }
+
+        // Step 7: Update audit fields if employee changed
+        if (employeeChanged) {
+            employee.setUpdated_by(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+            employee.setUpdated_date(LocalDateTime.now());
+            employeeRepository.save(employee);
+        }
+
+        // Set success message
+        response.setMessage(
+                "Successfully unassigned all assignments for employee with payrollId: " + dto.getPayrollId());
+
+        return response;
     }
 }

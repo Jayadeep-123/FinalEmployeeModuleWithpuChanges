@@ -17,9 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
+import com.employee.dto.CompleteUnassignDTO;
+import com.employee.dto.CompleteUnassignResponseDTO;
 import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
 import com.employee.dto.ManagerMappingDTO;
+import com.employee.dto.SelectiveUnmappingDTO;
 import com.employee.dto.UnmappingDTO;
 import com.employee.service.ManagerMappingService;
 
@@ -216,6 +219,46 @@ public class ManagerMappingController {
         return ResponseEntity.ok(results);
     }
 
+    /**
+     * POST endpoint to selectively unmap manager and/or reporting manager.
+     * Uses boolean flags to control what gets unmapped.
+     * 
+     * Flow:
+     * 1. Finds Employee by payrollId
+     * 2. Validates Employee is active
+     * 3. If unmapManager is true: Removes manager assignment
+     * 4. If unmapReportingManager is true: Removes reporting manager assignment
+     * 5. Updates remarks if provided
+     * 6. Updates employee with audit fields
+     * 
+     * Note: All exceptions are handled by GlobalExceptionHandler
+     * 
+     * @param dto Request body containing:
+     *            - payrollId (required): Employee to unmap
+     *            - unmapManager (boolean): If true, remove manager assignment
+     *            - managerId (optional): Manager ID to verify before unmapping
+     *            - unmapReportingManager (boolean): If true, remove reporting
+     *            manager
+     *            - reportingManagerId (optional): Reporting manager ID to verify
+     *            before unmapping
+     *            - remark (optional): Reason for unmapping
+     *            - updatedBy (required): User making the change
+     * @return The same SelectiveUnmappingDTO that was passed in
+     */
+    @PostMapping("/selective-unmap")
+    public ResponseEntity<SelectiveUnmappingDTO> selectiveUnmapEmployee(@RequestBody SelectiveUnmappingDTO dto) {
+        logger.info(
+                "Received selective unmapping request for payrollId: {} - unmapManager: {}, unmapReportingManager: {}",
+                dto.getPayrollId(), dto.getUnmapManager(), dto.getUnmapReportingManager());
+
+        // Perform the selective unmapping (validation and exception handling done in
+        // service and GlobalExceptionHandler)
+        SelectiveUnmappingDTO response = managerMappingService.selectiveUnmapEmployee(dto);
+
+        logger.info("Successfully processed selective unmapping for payrollId: {}", response.getPayrollId());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     // @PutMapping("/campus-name")
     // public ResponseEntity<?> updateCampusName(@RequestParam Integer campusId,
     // @RequestParam String campusName) {
@@ -227,4 +270,38 @@ public class ManagerMappingController {
     // .body("Error updating campus name: " + e.getMessage());
     // }
     // }
+
+    /**
+     * POST endpoint to completely unassign all assignments from an employee.
+     * 
+     * This endpoint:
+     * 1. Returns current assignments (for frontend auto-population)
+     * 2. Unassigns manager, reporting manager, primary campus
+     * 3. Deactivates all shared campus records
+     * 
+     * Flow:
+     * - Frontend opens form and calls this endpoint
+     * - Response contains current manager, reporting manager, and campuses
+     * - Frontend auto-populates the form with this data
+     * - User reviews and clicks Confirm
+     * - All assignments are cleared
+     * 
+     * @param dto Request body containing:
+     *            - payrollId (required): Employee to unassign
+     *            - remark (optional): Reason for complete unassignment
+     *            - updatedBy (required): User making the change
+     * @return CompleteUnassignResponseDTO with current assignments and success
+     *         message
+     */
+    @PostMapping("/complete-unassign")
+    public ResponseEntity<CompleteUnassignResponseDTO> completeUnassign(@RequestBody CompleteUnassignDTO dto) {
+        logger.info("Received complete unassign request for payrollId: {}", dto.getPayrollId());
+
+        // Perform complete unassignment (validation and exception handling done in
+        // service and GlobalExceptionHandler)
+        CompleteUnassignResponseDTO response = managerMappingService.completeUnassign(dto);
+
+        logger.info("Successfully completed unassignment for payrollId: {}", response.getPayrollId());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 }
