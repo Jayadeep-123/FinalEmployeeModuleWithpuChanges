@@ -639,7 +639,7 @@ public class GetEmpDetailsService {
 	}
 
 	public List<EmpOnboardingStatusView> getEmpStatus() {
-		return empOnboardingStatusViewRepository.findAll();
+		return empOnboardingStatusViewRepository.findAllDistinct();
 	}
 
 	public List<EmpOnboardingStatusView> getEmpStatusByCategoryName(String categoryName) {
