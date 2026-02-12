@@ -12,10 +12,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CampusMappingDTO {
-	
-	private Integer campusId;      // Required
-	private Integer departmentId;  // Required
-	private Integer subjectId;     // Optional
-	private Integer designationId; // Required
-}
 
+	private Integer campusId;
+	private Integer departmentId;
+	private Integer subjectId;
+	private Integer designationId;
+}
