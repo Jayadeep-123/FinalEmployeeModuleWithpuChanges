@@ -1001,34 +1001,34 @@ public class ManagerMappingService {
         if (dto == null) {
             throw new IllegalArgumentException("SelectiveBulkUnmappingDTO cannot be null");
         }
-        if (dto.getCityId() == null) {
-            throw new IllegalArgumentException("cityId is required");
-        }
-        if (dto.getCampusIds() == null || dto.getCampusIds().isEmpty()) {
-            throw new IllegalArgumentException("campusIds array is required and cannot be empty");
-        }
         if (dto.getPayrollIds() == null || dto.getPayrollIds().isEmpty()) {
             throw new IllegalArgumentException("payrollIds list is required and cannot be empty");
         }
         if (dto.getLastDate() == null) {
             throw new IllegalArgumentException("lastDate is required");
         }
+        // Step 1: Validate City exists (if provided)
+        if (dto.getCityId() != null) {
+            cityRepository.findById(dto.getCityId())
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("City not found with ID: " + dto.getCityId()));
+        }
 
-        // Step 1: Validate City exists
-        cityRepository.findById(dto.getCityId())
-                .orElseThrow(
-                        () -> new ResourceNotFoundException("City not found with ID: " + dto.getCityId()));
-
-        // Step 2: Validate all campuses exist and belong to the City
+        // Step 2: Validate all campuses exist and belong to the City (if provided)
         List<Integer> campusIdsToUnmap = dto.getCampusIds();
-        for (Integer campusId : campusIdsToUnmap) {
-            Campus campus = campusRepository.findByCampusIdAndIsActive(campusId, 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + campusId));
+        if (campusIdsToUnmap != null && !campusIdsToUnmap.isEmpty()) {
+            for (Integer campusId : campusIdsToUnmap) {
+                Campus campus = campusRepository.findByCampusIdAndIsActive(campusId, 1)
+                        .orElseThrow(
+                                () -> new ResourceNotFoundException("Active Campus not found with ID: " + campusId));
 
-            if (campus.getCity() == null || campus.getCity().getCityId() != dto.getCityId()) {
-                throw new ResourceNotFoundException(
-                        String.format("Campus with ID %d is not assigned to City with ID %d",
-                                campusId, dto.getCityId()));
+                if (dto.getCityId() != null) {
+                    if (campus.getCity() == null || campus.getCity().getCityId() != dto.getCityId()) {
+                        throw new ResourceNotFoundException(
+                                String.format("Campus with ID %d is not assigned to City with ID %d",
+                                        campusId, dto.getCityId()));
+                    }
+                }
             }
         }
 
@@ -1047,20 +1047,22 @@ public class ManagerMappingService {
                 Campus employeeCampus = employee.getCampus_id();
 
                 // Deactivate SharedEmployee records and Primary campus for the specified
-                // campuses
-                for (Integer campusId : campusIdsToUnmap) {
-                    if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
-                        employee.setCampus_id(null);
-                    }
+                // campuses (if provided)
+                if (campusIdsToUnmap != null) {
+                    for (Integer campusId : campusIdsToUnmap) {
+                        if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
+                            employee.setCampus_id(null);
+                        }
 
-                    List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
-                            .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
-                    for (SharedEmployee sharedEmployee : sharedEmployees) {
-                        if (sharedEmployee.getIsActive() == 1) {
-                            sharedEmployee.setIsActive(0);
-                            sharedEmployee.setUpdatedBy(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
-                            sharedEmployee.setUpdatedDate(LocalDateTime.now());
-                            sharedEmployeeRepository.save(sharedEmployee);
+                        List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                                .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
+                        for (SharedEmployee sharedEmployee : sharedEmployees) {
+                            if (sharedEmployee.getIsActive() == 1) {
+                                sharedEmployee.setIsActive(0);
+                                sharedEmployee.setUpdatedBy(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+                                sharedEmployee.setUpdatedDate(LocalDateTime.now());
+                                sharedEmployeeRepository.save(sharedEmployee);
+                            }
                         }
                     }
                 }
