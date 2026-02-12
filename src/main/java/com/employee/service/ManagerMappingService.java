@@ -142,22 +142,38 @@ public class ManagerMappingService {
                 // If this mapping matches the Primary Campus in the Employee table
                 if (employeeCampus != null && employeeCampus.getCampusId() == dto.getCampusId()) {
                     // Check if Department or Designation changed for Primary record
-                    if (employee.getDepartment() == null
-                            || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
-                        Department newDept = departmentRepository.findByIdAndIsActive(dto.getDepartmentId(), 1)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                        "Active Department not found: " + dto.getDepartmentId()));
-                        employee.setDepartment(newDept);
-                        employeeChanged = true;
+                    if (dto.getDepartmentId() != null && dto.getDepartmentId() > 0) {
+                        if (employee.getDepartment() == null
+                                || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
+                            Department newDept = departmentRepository.findByIdAndIsActive(dto.getDepartmentId(), 1)
+                                    .orElseThrow(() -> new ResourceNotFoundException(
+                                            "Active Department not found: " + dto.getDepartmentId()));
+                            employee.setDepartment(newDept);
+                            employeeChanged = true;
+                        }
+                    } else {
+                        // If provided as 0 or null, clear it
+                        if (employee.getDepartment() != null) {
+                            employee.setDepartment(null);
+                            employeeChanged = true;
+                        }
                     }
 
-                    if (employee.getDesignation() == null
-                            || employee.getDesignation().getDesignation_id() != dto.getDesignationId()) {
-                        Designation newDesig = designationRepository.findByIdAndIsActive(dto.getDesignationId(), 1)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                        "Active Designation not found: " + dto.getDesignationId()));
-                        employee.setDesignation(newDesig);
-                        employeeChanged = true;
+                    if (dto.getDesignationId() != null && dto.getDesignationId() > 0) {
+                        if (employee.getDesignation() == null
+                                || employee.getDesignation().getDesignation_id() != dto.getDesignationId()) {
+                            Designation newDesig = designationRepository.findByIdAndIsActive(dto.getDesignationId(), 1)
+                                    .orElseThrow(() -> new ResourceNotFoundException(
+                                            "Active Designation not found: " + dto.getDesignationId()));
+                            employee.setDesignation(newDesig);
+                            employeeChanged = true;
+                        }
+                    } else {
+                        // If provided as 0 or null, clear it
+                        if (employee.getDesignation() != null) {
+                            employee.setDesignation(null);
+                            employeeChanged = true;
+                        }
                     }
                     // Note: Subject is not stored in Employee table, strictly SharedEmployee
                 } else {
@@ -279,11 +295,14 @@ public class ManagerMappingService {
         Department department = null;
         if (campusMappings != null && !campusMappings.isEmpty()) {
             for (CampusMappingDTO campusMapping : campusMappings) {
-                // Validate Department exists and is active
-                Department campusDepartment = departmentRepository
-                        .findByIdAndIsActive(campusMapping.getDepartmentId(), 1)
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Active Department not found with ID: " + campusMapping.getDepartmentId()));
+                // Validate Department exists and is active (if provided)
+                Department campusDepartment = null;
+                if (campusMapping.getDepartmentId() != null && campusMapping.getDepartmentId() > 0) {
+                    campusDepartment = departmentRepository
+                            .findByIdAndIsActive(campusMapping.getDepartmentId(), 1)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Active Department not found with ID: " + campusMapping.getDepartmentId()));
+                }
 
                 // Validate Campus is active and exists in the City
                 Campus campus = campusRepository.findByCampusIdAndIsActive(campusMapping.getCampusId(), 1)
@@ -296,16 +315,19 @@ public class ManagerMappingService {
                                     campusMapping.getCampusId(), bulkMappingDTO.getCityId()));
                 }
 
-                // Validate Designation exists, is active, and belongs to the Department
-                Designation designation = designationRepository.findByIdAndIsActive(campusMapping.getDesignationId(), 1)
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Active Designation not found with ID: " + campusMapping.getDesignationId()));
+                // Validate Designation exists and is active (if provided)
+                Designation designation = null;
+                if (campusMapping.getDesignationId() != null && campusMapping.getDesignationId() > 0) {
+                    designation = designationRepository.findByIdAndIsActive(campusMapping.getDesignationId(), 1)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Active Designation not found with ID: " + campusMapping.getDesignationId()));
 
-                if (designation.getDepartment() == null
-                        || designation.getDepartment().getDepartment_id() != campusMapping.getDepartmentId()) {
-                    throw new ResourceNotFoundException(
-                            String.format("Designation with ID %d does not belong to Department with ID %d",
-                                    campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
+                    if (campusDepartment != null && (designation.getDepartment() == null
+                            || designation.getDepartment().getDepartment_id() != campusMapping.getDepartmentId())) {
+                        throw new ResourceNotFoundException(
+                                String.format("Designation with ID %d does not belong to Department with ID %d",
+                                        campusMapping.getDesignationId(), campusMapping.getDepartmentId()));
+                    }
                 }
 
                 // Use first department for employee table if needed
@@ -450,23 +472,38 @@ public class ManagerMappingService {
                     for (CampusMappingDTO dto : campusMappings) {
                         if (empCampusForBulk != null && empCampusForBulk.getCampusId() == dto.getCampusId()) {
                             // Primary Campus mapping found in request
-                            if (employee.getDepartment() == null
-                                    || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
-                                Department newBulkDept = departmentRepository
-                                        .findByIdAndIsActive(dto.getDepartmentId(), 1)
-                                        .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Active Department not found: " + dto.getDepartmentId()));
-                                employee.setDepartment(newBulkDept);
-                                empChangedForBulk = true;
+                            if (dto.getDepartmentId() != null && dto.getDepartmentId() > 0) {
+                                if (employee.getDepartment() == null
+                                        || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
+                                    Department newBulkDept = departmentRepository
+                                            .findByIdAndIsActive(dto.getDepartmentId(), 1)
+                                            .orElseThrow(() -> new ResourceNotFoundException(
+                                                    "Active Department not found: " + dto.getDepartmentId()));
+                                    employee.setDepartment(newBulkDept);
+                                    empChangedForBulk = true;
+                                }
+                            } else {
+                                if (employee.getDepartment() != null) {
+                                    employee.setDepartment(null);
+                                    empChangedForBulk = true;
+                                }
                             }
-                            if (employee.getDesignation() == null
-                                    || employee.getDesignation().getDesignation_id() != dto.getDesignationId()) {
-                                Designation newBulkDesig = designationRepository
-                                        .findByIdAndIsActive(dto.getDesignationId(), 1)
-                                        .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Active Designation not found: " + dto.getDesignationId()));
-                                employee.setDesignation(newBulkDesig);
-                                empChangedForBulk = true;
+
+                            if (dto.getDesignationId() != null && dto.getDesignationId() > 0) {
+                                if (employee.getDesignation() == null
+                                        || employee.getDesignation().getDesignation_id() != dto.getDesignationId()) {
+                                    Designation newBulkDesig = designationRepository
+                                            .findByIdAndIsActive(dto.getDesignationId(), 1)
+                                            .orElseThrow(() -> new ResourceNotFoundException(
+                                                    "Active Designation not found: " + dto.getDesignationId()));
+                                    employee.setDesignation(newBulkDesig);
+                                    empChangedForBulk = true;
+                                }
+                            } else {
+                                if (employee.getDesignation() != null) {
+                                    employee.setDesignation(null);
+                                    empChangedForBulk = true;
+                                }
                             }
                         } else {
                             bulkSharedMappings.add(dto);
@@ -595,24 +632,30 @@ public class ManagerMappingService {
         for (CampusMappingDTO dto : newMappings) {
             boolean matched = false;
 
-            // Validation
-            Department campusDepartment = departmentRepository.findByIdAndIsActive(dto.getDepartmentId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Department not found with ID: " + dto.getDepartmentId()));
+            // Validation (if provided)
+            Department campusDepartment = null;
+            if (dto.getDepartmentId() != null && dto.getDepartmentId() > 0) {
+                campusDepartment = departmentRepository.findByIdAndIsActive(dto.getDepartmentId(), 1)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Active Department not found with ID: " + dto.getDepartmentId()));
+            }
 
             Campus campus = campusRepository.findByCampusIdAndIsActive(dto.getCampusId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Active Campus not found with ID: " + dto.getCampusId()));
 
-            Designation designation = designationRepository.findByIdAndIsActive(dto.getDesignationId(), 1)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Designation not found with ID: " + dto.getDesignationId()));
+            Designation designation = null;
+            if (dto.getDesignationId() != null && dto.getDesignationId() > 0) {
+                designation = designationRepository.findByIdAndIsActive(dto.getDesignationId(), 1)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Active Designation not found with ID: " + dto.getDesignationId()));
 
-            if (designation.getDepartment() == null
-                    || designation.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
-                throw new ResourceNotFoundException(
-                        String.format("Designation with ID %d does not belong to Department with ID %d",
-                                dto.getDesignationId(), dto.getDepartmentId()));
+                if (campusDepartment != null && (designation.getDepartment() == null
+                        || designation.getDepartment().getDepartment_id() != dto.getDepartmentId())) {
+                    throw new ResourceNotFoundException(
+                            String.format("Designation with ID %d does not belong to Department with ID %d",
+                                    dto.getDesignationId(), dto.getDepartmentId()));
+                }
             }
 
             // Check if this campus is already active for the employee
@@ -723,13 +766,13 @@ public class ManagerMappingService {
                     throw new IllegalArgumentException(
                             "Valid campusId (greater than 0) is required in each campusMapping object");
                 }
-                if (campusMapping.getDepartmentId() == null || campusMapping.getDepartmentId() <= 0) {
+                if (campusMapping.getDepartmentId() == null) {
                     throw new IllegalArgumentException(
-                            "Valid departmentId (greater than 0) is required in each campusMapping object");
+                            "departmentId is required in each campusMapping object");
                 }
-                if (campusMapping.getDesignationId() == null || campusMapping.getDesignationId() <= 0) {
+                if (campusMapping.getDesignationId() == null) {
                     throw new IllegalArgumentException(
-                            "Valid designationId (greater than 0) is required in each campusMapping object");
+                            "designationId is required in each campusMapping object");
                 }
             }
         }
@@ -765,13 +808,13 @@ public class ManagerMappingService {
                     throw new IllegalArgumentException(
                             "Valid campusId (greater than 0) is required in each campusMapping object");
                 }
-                if (campusMapping.getDepartmentId() == null || campusMapping.getDepartmentId() <= 0) {
+                if (campusMapping.getDepartmentId() == null) {
                     throw new IllegalArgumentException(
-                            "Valid departmentId (greater than 0) is required in each campusMapping object");
+                            "departmentId is required in each campusMapping object");
                 }
-                if (campusMapping.getDesignationId() == null || campusMapping.getDesignationId() <= 0) {
+                if (campusMapping.getDesignationId() == null) {
                     throw new IllegalArgumentException(
-                            "Valid designationId (greater than 0) is required in each campusMapping object");
+                            "designationId is required in each campusMapping object");
                 }
             }
         }
