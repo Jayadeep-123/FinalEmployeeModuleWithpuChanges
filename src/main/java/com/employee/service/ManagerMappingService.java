@@ -20,7 +20,6 @@ import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
 import com.employee.dto.CampusDetailDTO;
 import com.employee.dto.CampusMappingDTO;
-import com.employee.dto.CompleteUnassignDTO;
 import com.employee.dto.CompleteUnassignResponseDTO;
 import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
@@ -1784,15 +1783,15 @@ public class ManagerMappingService {
      * 5. Deactivates ALL shared campus records
      * 6. Updates remarks and audit fields
      * 
-     * @param dto CompleteUnassignDTO containing payrollId, remark, and updatedBy
+     * @param dto SelectiveUnmappingDTO containing payrollId, remark, and updatedBy
      * @return CompleteUnassignResponseDTO with current assignments and success
      *         message
      */
     @Transactional
-    public CompleteUnassignResponseDTO completeUnassign(CompleteUnassignDTO dto) {
+    public CompleteUnassignResponseDTO completeUnassign(SelectiveUnmappingDTO dto) {
         // Validate required fields
         if (dto == null) {
-            throw new IllegalArgumentException("CompleteUnassignDTO cannot be null");
+            throw new IllegalArgumentException("SelectiveUnmappingDTO cannot be null");
         }
         if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
             throw new IllegalArgumentException("payrollId is required");

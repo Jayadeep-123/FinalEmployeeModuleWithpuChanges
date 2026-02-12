@@ -286,15 +286,18 @@ public class ManagerMappingController {
      * - User reviews and clicks Confirm
      * - All assignments are cleared
      * 
-     * @param dto Request body containing:
+     * @param dto Request body (same structure as selective-unmap):
      *            - payrollId (required): Employee to unassign
+     *            - cityId (optional): City ID
+     *            - campusIds (optional): List of campus IDs
+     *            - lastDate (optional): Last working date
      *            - remark (optional): Reason for complete unassignment
      *            - updatedBy (required): User making the change
      * @return CompleteUnassignResponseDTO with current assignments and success
      *         message
      */
     @PostMapping("/complete-unassign")
-    public ResponseEntity<CompleteUnassignResponseDTO> completeUnassign(@RequestBody CompleteUnassignDTO dto) {
+    public ResponseEntity<CompleteUnassignResponseDTO> completeUnassign(@RequestBody SelectiveUnmappingDTO dto) {
         logger.info("Received complete unassign request for payrollId: {}", dto.getPayrollId());
 
         // Perform complete unassignment (validation and exception handling done in

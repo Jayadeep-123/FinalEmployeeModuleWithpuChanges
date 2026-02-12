@@ -51,6 +51,21 @@ public class SelectiveUnmappingDTO {
     private Integer reportingManagerId;
 
     /**
+     * City ID (optional, for frontend use)
+     */
+    private Integer cityId;
+
+    /**
+     * List of campus IDs to unmap (optional)
+     */
+    private java.util.List<Integer> campusIds;
+
+    /**
+     * Last working date (optional)
+     */
+    private java.time.LocalDate lastDate;
+
+    /**
      * Optional: Reason for unmapping
      */
     private String remark;
