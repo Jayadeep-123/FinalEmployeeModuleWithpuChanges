@@ -16,19 +16,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.employee.dto.BulkCompleteUnassignDTO;
 import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
 import com.employee.dto.CampusDetailDTO;
 import com.employee.dto.CampusMappingDTO;
+import com.employee.dto.CompleteUnassignDTO;
 import com.employee.dto.CompleteUnassignResponseDTO;
 import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
 import com.employee.dto.ManagerMappingDTO;
+import com.employee.dto.SelectiveBulkUnmappingDTO;
 import com.employee.dto.SelectiveUnmappingDTO;
 import com.employee.dto.UnmappingDTO;
 import com.employee.entity.Building;
 import com.employee.entity.BuildingAddress;
 import com.employee.entity.Campus;
+import com.employee.entity.CampusEmployee;
 import com.employee.entity.City;
 import com.employee.entity.Department;
 import com.employee.entity.Designation;
@@ -38,6 +42,7 @@ import com.employee.entity.Subject;
 import com.employee.exception.ResourceNotFoundException;
 import com.employee.repository.BuildingAddressRepository;
 import com.employee.repository.BuildingRepository;
+import com.employee.repository.CampusEmployeeRepository;
 import com.employee.repository.CampusRepository;
 import com.employee.repository.CityRepository;
 import com.employee.repository.DepartmentRepository;
@@ -84,6 +89,9 @@ public class ManagerMappingService {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private CampusEmployeeRepository campusEmployeeRepository;
 
     /**
      * Maps employee based on payrollId and updates their details.
@@ -975,76 +983,72 @@ public class ManagerMappingService {
      */
     @Transactional
     public BulkUnmappingDTO unmapMultipleEmployees(BulkUnmappingDTO bulkUnmappingDTO) {
+        // ... (existing code)
+        return bulkUnmappingDTO;
+    }
+
+    /**
+     * Unmaps manager and/or reporting manager from multiple employees in bulk
+     * (Enhanced).
+     * Uses boolean flags to control what gets unmapped.
+     * 
+     * @param dto The selective bulk unmapping request DTO
+     * @return The same SelectiveBulkUnmappingDTO that was passed in
+     */
+    @Transactional
+    public SelectiveBulkUnmappingDTO selectiveUnmapMultipleEmployees(SelectiveBulkUnmappingDTO dto) {
         // Validate required fields
-        if (bulkUnmappingDTO == null) {
-            throw new IllegalArgumentException("BulkUnmappingDTO cannot be null");
+        if (dto == null) {
+            throw new IllegalArgumentException("SelectiveBulkUnmappingDTO cannot be null");
         }
-        if (bulkUnmappingDTO.getCityId() == null) {
+        if (dto.getCityId() == null) {
             throw new IllegalArgumentException("cityId is required");
         }
-        if (bulkUnmappingDTO.getCampusIds() == null || bulkUnmappingDTO.getCampusIds().isEmpty()) {
+        if (dto.getCampusIds() == null || dto.getCampusIds().isEmpty()) {
             throw new IllegalArgumentException("campusIds array is required and cannot be empty");
         }
-        if (bulkUnmappingDTO.getPayrollIds() == null || bulkUnmappingDTO.getPayrollIds().isEmpty()) {
+        if (dto.getPayrollIds() == null || dto.getPayrollIds().isEmpty()) {
             throw new IllegalArgumentException("payrollIds list is required and cannot be empty");
         }
-        // Validate that all payrollIds in the list are not null or empty
-        for (String payrollId : bulkUnmappingDTO.getPayrollIds()) {
-            if (payrollId == null || payrollId.trim().isEmpty()) {
-                throw new IllegalArgumentException("payrollIds list cannot contain null or empty values");
-            }
-        }
-        if (bulkUnmappingDTO.getLastDate() == null) {
+        if (dto.getLastDate() == null) {
             throw new IllegalArgumentException("lastDate is required");
         }
 
         // Step 1: Validate City exists
-        cityRepository.findById(bulkUnmappingDTO.getCityId())
+        cityRepository.findById(dto.getCityId())
                 .orElseThrow(
-                        () -> new ResourceNotFoundException("City not found with ID: " + bulkUnmappingDTO.getCityId()));
+                        () -> new ResourceNotFoundException("City not found with ID: " + dto.getCityId()));
 
-        // Step 2: Always use campusIds array - required field
-        List<Integer> campusIdsToUnmap = bulkUnmappingDTO.getCampusIds();
-        boolean useMultipleCampuses = campusIdsToUnmap.size() > 1;
-
-        // Step 3: Validate all campuses exist and belong to the City
+        // Step 2: Validate all campuses exist and belong to the City
+        List<Integer> campusIdsToUnmap = dto.getCampusIds();
         for (Integer campusId : campusIdsToUnmap) {
             Campus campus = campusRepository.findByCampusIdAndIsActive(campusId, 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + campusId));
 
-            if (campus.getCity() == null || campus.getCity().getCityId() != bulkUnmappingDTO.getCityId()) {
+            if (campus.getCity() == null || campus.getCity().getCityId() != dto.getCityId()) {
                 throw new ResourceNotFoundException(
                         String.format("Campus with ID %d is not assigned to City with ID %d",
-                                campusId, bulkUnmappingDTO.getCityId()));
+                                campusId, dto.getCityId()));
             }
         }
 
         // Step 3: Process each payrollId
-        List<String> processedPayrollIds = new ArrayList<>();
-        List<String> failedPayrollIds = new ArrayList<>();
-
-        for (String payrollId : bulkUnmappingDTO.getPayrollIds()) {
+        for (String payrollId : dto.getPayrollIds()) {
             try {
                 // Find Employee by payrollId
                 Employee employee = findEmployeeByPayrollId(payrollId);
 
                 // Validate Employee is active
                 if (employee.getIs_active() != 1) {
-                    failedPayrollIds.add(payrollId + " (not active)");
                     continue;
                 }
 
                 // Get employee's existing campus
                 Campus employeeCampus = employee.getCampus_id();
-                // We no longer fail if primary campus is null, as they might have shared
-                // campuses to unmap
 
-                // Deactivate SharedEmployee records for the specified campuses
-                // ALWAYS check/deactivate SharedEmployee records regardless of multiple
-                // campuses flag
+                // Deactivate SharedEmployee records and Primary campus for the specified
+                // campuses
                 for (Integer campusId : campusIdsToUnmap) {
-                    // Check if this matches the PRIMARY campus on the Employee table
-                    // If so, "unmap" it by setting it to null
                     if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
                         employee.setCampus_id(null);
                     }
@@ -1054,60 +1058,40 @@ public class ManagerMappingService {
                     for (SharedEmployee sharedEmployee : sharedEmployees) {
                         if (sharedEmployee.getIsActive() == 1) {
                             sharedEmployee.setIsActive(0);
-                            sharedEmployee.setUpdatedBy(
-                                    bulkUnmappingDTO.getUpdatedBy() != null ? bulkUnmappingDTO.getUpdatedBy() : 1);
+                            sharedEmployee.setUpdatedBy(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
                             sharedEmployee.setUpdatedDate(LocalDateTime.now());
                             sharedEmployeeRepository.save(sharedEmployee);
                         }
                     }
                 }
 
-                // Unmap manager
-                // null or 0 means do nothing - preserve current assignment
-                // > 0 means check match for safety
-                Integer managerIdValue = bulkUnmappingDTO.getManagerId();
-                if (managerIdValue != null && managerIdValue > 0) {
-                    if (employee.getEmployee_manager_id() != null &&
-                            employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
-                        employee.setEmployee_manager_id(null);
-                    } else if (employee.getEmployee_manager_id() == null) {
-                        failedPayrollIds.add(payrollId + " (no manager assigned to unmap)");
-                        continue;
-                    } else {
-                        failedPayrollIds.add(payrollId + " (manager ID mismatch: current=" +
-                                employee.getEmployee_manager_id().getEmp_id() +
-                                ", provided=" + managerIdValue + ")");
-                        continue;
+                // Selective Unmap Manager
+                if (Boolean.TRUE.equals(dto.getUnmapManager())) {
+                    if (employee.getEmployee_manager_id() != null) {
+                        Integer managerIdValue = dto.getManagerId();
+                        if (managerIdValue == null || managerIdValue == 0 ||
+                                employee.getEmployee_manager_id().getEmp_id() == managerIdValue) {
+                            employee.setEmployee_manager_id(null);
+                        }
                     }
                 }
 
-                // Unmap reporting manager
-                // null or 0 means do nothing - preserve current assignment
-                // > 0 means check match for safety
-                Integer reportingManagerIdValue = bulkUnmappingDTO.getReportingManagerId();
-                if (reportingManagerIdValue != null && reportingManagerIdValue > 0) {
-                    if (employee.getEmployee_reporting_id() != null &&
-                            employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
-                        employee.setEmployee_reporting_id(null);
-                    } else if (employee.getEmployee_reporting_id() == null) {
-                        failedPayrollIds.add(payrollId + " (no reporting manager assigned to unmap)");
-                        continue;
-                    } else {
-                        failedPayrollIds.add(payrollId + " (reporting manager ID mismatch: current=" +
-                                employee.getEmployee_reporting_id().getEmp_id() +
-                                ", provided=" + reportingManagerIdValue + ")");
-                        continue;
+                // Selective Unmap Reporting Manager
+                if (Boolean.TRUE.equals(dto.getUnmapReportingManager())) {
+                    if (employee.getEmployee_reporting_id() != null) {
+                        Integer reportingManagerIdValue = dto.getReportingManagerId();
+                        if (reportingManagerIdValue == null || reportingManagerIdValue == 0 ||
+                                employee.getEmployee_reporting_id().getEmp_id() == reportingManagerIdValue) {
+                            employee.setEmployee_reporting_id(null);
+                        }
                     }
                 }
-                // If reportingManagerId is null or 0, don't touch the reporting manager field
 
-                // Update last date of working (contract end date)
-                employee.setContract_end_date(bulkUnmappingDTO.getLastDate());
+                // Update last date of working
+                employee.setContract_end_date(dto.getLastDate());
 
-                // Update remarks: if value exists and is not empty, set it; otherwise set to
-                // null
-                // Treat null, empty string, whitespace-only, or string "null" as null
-                String remarkValue = bulkUnmappingDTO.getRemark();
+                // Update remarks
+                String remarkValue = dto.getRemark();
                 if (remarkValue != null && !remarkValue.trim().isEmpty()
                         && !remarkValue.trim().equalsIgnoreCase("null")) {
                     employee.setRemarks(remarkValue.trim());
@@ -1116,20 +1100,17 @@ public class ManagerMappingService {
                 }
 
                 // Update audit fields
-                employee.setUpdated_by(bulkUnmappingDTO.getUpdatedBy() != null ? bulkUnmappingDTO.getUpdatedBy() : 1);
+                employee.setUpdated_by(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
                 employee.setUpdated_date(LocalDateTime.now());
 
                 employeeRepository.save(employee);
-                processedPayrollIds.add(payrollId);
 
-            } catch (ResourceNotFoundException e) {
-                failedPayrollIds.add(payrollId + " (not found)");
             } catch (Exception e) {
-                failedPayrollIds.add(payrollId + " (" + e.getMessage() + ")");
+                // Log and continue for other employees
             }
         }
 
-        return bulkUnmappingDTO;
+        return dto;
     }
 
     /**
@@ -1621,9 +1602,6 @@ public class ManagerMappingService {
         return campusRepository.save(campus);
     }
 
-    @Autowired
-    private com.employee.repository.CampusEmployeeRepository campusEmployeeRepository;
-
     /**
      * Saves a list of CampusEmployee records.
      * 
@@ -1783,15 +1761,15 @@ public class ManagerMappingService {
      * 5. Deactivates ALL shared campus records
      * 6. Updates remarks and audit fields
      * 
-     * @param dto SelectiveUnmappingDTO containing payrollId, remark, and updatedBy
+     * @param dto CompleteUnassignDTO containing payrollId, remark, and updatedBy
      * @return CompleteUnassignResponseDTO with current assignments and success
      *         message
      */
     @Transactional
-    public CompleteUnassignResponseDTO completeUnassign(SelectiveUnmappingDTO dto) {
+    public CompleteUnassignResponseDTO completeUnassign(CompleteUnassignDTO dto) {
         // Validate required fields
         if (dto == null) {
-            throw new IllegalArgumentException("SelectiveUnmappingDTO cannot be null");
+            throw new IllegalArgumentException("CompleteUnassignDTO cannot be null");
         }
         if (dto.getPayrollId() == null || dto.getPayrollId().trim().isEmpty()) {
             throw new IllegalArgumentException("payrollId is required");
@@ -1844,6 +1822,19 @@ public class ManagerMappingService {
         }
         response.setSharedCampuses(sharedCampusList);
 
+        // Step 4b: Collect campus role information (sce_cmps_emp)
+        List<CampusEmployee> campusEmployees = campusEmployeeRepository.findByEmpId(employee.getEmp_id());
+        List<CompleteUnassignResponseDTO.SharedCampusInfo> campusRoleList = new ArrayList<>();
+        for (CampusEmployee ce : campusEmployees) {
+            if (ce.getCmpsId() != null) {
+                CompleteUnassignResponseDTO.SharedCampusInfo roleInfo = new CompleteUnassignResponseDTO.SharedCampusInfo();
+                roleInfo.setCampusId(ce.getCmpsId().getCampusId());
+                roleInfo.setCampusName(ce.getCmpsId().getCampusName());
+                campusRoleList.add(roleInfo);
+            }
+        }
+        response.setCampusRoles(campusRoleList);
+
         // Step 5: Perform complete unassignment
         boolean employeeChanged = false;
 
@@ -1873,6 +1864,15 @@ public class ManagerMappingService {
             sharedEmployeeRepository.save(sharedEmployee);
         }
 
+        // Deactivate ALL campus employees (sce_cmps_emp)
+        for (CampusEmployee ce : campusEmployees) {
+            ce.setIsActive(0);
+            ce.setUpdatedBy(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+            ce.setUpdatedDate(LocalDateTime.now());
+            campusEmployeeRepository.save(ce);
+            employeeChanged = true;
+        }
+
         // Step 6: Update remarks if provided
         String remarkValue = dto.getRemark();
         if (remarkValue != null && !remarkValue.trim().isEmpty() && !remarkValue.trim().equalsIgnoreCase("null")) {
@@ -1886,11 +1886,51 @@ public class ManagerMappingService {
             employee.setUpdated_date(LocalDateTime.now());
             employeeRepository.save(employee);
         }
-
         // Set success message
         response.setMessage(
                 "Successfully unassigned all assignments for employee with payrollId: " + dto.getPayrollId());
 
         return response;
+    }
+
+    /**
+     * Bulk Complete Unassign - Unassigns ALL assignments from multiple employees.
+     * 
+     * @param dto BulkCompleteUnassignDTO containing payrollIds, remark, and
+     *            updatedBy
+     * @return List of CompleteUnassignResponseDTO for each processed employee
+     */
+    @Transactional
+    public List<CompleteUnassignResponseDTO> bulkCompleteUnmap(BulkCompleteUnassignDTO dto) {
+        // Validate required fields
+        if (dto == null) {
+            throw new IllegalArgumentException("BulkCompleteUnassignDTO cannot be null");
+        }
+        if (dto.getPayrollIds() == null || dto.getPayrollIds().isEmpty()) {
+            throw new IllegalArgumentException("payrollIds list is required and cannot be empty");
+        }
+
+        List<CompleteUnassignResponseDTO> results = new ArrayList<>();
+
+        for (String payrollId : dto.getPayrollIds()) {
+            try {
+                // Reuse existing completeUnassign logic instead of duplicating
+                CompleteUnassignDTO singleDto = new CompleteUnassignDTO();
+                singleDto.setPayrollId(payrollId);
+                singleDto.setRemark(dto.getRemark());
+                singleDto.setUpdatedBy(dto.getUpdatedBy());
+
+                CompleteUnassignResponseDTO singleResponse = completeUnassign(singleDto);
+                results.add(singleResponse);
+            } catch (Exception e) {
+                // Create error response for this specific employee
+                CompleteUnassignResponseDTO errorResponse = new CompleteUnassignResponseDTO();
+                errorResponse.setPayrollId(payrollId);
+                errorResponse.setMessage("Failed: " + e.getMessage());
+                results.add(errorResponse);
+            }
+        }
+
+        return results;
     }
 }

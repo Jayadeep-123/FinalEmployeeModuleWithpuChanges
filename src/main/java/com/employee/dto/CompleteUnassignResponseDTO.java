@@ -59,6 +59,11 @@ public class CompleteUnassignResponseDTO {
     private List<SharedCampusInfo> sharedCampuses;
 
     /**
+     * List of campus roles from sce_cmps_emp (before unassignment)
+     */
+    private List<SharedCampusInfo> campusRoles;
+
+    /**
      * Success message
      */
     private String message;

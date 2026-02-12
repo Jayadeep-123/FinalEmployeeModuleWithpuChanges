@@ -19,9 +19,11 @@ import com.employee.dto.BulkManagerMappingDTO;
 import com.employee.dto.BulkUnmappingDTO;
 import com.employee.dto.CompleteUnassignDTO;
 import com.employee.dto.CompleteUnassignResponseDTO;
+import com.employee.dto.BulkCompleteUnassignDTO;
 import com.employee.dto.EmployeeBatchCampusDTO;
 import com.employee.dto.EmployeeCampusAddressDTO;
 import com.employee.dto.ManagerMappingDTO;
+import com.employee.dto.SelectiveBulkUnmappingDTO;
 import com.employee.dto.SelectiveUnmappingDTO;
 import com.employee.dto.UnmappingDTO;
 import com.employee.service.ManagerMappingService;
@@ -208,6 +210,50 @@ public class ManagerMappingController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    /**
+     * POST endpoint to selectively unmap manager and/or reporting manager from
+     * multiple employees in bulk.
+     * Uses boolean flags to control what gets unmapped.
+     * 
+     * @param dto Request body containing cityId, campusIds, payrollIds,
+     *            unmapManager, managerId, unmapReportingManager,
+     *            reportingManagerId, lastDate, remark, and updatedBy
+     * @return The same SelectiveBulkUnmappingDTO that was passed in
+     */
+    @PostMapping("/unmap-multiple-employees-selective")
+    public ResponseEntity<SelectiveBulkUnmappingDTO> unmapMultipleEmployeesSelective(
+            @RequestBody SelectiveBulkUnmappingDTO dto) {
+        logger.info("Received enhanced bulk unmapping request for {} payrollIds",
+                dto.getPayrollIds() != null ? dto.getPayrollIds().size() : 0);
+
+        SelectiveBulkUnmappingDTO response = managerMappingService.selectiveUnmapMultipleEmployees(dto);
+
+        logger.info("Successfully processed enhanced bulk unmapping for {} payrollIds",
+                response.getPayrollIds() != null ? response.getPayrollIds().size() : 0);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    /**
+     * POST endpoint to complete unassign assignments for multiple employees in
+     * bulk.
+     * Clears manager, reporting manager, primary campus, and all shared campuses.
+     * 
+     * @param dto BulkCompleteUnassignDTO containing payrollIds, remark, and
+     *            updatedBy
+     * @return Success message
+     */
+    @PostMapping("/bulk-complete-unmap")
+    public ResponseEntity<List<CompleteUnassignResponseDTO>> bulkCompleteUnmap(
+            @RequestBody BulkCompleteUnassignDTO dto) {
+        logger.info("Received bulk complete unassign request for {} payrollIds",
+                dto.getPayrollIds() != null ? dto.getPayrollIds().size() : 0);
+
+        List<CompleteUnassignResponseDTO> response = managerMappingService.bulkCompleteUnmap(dto);
+
+        logger.info("Successfully processed bulk complete unassignment");
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @PostMapping("/batch-campus-address")
     public ResponseEntity<List<EmployeeBatchCampusDTO>> getBatchCampusAddresses(
             @RequestBody List<String> payrollIds) {
@@ -297,7 +343,7 @@ public class ManagerMappingController {
      *         message
      */
     @PostMapping("/complete-unassign")
-    public ResponseEntity<CompleteUnassignResponseDTO> completeUnassign(@RequestBody SelectiveUnmappingDTO dto) {
+    public ResponseEntity<CompleteUnassignResponseDTO> completeUnassign(@RequestBody CompleteUnassignDTO dto) {
         logger.info("Received complete unassign request for payrollId: {}", dto.getPayrollId());
 
         // Perform complete unassignment (validation and exception handling done in

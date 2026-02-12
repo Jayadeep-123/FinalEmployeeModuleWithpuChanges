@@ -8,7 +8,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO for Bulk Unmapping request.
+ * DTO for Selective Bulk Unmapping request.
+ * 
+ * Uses boolean flags to control what gets unmapped:
+ * - unmapManager: If true, removes manager assignment
+ * - unmapReportingManager: If true, removes reporting manager assignment
  * 
  * Always use campusIds array:
  * - Single Campus: campusIds with 1 item
@@ -17,18 +21,35 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BulkUnmappingDTO {
+public class SelectiveBulkUnmappingDTO {
 
     private Integer cityId;
 
     // Always use this array - even for single campus
-    // Single campus: [ campusId1 ]
-    // Multiple campuses: [ campusId1, campusId2, ... ]
     private List<Integer> campusIds;
 
     private List<String> payrollIds;
+
+    /**
+     * If true, remove manager assignment
+     */
+    private Boolean unmapManager = false;
+
+    /**
+     * Manager ID to verify before unmapping (optional)
+     */
     private Integer managerId;
+
+    /**
+     * If true, remove reporting manager assignment
+     */
+    private Boolean unmapReportingManager = false;
+
+    /**
+     * Reporting Manager ID to verify before unmapping (optional)
+     */
     private Integer reportingManagerId;
+
     private Date lastDate;
     private String remark;
     private Integer updatedBy;
