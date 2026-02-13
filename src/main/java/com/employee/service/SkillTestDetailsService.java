@@ -168,9 +168,19 @@ public class SkillTestDetailsService {
         Employee employee = employeeRepository.findById(emp_id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
-        Campus campus = employee.getCampus_id();
+        Campus campus = null;
+
+        // PRIORITIZE SELECTED CAMPUS FROM REQUEST
+        if (requestDto.getCmpsId() != null && requestDto.getCmpsId() > 0) {
+            campus = campusrepository.findById(requestDto.getCmpsId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Selected Campus not found"));
+        } else {
+            // FALLBACK TO EMPLOYEE'S CAMPUS
+            campus = employee.getCampus_id();
+        }
+
         if (campus == null) {
-            throw new ResourceNotFoundException("Employee has no campus assigned");
+            throw new ResourceNotFoundException("No campus specified and Employee has no campus assigned");
         }
 
         // === Generate TempPayrollId ===
