@@ -16,4 +16,6 @@ public class IncompletedStatusDTO {
     private String tempPayrollId; // REQUIRED - To find employee by temp_payroll_id
 
     private String remarks; // REQUIRED - Reason for marking as incompleted
+
+    private Integer updatedBy;
 }

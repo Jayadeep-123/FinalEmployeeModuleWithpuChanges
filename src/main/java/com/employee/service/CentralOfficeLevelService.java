@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -20,7 +19,6 @@ import com.employee.entity.Campus;
 import com.employee.entity.City;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeCheckListStatus;
-import com.employee.entity.EmpSalaryInfo;
 import com.employee.entity.Organization;
 import com.employee.exception.ResourceNotFoundException;
 import com.employee.repository.CampusRepository;
@@ -180,6 +178,8 @@ public class CentralOfficeLevelService {
         }
 
         // Step 7: Save all changes to the Employee table
+        employee.setUpdated_by(checklistDTO.getUpdatedBy());
+        employee.setUpdated_date(java.time.LocalDateTime.now());
         employeeRepository.save(employee);
 
         logger.info("Successfully updated checklist for employee (emp_id: {}, temp_payroll_id: '{}')", empId,
@@ -501,6 +501,8 @@ public class CentralOfficeLevelService {
         }
 
         // Save employee updates (status and remarks)
+        employee.setUpdated_by(rejectDTO.getUpdatedBy());
+        employee.setUpdated_date(java.time.LocalDateTime.now());
         employeeRepository.save(employee);
 
         logger.info(
@@ -535,7 +537,7 @@ public class CentralOfficeLevelService {
                     "'. Only employees with 'Pending at DO' status can be rejected by the Divisional Office.");
         }
 
-        updateEmployeeStatusAndRemarks(employee, "Rejected by DO", rejectDTO.getRemarks());
+        updateEmployeeStatusAndRemarks(employee, "Rejected by DO", rejectDTO.getRemarks(), rejectDTO.getUpdatedBy());
         return rejectDTO;
     }
 
@@ -563,7 +565,7 @@ public class CentralOfficeLevelService {
                     "'. Only employees with 'Pending at CO' status can be rejected by the Central Office.");
         }
 
-        updateEmployeeStatusAndRemarks(employee, "Rejected by CO", rejectDTO.getRemarks());
+        updateEmployeeStatusAndRemarks(employee, "Rejected by CO", rejectDTO.getRemarks(), rejectDTO.getUpdatedBy());
         return rejectDTO;
     }
 
@@ -591,13 +593,16 @@ public class CentralOfficeLevelService {
         }
     }
 
-    private void updateEmployeeStatusAndRemarks(Employee employee, String statusName, String remarks) {
+    private void updateEmployeeStatusAndRemarks(Employee employee, String statusName, String remarks,
+            Integer updatedBy) {
         EmployeeCheckListStatus status = employeeCheckListStatusRepository.findByCheck_app_status_name(statusName)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "EmployeeCheckListStatus with name '" + statusName + "' not found"));
 
         employee.setEmp_check_list_status_id(status);
         employee.setRemarks(remarks.trim());
+        employee.setUpdated_by(updatedBy);
+        employee.setUpdated_date(java.time.LocalDateTime.now());
         employeeRepository.save(employee);
 
         logger.info("Successfully updated employee (temp_payroll_id: '{}') to status '{}'",
@@ -651,6 +656,8 @@ public class CentralOfficeLevelService {
         employee.setRemarks(statusDTO.getRemarks().trim());
 
         // Save
+        employee.setUpdated_by(statusDTO.getUpdatedBy());
+        employee.setUpdated_date(java.time.LocalDateTime.now());
         employeeRepository.save(employee);
 
         logger.info("Successfully updated status to 'Incompleted' for temp_payroll_id: '{}'",
@@ -673,7 +680,8 @@ public class CentralOfficeLevelService {
         }
 
         String role = dto.getRole().trim().toUpperCase();
-        RejectEmployeeDTO rejectDto = new RejectEmployeeDTO(dto.getTempPayrollId(), dto.getRemarks());
+        RejectEmployeeDTO rejectDto = new RejectEmployeeDTO(dto.getTempPayrollId(), dto.getRemarks(),
+                dto.getUpdatedBy());
 
         if ("DO".equals(role)) {
             logger.info("Delegating to rejectByDO for temp_payroll_id: {}", dto.getTempPayrollId());

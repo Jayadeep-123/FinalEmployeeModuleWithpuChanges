@@ -16,4 +16,5 @@ public class RejectEmployeeByRoleDTO {
     private String tempPayrollId; // REQUIRED
     private String remarks; // REQUIRED
     private String role; // REQUIRED - "DO" or "CO"
+    private Integer updatedBy;
 }

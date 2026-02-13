@@ -867,11 +867,14 @@ public class EmpSalaryInfoService {
 
         if (existingSalaryInfoOpt.isPresent()) {
             empSalaryInfo = existingSalaryInfoOpt.get();
+            empSalaryInfo.setUpdatedBy(salaryInfoDTO.getUpdatedBy());
             empSalaryInfo.setUpdatedDate(LocalDateTime.now());
         } else {
             empSalaryInfo = new EmpSalaryInfo();
             empSalaryInfo.setEmpId(employee);
-            if (employee.getCreated_by() != null) {
+            if (salaryInfoDTO.getUpdatedBy() != null) {
+                empSalaryInfo.setCreatedBy(salaryInfoDTO.getUpdatedBy());
+            } else if (employee.getCreated_by() != null) {
                 empSalaryInfo.setCreatedBy(employee.getCreated_by());
             }
             empSalaryInfo.setCreatedDate(LocalDateTime.now());
@@ -939,9 +942,11 @@ public class EmpSalaryInfoService {
             empPfDetails.setEmployee_id(employee);
             empPfDetails.setIs_active(1);
             if (empPfDetails.getEmp_pf_esi_uan_info_id() == 0) {
-                empPfDetails.setCreated_by(employee.getCreated_by() != null ? employee.getCreated_by() : 1);
+                empPfDetails.setCreated_by(salaryInfoDTO.getUpdatedBy() != null ? salaryInfoDTO.getUpdatedBy()
+                        : (employee.getCreated_by() != null ? employee.getCreated_by() : 1));
                 empPfDetails.setCreated_date(LocalDateTime.now());
             } else {
+                empPfDetails.setUpdated_by(salaryInfoDTO.getUpdatedBy());
                 empPfDetails.setUpdated_date(LocalDateTime.now());
             }
             empPfDetailsRepository.save(empPfDetails);
@@ -967,6 +972,7 @@ public class EmpSalaryInfoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Status 'Pending at CO' not found"));
         employee.setEmp_check_list_status_id(pendingStatus);
         employee.setRemarks(null);
+        employee.setUpdated_by(salaryInfoDTO.getUpdatedBy());
         employee.setUpdated_date(LocalDateTime.now());
         employeeRepository.save(employee);
 
@@ -1380,6 +1386,7 @@ public class EmpSalaryInfoService {
 
         employee.setEmp_check_list_status_id(pendingAtCOStatus);
         employee.setRemarks(null);
+        employee.setUpdated_by(dto.getUpdatedBy());
         employee.setUpdated_date(LocalDateTime.now());
 
         employeeRepository.save(employee);
@@ -1448,12 +1455,14 @@ public class EmpSalaryInfoService {
 
         if (existingSalaryInfoOpt.isPresent()) {
             empSalaryInfo = existingSalaryInfoOpt.get();
-            empSalaryInfo.setUpdatedBy(1); // Set a default updatedBy
+            empSalaryInfo.setUpdatedBy(dto.getUpdatedBy());
             empSalaryInfo.setUpdatedDate(LocalDateTime.now());
         } else {
             empSalaryInfo = new EmpSalaryInfo();
             empSalaryInfo.setEmpId(employee);
-            if (employee.getCreated_by() != null) {
+            if (dto.getUpdatedBy() != null) {
+                empSalaryInfo.setCreatedBy(dto.getUpdatedBy());
+            } else if (employee.getCreated_by() != null) {
                 empSalaryInfo.setCreatedBy(employee.getCreated_by());
             } else {
                 empSalaryInfo.setCreatedBy(1); // Default
@@ -1524,10 +1533,11 @@ public class EmpSalaryInfoService {
             empPfDetails.setEmployee_id(employee);
             empPfDetails.setIs_active(1);
             if (empPfDetails.getEmp_pf_esi_uan_info_id() == 0) {
-                empPfDetails.setCreated_by(employee.getCreated_by() != null ? employee.getCreated_by() : 1);
+                empPfDetails.setCreated_by(dto.getUpdatedBy() != null ? dto.getUpdatedBy()
+                        : (employee.getCreated_by() != null ? employee.getCreated_by() : 1));
                 empPfDetails.setCreated_date(LocalDateTime.now());
             } else {
-                empPfDetails.setUpdated_by(1); // Default
+                empPfDetails.setUpdated_by(dto.getUpdatedBy());
                 empPfDetails.setUpdated_date(LocalDateTime.now());
             }
             empPfDetailsRepository.save(empPfDetails);
@@ -1539,6 +1549,7 @@ public class EmpSalaryInfoService {
                     .orElseThrow(
                             () -> new ResourceNotFoundException("Organization not found with ID: " + dto.getOrgId()));
             employee.setOrg_id(org);
+            employee.setUpdated_by(dto.getUpdatedBy());
             employee.setUpdated_date(LocalDateTime.now());
             employeeRepository.save(employee);
             logger.info("Updated Organization (org_id: {}) for employee: {}", dto.getOrgId(), dto.getTempPayrollId());

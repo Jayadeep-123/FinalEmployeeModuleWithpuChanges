@@ -16,4 +16,6 @@ public class RejectEmployeeDTO {
     private String tempPayrollId; // REQUIRED - To find employee by temp_payroll_id
 
     private String remarks; // REQUIRED - Reason for rejection
+
+    private Integer updatedBy;
 }

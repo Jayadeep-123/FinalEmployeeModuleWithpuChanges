@@ -38,4 +38,6 @@ public class SalaryInfoSaveAtCODTO {
     private java.sql.Date pfJoinDate; // Optional
     private Long esiNo; // Optional
     private Long uanNo; // Optional
+
+    private Integer updatedBy;
 }

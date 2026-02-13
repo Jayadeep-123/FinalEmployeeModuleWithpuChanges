@@ -385,7 +385,7 @@ public class EmployeeRemainingTabService {
                         "Vice Principal".equalsIgnoreCase(roleName));
 
                 if (isAllowedRole) {
-                    changeStatusToPendingAtDO(employee);
+                    changeStatusToPendingAtDO(employee, updatedBy);
                     logger.info("School category with allowed role '{}' - status changed to 'Pending at DO'", roleName);
                 } else {
                     logger.info("School category with role '{}' - status remains unchanged. Current status: {}",
@@ -397,7 +397,7 @@ public class EmployeeRemainingTabService {
             } else {
                 // Category is "college" or any other (or null) - change status to "Pending at
                 // DO"
-                changeStatusToPendingAtDO(employee);
+                changeStatusToPendingAtDO(employee, updatedBy);
                 logger.info("Category is '{}' - status changed to 'Pending at DO'",
                         categoryName != null ? categoryName : "null/not provided");
             }
@@ -430,7 +430,7 @@ public class EmployeeRemainingTabService {
      * @param tempPayrollId The temp payroll ID of the employee
      * @return Success message
      */
-    public String pendingAtDO(String tempPayrollId) {
+    public String pendingAtDO(String tempPayrollId, Integer updatedBy) {
         if (tempPayrollId == null || tempPayrollId.trim().isEmpty()) {
             throw new ResourceNotFoundException("tempPayrollId is required.");
         }
@@ -452,7 +452,7 @@ public class EmployeeRemainingTabService {
         }
 
         // Update status and clear remarks
-        changeStatusToPendingAtDO(employee);
+        changeStatusToPendingAtDO(employee, updatedBy);
         employee.setRemarks(null);
         employeeRepository.save(employee);
 
@@ -533,6 +533,10 @@ public class EmployeeRemainingTabService {
                             "' (emp_id: " + empId + ", temp_payroll_id: '" + tempPayrollId +
                             "'). This method only works when employee status is 'Incompleted' or 'Back to Campus'.");
         }
+
+        Integer auditUser = requestDTO.getUpdatedBy() != null && requestDTO.getUpdatedBy() > 0
+                ? requestDTO.getUpdatedBy()
+                : requestDTO.getCreatedBy();
 
         logger.info("Employee (emp_id: {}) current status is '{}', proceeding with forward to Divisional Office", empId,
                 currentStatusName);
@@ -744,14 +748,10 @@ public class EmployeeRemainingTabService {
 
         // Step 5: Update app status to "Pending at DO" when forwarding to Divisional
         // Office
-        EmployeeCheckListStatus pendingAtDOStatus = employeeCheckListStatusRepository
-                .findByCheck_app_status_name("Pending at DO")
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "EmployeeCheckListStatus with name 'Pending at DO' not found"));
-        employee.setEmp_check_list_status_id(pendingAtDOStatus);
+        changeStatusToPendingAtDO(employee, auditUser);
         logger.info(
-                "Updated employee (emp_id: {}) app status to 'Pending at DO' (ID: {}) when forwarding to divisional office",
-                empId, pendingAtDOStatus.getEmp_app_status_id());
+                "Updated employee (emp_id: {}) app status to 'Pending at DO' when forwarding to divisional office",
+                empId);
 
         // Step 6: Clear remarks when forwarding to divisional office (after
         // rectification)
@@ -851,11 +851,16 @@ public class EmployeeRemainingTabService {
     /**
      * Helper: Change employee status to "Pending at DO"
      */
-    private void changeStatusToPendingAtDO(Employee employee) {
+    private void changeStatusToPendingAtDO(Employee employee, Integer updatedBy) {
         EmployeeCheckListStatus pendingAtDOStatus = employeeCheckListStatusRepository
                 .findByCheck_app_status_name("Pending at DO").orElseThrow(() -> new ResourceNotFoundException(
                         "EmployeeCheckListStatus with name 'Pending at DO' not found"));
         employee.setEmp_check_list_status_id(pendingAtDOStatus);
+
+        if (updatedBy != null && updatedBy > 0) {
+            employee.setUpdated_by(updatedBy);
+            employee.setUpdated_date(java.time.LocalDateTime.now());
+        }
     }
 
     // ============================================================================

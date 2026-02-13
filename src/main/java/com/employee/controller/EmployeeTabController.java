@@ -226,8 +226,10 @@ public class EmployeeTabController {
      * @return Success message
      */
     @PostMapping("/pending-at-do/{tempPayrollId}")
-    public ResponseEntity<String> pendingAtDO(@PathVariable String tempPayrollId) {
-        String message = employeeRemainingTabService.pendingAtDO(tempPayrollId);
+    public ResponseEntity<String> pendingAtDO(
+            @PathVariable String tempPayrollId,
+            @RequestParam(required = false) Integer updatedBy) {
+        String message = employeeRemainingTabService.pendingAtDO(tempPayrollId, updatedBy);
         return new ResponseEntity<>(message, HttpStatus.OK);
     }
 }
