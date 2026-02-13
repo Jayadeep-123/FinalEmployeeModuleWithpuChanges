@@ -104,6 +104,9 @@ public class SkillTestDetailsService {
     @Autowired
     private OrientationGroupRepository orientationGroupRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${spring.datasource.url}")
+    private String dbUrl;
+
     private Map<String, AtomicInteger> campusCounters = new ConcurrentHashMap<>();
 
     @PostConstruct
@@ -133,6 +136,13 @@ public class SkillTestDetailsService {
                 }
             } catch (Exception e) {
                 log.error("Error for key {}: {}", baseKey, e.getMessage());
+            }
+
+            // QA Sequence Start Logic
+            if (dbUrl != null && dbUrl.contains("20.21")) {
+                if (lastValue < 10001) {
+                    lastValue = 10001;
+                }
             }
             campusCounters.put(baseKey, new AtomicInteger(lastValue));
         }
@@ -182,6 +192,14 @@ public class SkillTestDetailsService {
         }
 
         int nextValue = maxValue + 1;
+
+        // QA Sequence Start Logic
+        if (dbUrl != null && dbUrl.contains("20.21")) {
+            if (nextValue < 10001) {
+                nextValue = 10001;
+            }
+        }
+
         String generatedTempPayrollId = baseKey + String.format("%04d", nextValue);
         campusCounters.computeIfAbsent(baseKey, k -> new AtomicInteger(0)).set(nextValue);
 
@@ -355,7 +373,7 @@ public class SkillTestDetailsService {
         }
         if (entity.getSubject() != null) {
             dto.setSubjectId(entity.getSubject().getSubject_id());
-            dto.setSubjectName(entity.getSubject().getSubject_name());
+            dto.setSubjectName(entity.getSubject().getSubject_name().replaceAll("\\s+$", ""));
         }
         if (entity.getEmployeeLevel() != null) {
             dto.setEmp_level_id(entity.getEmployeeLevel().getEmp_level_id());
