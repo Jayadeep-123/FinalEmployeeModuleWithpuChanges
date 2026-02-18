@@ -21,4 +21,7 @@ public class CampusDetailDTO {
     private String designationName;
     private Integer roleId;
     private String roleName;
+
+    private String campusContact;
+    private String campusEmail;
 }

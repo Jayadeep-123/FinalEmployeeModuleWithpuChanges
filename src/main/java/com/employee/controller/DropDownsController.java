@@ -95,6 +95,17 @@ public class DropDownsController {
 		return ResponseEntity.ok(employeeTypes);
 	}
 
+	@GetMapping("/employee-type-hiring")
+	public ResponseEntity<?> getEmployeeTypeHiringTypes() {
+		List<GenericDropdownDTO> hiringTypes = empDropdownService.getEmployeeTypeHiringTypes();
+
+		if (hiringTypes == null || hiringTypes.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No active employee hiring types found");
+		}
+
+		return ResponseEntity.ok(hiringTypes);
+	}
+
 	@GetMapping("/countries")
 	public ResponseEntity<?> getCountries() {
 		List<GenericDropdownDTO> countries = empDropdownService.getCountries();
@@ -117,13 +128,14 @@ public class DropDownsController {
 		return ResponseEntity.ok(paymentTypes);
 	}
 
-	@GetMapping({ "/department", "/department/{empTypeId}" }) 
-	public ResponseEntity<?> getDepartments(@RequestParam(required = false)  Integer empTypeId) {
-	    
-	    // The service determines whether to fetch ALL or FILTER based on if empTypeId is null
-	    List<GenericDropdownDTO> departments = empDropdownService.getDepartments(empTypeId);
+	@GetMapping({ "/department", "/department/{empTypeId}" })
+	public ResponseEntity<?> getDepartments(@RequestParam(required = false) Integer empTypeId) {
 
-	    return ResponseEntity.ok(departments);
+		// The service determines whether to fetch ALL or FILTER based on if empTypeId
+		// is null
+		List<GenericDropdownDTO> departments = empDropdownService.getDepartments(empTypeId);
+
+		return ResponseEntity.ok(departments);
 	}
 
 	@GetMapping("/designation/{departmentId}")
@@ -545,10 +557,11 @@ public class DropDownsController {
 
 		return ResponseEntity.ok(employees);
 	}
+
 	@GetMapping("/designationsByEmpTypeId")
 	public List<GenericDropdownDTO> getDesignationsByEmployeeType(
-	        @RequestParam(required = false) Integer empTypeId) {
- 
-	    return empDropdownService.getDesignationsByEmployeeType(empTypeId);
+			@RequestParam(required = false) Integer empTypeId) {
+
+		return empDropdownService.getDesignationsByEmployeeType(empTypeId);
 	}
 }

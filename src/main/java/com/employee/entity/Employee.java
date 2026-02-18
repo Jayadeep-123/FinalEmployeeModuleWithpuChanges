@@ -179,4 +179,8 @@ public class Employee {
 	@Column(name = "ssc_no")
 	private Long ssc_no; // SSC number - moved from EmpDocuments to Employee table
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "emp_type_hiring_id")
+	private EmployeeTypeHiring employee_type_hiring_id;
+
 }

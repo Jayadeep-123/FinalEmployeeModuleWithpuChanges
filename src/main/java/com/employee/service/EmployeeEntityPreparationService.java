@@ -2,8 +2,6 @@ package com.employee.service;
 
 import java.time.LocalDateTime;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,40 +14,23 @@ import com.employee.entity.Employee;
 import com.employee.entity.EmployeeCheckListStatus;
 import com.employee.entity.EmployeeStatus;
 import com.employee.exception.ResourceNotFoundException;
-import com.employee.repository.BankDetailsRepository;
 import com.employee.repository.BloodGroupRepository;
 import com.employee.repository.BuildingRepository;
 import com.employee.repository.CampusRepository;
 import com.employee.repository.CasteRepository;
 import com.employee.repository.CategoryRepository;
-import com.employee.repository.CityRepository;
-import com.employee.repository.CountryRepository;
-import com.employee.repository.DepartmentRepository;
-import com.employee.repository.DesignationRepository;
-import com.employee.repository.EmpChequeDetailsRepository;
-import com.employee.repository.EmpDocTypeRepository;
-import com.employee.repository.EmpDocumentsRepository;
-import com.employee.repository.EmpExperienceDetailsRepository;
-import com.employee.repository.EmpFamilyDetailsRepository;
-import com.employee.repository.EmpPaymentTypeRepository;
-import com.employee.repository.EmpQualificationRepository;
-import com.employee.repository.EmpaddressInfoRepository;
 import com.employee.repository.EmployeeCheckListStatusRepository;
 import com.employee.repository.EmployeeRepository;
 import com.employee.repository.EmployeeStatusRepository;
+import com.employee.repository.EmployeeTypeHiringRepository;
 import com.employee.repository.EmployeeTypeRepository;
 import com.employee.repository.GenderRepository;
 import com.employee.repository.JoiningAsRepository;
 import com.employee.repository.MaritalStatusRepository;
 import com.employee.repository.ModeOfHiringRepository;
-import com.employee.repository.OccupationRepository;
-import com.employee.repository.OrgBankBranchRepository;
-import com.employee.repository.OrgBankRepository;
-import com.employee.repository.QualificationDegreeRepository;
 import com.employee.repository.QualificationRepository;
 import com.employee.repository.RelationRepository;
 import com.employee.repository.RelegionRepository;
-import com.employee.repository.StateRepository;
 import com.employee.repository.WorkingModeRepository;
 
 /**
@@ -60,14 +41,6 @@ import com.employee.repository.WorkingModeRepository;
 @Service
 public class EmployeeEntityPreparationService {
 
-    private static final Logger logger = LoggerFactory.getLogger(EmployeeEntityPreparationService.class);
-
-    @Autowired
-    private CountryRepository countryRepository;
-    @Autowired
-    private StateRepository stateRepository;
-    @Autowired
-    private CityRepository cityRepository;
     @Autowired
     private RelationRepository relationRepository;
     @Autowired
@@ -75,31 +48,11 @@ public class EmployeeEntityPreparationService {
     @Autowired
     private BloodGroupRepository bloodGroupRepository;
     @Autowired
-    private EmpDocTypeRepository empDocTypeRepository;
-    @Autowired
     private QualificationRepository qualificationRepository;
-    @Autowired
-    private QualificationDegreeRepository qualificationDegreeRepository;
     @Autowired
     private EmployeeRepository employeeRepository;
     @Autowired
-    private EmpaddressInfoRepository empaddressInfoRepository;
-    @Autowired
-    private EmpFamilyDetailsRepository empFamilyDetailsRepository;
-    @Autowired
-    private EmpExperienceDetailsRepository empExperienceDetailsRepository;
-    @Autowired
-    private EmpQualificationRepository empQualificationRepository;
-    @Autowired
-    private EmpDocumentsRepository empDocumentsRepository;
-    @Autowired
-    private BankDetailsRepository bankDetailsRepository;
-    @Autowired
     private CampusRepository campusRepository;
-    @Autowired
-    private DepartmentRepository departmentRepository;
-    @Autowired
-    private DesignationRepository designationRepository;
     @Autowired
     private EmployeeTypeRepository employeeTypeRepository;
     @Autowired
@@ -121,17 +74,9 @@ public class EmployeeEntityPreparationService {
     @Autowired
     private ModeOfHiringRepository modeOfHiringRepository;
     @Autowired
-    private EmpPaymentTypeRepository empPaymentTypeRepository;
-    @Autowired
-    private OccupationRepository occupationRepository;
-    @Autowired
-    private OrgBankRepository orgBankRepository;
-    @Autowired
-    private OrgBankBranchRepository orgBankBranchRepository;
-    @Autowired
-    private EmpChequeDetailsRepository empChequeDetailsRepository;
-    @Autowired
     private BuildingRepository buildingRepository;
+    @Autowired
+    private EmployeeTypeHiringRepository employeeTypeHiringRepository;
 
     public EmpPfDetails prepareEmpPfDetailsEntity(BasicInfoDTO basicInfo, Employee employee, Integer createdBy) {
         if (basicInfo == null)
@@ -190,24 +135,33 @@ public class EmployeeEntityPreparationService {
         }
         // Set created_date - required field (NOT NULL constraint)
         employee.setCreated_date(LocalDateTime.now());
-        if (basicInfo.getCampusId() != null) {
-            employee.setCampus_id(campusRepository.findByCampusIdAndIsActive(basicInfo.getCampusId(), 1)
+        Integer campusId = basicInfo.getCampusId();
+        if (campusId != null) {
+            employee.setCampus_id(campusRepository.findByCampusIdAndIsActive(campusId, 1)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Active Campus not found with ID: " + basicInfo.getCampusId())));
+                            "Active Campus not found with ID: " + campusId)));
         }
-        if (basicInfo.getBuildingId() != null && basicInfo.getBuildingId() > 0) {
-            Building building = buildingRepository.findById(basicInfo.getBuildingId())
+        // Update building_id - optional field
+        Integer buildingId = basicInfo.getBuildingId();
+        if (buildingId != null && buildingId > 0) {
+            Building building = buildingRepository.findById(buildingId)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Building not found with ID: " + basicInfo.getBuildingId()));
-            if (building.getIsActive() != 1)
+                            "Building not found with ID: " + buildingId));
+            // Validate building is active
+            if (building.getIsActive() != 1) {
                 throw new ResourceNotFoundException(
-                        "Building with ID: " + basicInfo.getBuildingId() + " is not active");
+                        "Building with ID: " + buildingId + " is not active");
+            }
             employee.setBuilding_id(building);
+        } else if (buildingId != null && buildingId == 0) {
+            // If buildingId is 0, it means no building is selected, so set to null
+            employee.setBuilding_id(null);
         } else {
             employee.setBuilding_id(null);
         }
-        if (basicInfo.getGenderId() != null) {
-            employee.setGender(genderRepository.findByIdAndIsActive(basicInfo.getGenderId(), 1)
+        Integer genderId = basicInfo.getGenderId();
+        if (genderId != null) {
+            employee.setGender(genderRepository.findByIdAndIsActive(genderId, 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active Gender not found")));
         }
         if (basicInfo.getCategoryId() != null) {
@@ -232,17 +186,19 @@ public class EmployeeEntityPreparationService {
             employee.setJoin_type_id(joiningAsRepository.findByIdAndIsActive(basicInfo.getJoinTypeId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active JoiningAs not found")));
             if (basicInfo.getJoinTypeId() == 3) {
-                if (basicInfo.getReplacedByEmpId() == null || basicInfo.getReplacedByEmpId() <= 0) {
+                Integer replacedId = basicInfo.getReplacedByEmpId();
+                if (replacedId == null || replacedId <= 0) {
                     throw new ResourceNotFoundException(
                             "replacedByEmpId is required when joinTypeId is 3 (Replacement).");
                 }
                 employee.setEmployee_replaceby_id(employeeRepository
-                        .findById(basicInfo.getReplacedByEmpId())
+                        .findById(replacedId)
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Replacement Employee not found with ID: " + basicInfo.getReplacedByEmpId())));
+                                "Replacement Employee not found with ID: " + replacedId)));
             } else if (basicInfo.getReplacedByEmpId() != null && basicInfo.getReplacedByEmpId() > 0) {
+                Integer replacedId = basicInfo.getReplacedByEmpId();
                 employee.setEmployee_replaceby_id(
-                        employeeRepository.findById(basicInfo.getReplacedByEmpId()).orElse(null));
+                        employeeRepository.findById(replacedId).orElse(null));
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
@@ -269,6 +225,10 @@ public class EmployeeEntityPreparationService {
         if (basicInfo.getModeOfHiringId() != null) {
             employee.setModeOfHiring_id(modeOfHiringRepository.findByIdAndIsActive(basicInfo.getModeOfHiringId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active ModeOfHiring not found")));
+        }
+        if (basicInfo.getEmpTypeHiringId() != null) {
+            employee.setEmployee_type_hiring_id(employeeTypeHiringRepository.findById(basicInfo.getEmpTypeHiringId())
+                    .orElseThrow(() -> new ResourceNotFoundException("EmployeeTypeHiring not found")));
         }
         EmployeeCheckListStatus pendingAtDOStatus = employeeCheckListStatusRepository
                 .findByCheck_app_status_name("Pending at DO")
@@ -331,8 +291,9 @@ public class EmployeeEntityPreparationService {
             throw new ResourceNotFoundException("Emergency contact phone number is required");
         }
         empDetails.setEmergency_ph_no(basicInfo.getEmergencyPhNo().trim());
-        if (basicInfo.getEmergencyRelationId() != null && basicInfo.getEmergencyRelationId() > 0) {
-            empDetails.setRelation_id(relationRepository.findById(basicInfo.getEmergencyRelationId())
+        Integer emergencyRelationId = basicInfo.getEmergencyRelationId();
+        if (emergencyRelationId != null && emergencyRelationId > 0) {
+            empDetails.setRelation_id(relationRepository.findById(emergencyRelationId)
                     .orElseThrow(() -> new ResourceNotFoundException("Emergency Relation not found")));
         } else {
             empDetails.setRelation_id(null);
@@ -347,13 +308,15 @@ public class EmployeeEntityPreparationService {
             throw new ResourceNotFoundException("BloodGroup ID is required");
         empDetails.setBloodGroup_id(bloodGroupRepository.findByIdAndIsActive(basicInfo.getBloodGroupId(), 1)
                 .orElseThrow(() -> new ResourceNotFoundException("Active BloodGroup not found")));
-        if (basicInfo.getCasteId() == null)
+        Integer casteId = basicInfo.getCasteId();
+        if (casteId == null)
             throw new ResourceNotFoundException("Caste ID is required");
-        empDetails.setCaste_id(casteRepository.findById(basicInfo.getCasteId())
+        empDetails.setCaste_id(casteRepository.findById(casteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Caste not found")));
-        if (basicInfo.getReligionId() == null)
+        Integer religionId = basicInfo.getReligionId();
+        if (religionId == null)
             throw new ResourceNotFoundException("Religion ID is required");
-        empDetails.setReligion_id(relegionRepository.findById(basicInfo.getReligionId())
+        empDetails.setReligion_id(relegionRepository.findById(religionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Religion not found")));
         if (basicInfo.getMaritalStatusId() == null)
             throw new ResourceNotFoundException("MaritalStatus ID is required");
@@ -417,8 +380,9 @@ public class EmployeeEntityPreparationService {
             employee.setCampus_id(campusRepository.findByCampusIdAndIsActive(basicInfo.getCampusId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found")));
         }
-        if (basicInfo.getBuildingId() != null && basicInfo.getBuildingId() > 0) {
-            Building building = buildingRepository.findById(basicInfo.getBuildingId())
+        Integer buildingId = basicInfo.getBuildingId();
+        if (buildingId != null && buildingId > 0) {
+            Building building = buildingRepository.findById(buildingId)
                     .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
             if (building.getIsActive() != 1)
                 throw new ResourceNotFoundException("Building is not active");
@@ -486,6 +450,11 @@ public class EmployeeEntityPreparationService {
         if (basicInfo.getModeOfHiringId() != null) {
             employee.setModeOfHiring_id(modeOfHiringRepository.findByIdAndIsActive(basicInfo.getModeOfHiringId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active ModeOfHiring not found")));
+        }
+        Integer empTypeHiringId = basicInfo.getEmpTypeHiringId();
+        if (empTypeHiringId != null) {
+            employee.setEmployee_type_hiring_id(employeeTypeHiringRepository.findById(empTypeHiringId)
+                    .orElseThrow(() -> new ResourceNotFoundException("EmployeeTypeHiring not found")));
         }
         if (basicInfo.getReferenceEmpId() != null && basicInfo.getReferenceEmpId() > 0) {
             employee.setEmployee_reference(employeeRepository.findByIdAndIs_active(basicInfo.getReferenceEmpId(), 1)

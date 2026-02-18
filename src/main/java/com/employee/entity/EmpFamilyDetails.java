@@ -83,7 +83,7 @@ public class EmpFamilyDetails {
 	
 	// Audit fields - required NOT NULL columns
 	@Column(name = "created_by", nullable = false)
-	private Integer created_by = 1; // Default to 1 if not provided
+	private Integer created_by ; // Default to 1 if not provided
 	
 	@Column(name = "created_date", nullable = false)
 	private LocalDateTime created_date;

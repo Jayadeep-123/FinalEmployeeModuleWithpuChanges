@@ -63,11 +63,4 @@ public class SalaryInfoDTO {
 
 	// Audit field - passed from frontend
 	private Integer updatedBy;
-
-	// Name fields for easier consumption
-	private String empStructureName;
-	private String gradeName;
-	private String costCenterName;
-	private String orgName;
-	// private String checkListNames; // Removed as requested
 }

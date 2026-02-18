@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.employee.dto.BackToCampusDTO;
 import com.employee.dto.CheckListUpdateDTO;
+import com.employee.dto.ForwardToCentralOfficeResponseDTO;
 import com.employee.dto.SalaryInfoDTO;
 import com.employee.service.EmpSalaryInfoService;
 
@@ -60,26 +61,30 @@ public class EmpSalaryInfoController {
 	 * @return ResponseEntity with the updated SalaryInfoDTO
 	 */
 	@PostMapping("/forward-to-central-office/{tempPayrollId}")
-	public ResponseEntity<SalaryInfoDTO> forwardToCentralOffice(
+	public ResponseEntity<ForwardToCentralOfficeResponseDTO> forwardToCentralOffice(
 			@RequestBody SalaryInfoDTO salaryInfoDTO,
 			@PathVariable String tempPayrollId) {
 
 		// Ensure tempPayrollId is set in the DTO
-		// Logic to handle potential placeholder in URL (e.g. from Swagger if not filled
-		// properly)
 		if (tempPayrollId != null && !tempPayrollId.equals("{tempPayrollId}") && !tempPayrollId.trim().isEmpty()) {
 			salaryInfoDTO.setTempPayrollId(tempPayrollId);
-			System.out.println("Using tempPayrollId from PathVariable: " + tempPayrollId);
 		} else {
-			// If path variable is placeholder or empty, ensure DTO has a value from body
 			if (salaryInfoDTO.getTempPayrollId() == null || salaryInfoDTO.getTempPayrollId().trim().isEmpty()) {
 				throw new com.employee.exception.ResourceNotFoundException(
 						"tempPayrollId is required in either path or request body.");
 			}
-			System.out.println("Using tempPayrollId from RequestBody: " + salaryInfoDTO.getTempPayrollId());
 		}
 
-		SalaryInfoDTO result = empSalaryInfoService.forwardToCentralOffice(salaryInfoDTO);
+		ForwardToCentralOfficeResponseDTO result = empSalaryInfoService.forwardToCentralOffice(salaryInfoDTO);
+		return new ResponseEntity<>(result, HttpStatus.OK);
+	}
+
+	/**
+	 * POST endpoint to save salary info without forwarding
+	 */
+	@PostMapping("/save-salary-info")
+	public ResponseEntity<SalaryInfoDTO> saveSalaryInfo(@RequestBody SalaryInfoDTO salaryInfoDTO) {
+		SalaryInfoDTO result = empSalaryInfoService.saveSalaryInfoOnly(salaryInfoDTO);
 		return new ResponseEntity<>(result, HttpStatus.OK);
 	}
 

@@ -933,6 +933,21 @@ public class EmployeeRemainingTabService {
             QualificationDTO qualificationDTO, Integer updatedBy) {
         int empId = employee.getEmp_id();
 
+        // Hyper-robust string helper: treats null, empty, and whitespace as same,
+        // case-insensitive
+        java.util.function.BiPredicate<String, String> areStringsEqual = (s1, s2) -> {
+            String str1 = (s1 == null || s1.trim().isEmpty()) ? "" : s1.trim();
+            String str2 = (s2 == null || s2.trim().isEmpty()) ? "" : s2.trim();
+            return str1.equalsIgnoreCase(str2);
+        };
+
+        // Hyper-robust numeric helper: treats null and 0 as same
+        java.util.function.BiPredicate<Number, Number> areNumbersEqual = (n1, n2) -> {
+            long v1 = (n1 == null) ? 0L : n1.longValue();
+            long v2 = (n2 == null) ? 0L : n2.longValue();
+            return v1 == v2;
+        };
+
         List<EmpQualification> existingQualification = empQualificationRepository.findAll().stream().filter(
                 qual -> qual.getEmp_id() != null && qual.getEmp_id().getEmp_id() == empId && qual.getIs_active() == 1)
                 .collect(Collectors.toList());
@@ -944,21 +959,26 @@ public class EmployeeRemainingTabService {
             int qualId = newQual.getQualification_id().getQualification_id();
 
             // Match by qualification_id to ensure correct record is updated regardless of
-            // list
-            // order
+            // list order
             Optional<EmpQualification> existingMatch = existingQualification.stream()
                     .filter(eq -> eq.getQualification_id().getQualification_id() == qualId)
                     .findFirst();
 
             if (existingMatch.isPresent()) {
                 EmpQualification existing = existingMatch.get();
-                updateQualificationFields(existing, newQual);
-                // Set updated_by and updated_date on update
-                if (updatedBy != null && updatedBy > 0) {
-                    existing.setUpdated_by(updatedBy);
-                    existing.setUpdated_date(LocalDateTime.now());
+                boolean changed = updateQualificationFields(existing, newQual, areStringsEqual, areNumbersEqual);
+
+                // Set updated_by and updated_date ONLY on actual change
+                if (changed) {
+                    if (updatedBy != null && updatedBy > 0) {
+                        existing.setUpdated_by(updatedBy);
+                        existing.setUpdated_date(LocalDateTime.now());
+                    }
+                    empQualificationRepository.save(existing);
+                    logger.info("Updated existing qualification (ID: {}) for emp_id: {} due to changes", qualId, empId);
+                } else {
+                    logger.info("Qualification (ID: {}) for emp_id: {} is unchanged, skipping update", qualId, empId);
                 }
-                empQualificationRepository.save(existing);
 
                 // Handle certificate save/update for this qualification
                 if (qualificationDTO != null && qualificationDTO.getQualifications() != null) {
@@ -972,6 +992,7 @@ public class EmployeeRemainingTabService {
                 existingQualification.remove(existing); // Mark as processed
             } else {
                 empQualificationRepository.save(newQual);
+                logger.info("Inserted new qualification (ID: {}) for emp_id: {}", qualId, empId);
                 // Handle certificate save for new qualification
                 if (qualificationDTO != null && qualificationDTO.getQualifications() != null) {
                     qualificationDTO.getQualifications().stream()
@@ -991,20 +1012,61 @@ public class EmployeeRemainingTabService {
                 remaining.setUpdated_date(LocalDateTime.now());
             }
             empQualificationRepository.save(remaining);
+            logger.info("Deactivated qualification (ID: {}) for emp_id: {}",
+                    remaining.getQualification_id().getQualification_id(), empId);
         }
     }
 
     /**
      * Helper: Update Qualification fields
      */
-    private void updateQualificationFields(EmpQualification target, EmpQualification source) {
-        target.setQualification_id(source.getQualification_id());
-        target.setQualification_degree_id(source.getQualification_degree_id());
-        target.setUniversity(source.getUniversity());
-        target.setInstitute(source.getInstitute());
-        target.setPassedout_year(source.getPassedout_year());
-        target.setSpecialization(source.getSpecialization());
-        target.setIs_active(source.getIs_active());
+    private boolean updateQualificationFields(EmpQualification target, EmpQualification source,
+            java.util.function.BiPredicate<String, String> areStringsEqual,
+            java.util.function.BiPredicate<Number, Number> areNumbersEqual) {
+        boolean changed = false;
+
+        Integer targetQualId = target.getQualification_id() != null ? target.getQualification_id().getQualification_id()
+                : null;
+        Integer sourceQualId = source.getQualification_id() != null ? source.getQualification_id().getQualification_id()
+                : null;
+        if (!areNumbersEqual.test(targetQualId, sourceQualId)) {
+            target.setQualification_id(source.getQualification_id());
+            changed = true;
+        }
+
+        Integer targetDegreeId = target.getQualification_degree_id() != null
+                ? target.getQualification_degree_id().getQualification_degree_id()
+                : null;
+        Integer sourceDegreeId = source.getQualification_degree_id() != null
+                ? source.getQualification_degree_id().getQualification_degree_id()
+                : null;
+        if (!areNumbersEqual.test(targetDegreeId, sourceDegreeId)) {
+            target.setQualification_degree_id(source.getQualification_degree_id());
+            changed = true;
+        }
+
+        if (!areStringsEqual.test(target.getUniversity(), source.getUniversity())) {
+            target.setUniversity(source.getUniversity() != null ? source.getUniversity().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getInstitute(), source.getInstitute())) {
+            target.setInstitute(source.getInstitute() != null ? source.getInstitute().trim() : null);
+            changed = true;
+        }
+        if (target.getPassedout_year() != source.getPassedout_year()) {
+            target.setPassedout_year(source.getPassedout_year());
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getSpecialization(), source.getSpecialization())) {
+            target.setSpecialization(source.getSpecialization() != null ? source.getSpecialization().trim() : null);
+            changed = true;
+        }
+        if (target.getIs_active() != source.getIs_active()) {
+            target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+
+        return changed;
     }
 
     /**
@@ -1130,10 +1192,15 @@ public class EmployeeRemainingTabService {
     private void updateOrCreateDocumentEntities(List<EmpDocuments> newDocuments, Employee employee, Integer updatedBy) {
         int empId = employee.getEmp_id();
 
-        // Get all active documents for this employee that are NOT linked to cheques or
-        // experience
-        // These include general documents (Aadhar, PAN) and qualification documents
-        // (10th, degree)
+        // Hyper-robust string helper: treats null, empty, and whitespace as same,
+        // case-insensitive
+        java.util.function.BiPredicate<String, String> areStringsEqual = (s1, s2) -> {
+            String str1 = (s1 == null || s1.trim().isEmpty()) ? "" : s1.trim();
+            String str2 = (s2 == null || s2.trim().isEmpty()) ? "" : s2.trim();
+            return str1.equalsIgnoreCase(str2);
+        };
+
+        // Use findByEmpIdAndIsActive with correct arguments (Integer only)
         List<EmpDocuments> existingDocuments = new ArrayList<>(
                 empDocumentsRepository.findGeneralDocumentsByEmpId(empId));
 
@@ -1146,22 +1213,31 @@ public class EmployeeRemainingTabService {
 
             // Find existing document of the same type
             Optional<EmpDocuments> existingMatch = existingDocuments.stream()
-                    .filter(ed -> ed.getEmp_doc_type_id().getDoc_type_id() == typeId)
+                    .filter(ed -> ed.getEmp_doc_type_id() != null &&
+                            ed.getEmp_doc_type_id().getDoc_type_id() == typeId)
                     .findFirst();
 
             if (existingMatch.isPresent()) {
                 EmpDocuments existing = existingMatch.get();
-                updateDocumentFields(existing, newDoc);
-                if (updatedBy != null && updatedBy > 0) {
-                    existing.setUpdated_by(updatedBy);
-                    existing.setUpdated_date(LocalDateTime.now());
+                boolean changed = updateDocumentFields(existing, newDoc, areStringsEqual);
+
+                // Set updated_by and updated_date ONLY on actual change
+                if (changed) {
+                    if (updatedBy != null && updatedBy > 0) {
+                        existing.setUpdated_by(updatedBy);
+                        existing.setUpdated_date(LocalDateTime.now());
+                    }
+                    existing.setIs_active(1); // Ensure it remains active
+                    empDocumentsRepository.save(existing);
+                    logger.info("Updated existing document of type (ID: {}) for emp_id: {} due to changes", typeId,
+                            empId);
+                } else {
+                    logger.info("Document of type (ID: {}) for emp_id: {} is unchanged, skipping update", typeId,
+                            empId);
                 }
-                existing.setIs_active(1); // Ensure it remains active
-                empDocumentsRepository.save(existing);
 
                 // Remove from local pool so it's not considered for deactivation
                 existingDocuments.remove(existing);
-                logger.info("Updated existing document of type (ID: {}) for emp_id: {}", typeId, empId);
             } else {
                 // New insertion for this type
                 empDocumentsRepository.save(newDoc);
@@ -1202,19 +1278,29 @@ public class EmployeeRemainingTabService {
     /**
      * Helper: Update Document fields
      */
-    private void updateDocumentFields(EmpDocuments target, EmpDocuments source) {
-        target.setEmp_doc_type_id(source.getEmp_doc_type_id());
+    private boolean updateDocumentFields(EmpDocuments target, EmpDocuments source,
+            java.util.function.BiPredicate<String, String> areStringsEqual) {
+        boolean changed = false;
+
+        // Compare Doc Type
+        Integer targetTypeId = (target.getEmp_doc_type_id() != null) ? target.getEmp_doc_type_id().getDoc_type_id()
+                : null;
+        Integer sourceTypeId = (source.getEmp_doc_type_id() != null) ? source.getEmp_doc_type_id().getDoc_type_id()
+                : null;
+        if (!java.util.Objects.equals(targetTypeId, sourceTypeId)) {
+            target.setEmp_doc_type_id(source.getEmp_doc_type_id());
+            changed = true;
+        }
+
         String path = source.getDoc_path();
         if (path != null) {
             if (path.startsWith("QUAL_LINK_")) {
-                // Format: QUAL_LINK_[ID]_[ActualPath]
                 int firstUnderscore = path.indexOf("_");
                 int secondUnderscore = path.indexOf("_", firstUnderscore + 1);
                 if (secondUnderscore != -1) {
                     path = path.substring(secondUnderscore + 1);
                 }
             } else if (path.startsWith("CHEQUE_LINK_")) {
-                // Format: CHEQUE_LINK_[ID]_[ActualPath]
                 int firstUnderscore = path.indexOf("_");
                 int secondUnderscore = path.indexOf("_", firstUnderscore + 1);
                 if (secondUnderscore != -1) {
@@ -1222,9 +1308,23 @@ public class EmployeeRemainingTabService {
                 }
             }
         }
-        target.setDoc_path(path);
-        target.setIs_verified(source.getIs_verified());
-        target.setIs_active(source.getIs_active());
+
+        if (!areStringsEqual.test(target.getDoc_path(), path)) {
+            target.setDoc_path(path);
+            changed = true;
+        }
+
+        if (!java.util.Objects.equals(target.getIs_verified(), source.getIs_verified())) {
+            target.setIs_verified(source.getIs_verified());
+            changed = true;
+        }
+
+        if (target.getIs_active() != source.getIs_active()) {
+            target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+
+        return changed;
     }
 
     // ============================================================================
@@ -1597,6 +1697,21 @@ public class EmployeeRemainingTabService {
 
         List<BankDetails> existingBanks = bankDetailsRepository.findByEmpIdAndIsActive(empId, 1);
 
+        // Hyper-robust string helper: treats null, empty, and whitespace as same,
+        // case-insensitive
+        java.util.function.BiPredicate<String, String> areStringsEqual = (s1, s2) -> {
+            String str1 = (s1 == null || s1.trim().isEmpty()) ? "" : s1.trim();
+            String str2 = (s2 == null || s2.trim().isEmpty()) ? "" : s2.trim();
+            return str1.equalsIgnoreCase(str2);
+        };
+
+        // Hyper-robust numeric helper: treats null and 0 as same
+        java.util.function.BiPredicate<Number, Number> areNumbersEqual = (n1, n2) -> {
+            long v1 = (n1 == null) ? 0L : n1.longValue();
+            long v2 = (n2 == null) ? 0L : n2.longValue();
+            return v1 == v2;
+        };
+
         // Match by account type (PERSONAL/SALARY) instead of index to prevent
         // cross-updates
         for (BankDetails newBank : newBanks) {
@@ -1611,16 +1726,25 @@ public class EmployeeRemainingTabService {
 
             if (existing != null) {
                 // Update existing bank of the same type
-                updateBankFields(existing, newBank);
-                // Set updated_by and updated_date on update
-                if (updatedBy != null && updatedBy > 0) {
-                    existing.setUpdatedBy(updatedBy);
-                    existing.setUpdatedDate(LocalDateTime.now());
+                boolean changed = updateBankFields(existing, newBank, areStringsEqual, areNumbersEqual);
+
+                // Set updated_by and updated_date ONLY on actual change
+                if (changed) {
+                    if (updatedBy != null && updatedBy > 0) {
+                        existing.setUpdatedBy(updatedBy);
+                        existing.setUpdatedDate(LocalDateTime.now());
+                    }
+                    bankDetailsRepository.save(existing);
+                    logger.info("Updated existing bank account of type {} for emp_id: {} due to changes",
+                            existing.getAccType(), empId);
+                } else {
+                    logger.info("Bank account of type {} for emp_id: {} is unchanged, skipping update",
+                            existing.getAccType(), empId);
                 }
-                bankDetailsRepository.save(existing);
             } else {
                 // Create new bank account
                 bankDetailsRepository.save(newBank);
+                logger.info("Inserted new bank account of type {} for emp_id: {}", newBank.getAccType(), empId);
             }
         }
 
@@ -1644,25 +1768,93 @@ public class EmployeeRemainingTabService {
     /**
      * Helper: Update Bank fields
      */
-    private void updateBankFields(BankDetails target, BankDetails source) {
-        target.setEmpPaymentType(source.getEmpPaymentType());
-        target.setBankHolderName(source.getBankHolderName());
-        target.setAccNo(source.getAccNo());
-        target.setIfscCode(source.getIfscCode());
-        target.setPayableAt(source.getPayableAt());
-        target.setBankName(source.getBankName());
-        target.setBankBranch(source.getBankBranch());
-        target.setAccType(source.getAccType());
-        target.setBankStatementChequePath(source.getBankStatementChequePath());
-        target.setIsActive(source.getIsActive());
+    private boolean updateBankFields(BankDetails target, BankDetails source,
+            java.util.function.BiPredicate<String, String> areStringsEqual,
+            java.util.function.BiPredicate<Number, Number> areNumbersEqual) {
+        boolean changed = false;
 
-        // Update new fields
-        target.setBankManagerName(source.getBankManagerName());
-        target.setBankManagerContactNo(source.getBankManagerContactNo());
-        target.setBankManagerEmail(source.getBankManagerEmail());
-        target.setCustomerRelationshipOfficerName(source.getCustomerRelationshipOfficerName());
-        target.setCustomerRelationshipOfficerContactNo(source.getCustomerRelationshipOfficerContactNo());
-        target.setCustomerRelationshipOfficerEmail(source.getCustomerRelationshipOfficerEmail());
+        // Compare Payment Type
+        Integer targetPayId = (target.getEmpPaymentType() != null) ? target.getEmpPaymentType().getEmp_payment_type_id()
+                : null;
+        Integer sourcePayId = (source.getEmpPaymentType() != null) ? source.getEmpPaymentType().getEmp_payment_type_id()
+                : null;
+        if (!areNumbersEqual.test(targetPayId, sourcePayId)) {
+            target.setEmpPaymentType(source.getEmpPaymentType());
+            changed = true;
+        }
+
+        if (!areStringsEqual.test(target.getBankHolderName(), source.getBankHolderName())) {
+            target.setBankHolderName(source.getBankHolderName() != null ? source.getBankHolderName().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getAccNo(), source.getAccNo())) {
+            target.setAccNo(source.getAccNo());
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getIfscCode(), source.getIfscCode())) {
+            target.setIfscCode(source.getIfscCode() != null ? source.getIfscCode().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getPayableAt(), source.getPayableAt())) {
+            target.setPayableAt(source.getPayableAt() != null ? source.getPayableAt().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getBankName(), source.getBankName())) {
+            target.setBankName(source.getBankName() != null ? source.getBankName().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getBankBranch(), source.getBankBranch())) {
+            target.setBankBranch(source.getBankBranch() != null ? source.getBankBranch().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getAccType(), source.getAccType())) {
+            target.setAccType(source.getAccType());
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getBankStatementChequePath(), source.getBankStatementChequePath())) {
+            target.setBankStatementChequePath(source.getBankStatementChequePath());
+            changed = true;
+        }
+        if (target.getIsActive() != source.getIsActive()) {
+            target.setIsActive(source.getIsActive());
+            changed = true;
+        }
+
+        // New fields
+        if (!areStringsEqual.test(target.getBankManagerName(), source.getBankManagerName())) {
+            target.setBankManagerName(source.getBankManagerName() != null ? source.getBankManagerName().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getBankManagerContactNo(), source.getBankManagerContactNo())) {
+            target.setBankManagerContactNo(source.getBankManagerContactNo());
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getBankManagerEmail(), source.getBankManagerEmail())) {
+            target.setBankManagerEmail(
+                    source.getBankManagerEmail() != null ? source.getBankManagerEmail().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getCustomerRelationshipOfficerName(),
+                source.getCustomerRelationshipOfficerName())) {
+            target.setCustomerRelationshipOfficerName(source.getCustomerRelationshipOfficerName() != null
+                    ? source.getCustomerRelationshipOfficerName().trim()
+                    : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getCustomerRelationshipOfficerContactNo(),
+                source.getCustomerRelationshipOfficerContactNo())) {
+            target.setCustomerRelationshipOfficerContactNo(source.getCustomerRelationshipOfficerContactNo());
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getCustomerRelationshipOfficerEmail(),
+                source.getCustomerRelationshipOfficerEmail())) {
+            target.setCustomerRelationshipOfficerEmail(source.getCustomerRelationshipOfficerEmail() != null
+                    ? source.getCustomerRelationshipOfficerEmail().trim()
+                    : null);
+            changed = true;
+        }
+
+        return changed;
     }
 
     // ============================================================================

@@ -695,6 +695,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.employee.dto.BackToCampusDTO;
 import com.employee.dto.CheckListUpdateDTO;
+import com.employee.dto.ForwardToCentralOfficeResponseDTO;
 import com.employee.dto.SalaryInfoDTO;
 import com.employee.dto.SalaryInfoSaveAtCODTO;
 import com.employee.entity.BankDetails;
@@ -1036,11 +1037,6 @@ public class EmpSalaryInfoService {
             salaryInfoDTO.setGradeId(projection.getGrade_id());
             salaryInfoDTO.setCostCenterId(projection.getCost_center_id());
 
-            // Map names from projection
-            salaryInfoDTO.setEmpStructureName(projection.getEmp_structure_name());
-            salaryInfoDTO.setGradeName(projection.getGrade_name());
-            salaryInfoDTO.setCostCenterName(projection.getCost_center_name());
-
             // Convert Integer to Boolean (1 = true, 0 = false)
             salaryInfoDTO
                     .setIsPfEligible(projection.getIs_pf_eligible() != null && projection.getIs_pf_eligible() == 1);
@@ -1072,15 +1068,12 @@ public class EmpSalaryInfoService {
 
             if (empSalaryInfo.getEmpStructure() != null) {
                 salaryInfoDTO.setEmpStructureId(empSalaryInfo.getEmpStructure().getEmpStructureId());
-                salaryInfoDTO.setEmpStructureName(empSalaryInfo.getEmpStructure().getStructreName());
             }
             if (empSalaryInfo.getGrade() != null) {
                 salaryInfoDTO.setGradeId(empSalaryInfo.getGrade().getEmpGradeId());
-                salaryInfoDTO.setGradeName(empSalaryInfo.getGrade().getGradeName());
             }
             if (empSalaryInfo.getCostCenter() != null) {
                 salaryInfoDTO.setCostCenterId(empSalaryInfo.getCostCenter().getCostCenterId());
-                salaryInfoDTO.setCostCenterName(empSalaryInfo.getCostCenter().getCostCenterName());
             }
 
             salaryInfoDTO
@@ -1140,11 +1133,6 @@ public class EmpSalaryInfoService {
             salaryInfoDTO.setGradeId(projection.getGrade_id());
             salaryInfoDTO.setCostCenterId(projection.getCost_center_id());
 
-            // Map names from projection
-            salaryInfoDTO.setEmpStructureName(projection.getEmp_structure_name());
-            salaryInfoDTO.setGradeName(projection.getGrade_name());
-            salaryInfoDTO.setCostCenterName(projection.getCost_center_name());
-
             // Convert Integer to Boolean (1 = true, 0 = false)
             salaryInfoDTO
                     .setIsPfEligible(projection.getIs_pf_eligible() != null && projection.getIs_pf_eligible() == 1);
@@ -1175,15 +1163,12 @@ public class EmpSalaryInfoService {
 
             if (empSalaryInfo.getEmpStructure() != null) {
                 salaryInfoDTO.setEmpStructureId(empSalaryInfo.getEmpStructure().getEmpStructureId());
-                salaryInfoDTO.setEmpStructureName(empSalaryInfo.getEmpStructure().getStructreName());
             }
             if (empSalaryInfo.getGrade() != null) {
                 salaryInfoDTO.setGradeId(empSalaryInfo.getGrade().getEmpGradeId());
-                salaryInfoDTO.setGradeName(empSalaryInfo.getGrade().getGradeName());
             }
             if (empSalaryInfo.getCostCenter() != null) {
                 salaryInfoDTO.setCostCenterId(empSalaryInfo.getCostCenter().getCostCenterId());
-                salaryInfoDTO.setCostCenterName(empSalaryInfo.getCostCenter().getCostCenterName());
             }
 
             salaryInfoDTO
@@ -1215,33 +1200,153 @@ public class EmpSalaryInfoService {
         employeeRepository.findById(empId).ifPresent(emp -> {
             if (emp.getOrg_id() != null) {
                 salaryInfoDTO.setOrgId(emp.getOrg_id().getOrganizationId());
-                salaryInfoDTO.setOrgName(emp.getOrg_id().getOrganizationName());
             }
         });
     }
 
     /**
      * Forward to Central Office
-     * This is an alias/wrapper for createSalaryInfo that explicitly forwards the
-     * employee
-     * Sets emp_app_status_id to "Pending at CO" status and clears any previous
-     * remarks
-     *
+     * 
      * IMPORTANT: This method ONLY works when employee current status is "Pending at
      * DO" or "Back to DO"
-     * This allows forwarding to CO again after CO rejection (when status is "Back
-     * to DO")
-     * If employee has any other status, this method will throw an error
-     *
-     * @throws ResourceNotFoundException if employee status is not "Pending at DO"
-     *                                   or "Back to DO"
+     * 
+     * @param salaryInfoDTO Contains tempPayrollId, salary info, etc.
+     * @return ForwardToCentralOfficeResponseDTO with full employee and status
+     *         details
      */
     @Transactional
-    public SalaryInfoDTO forwardToCentralOffice(SalaryInfoDTO salaryInfoDTO) {
+    public ForwardToCentralOfficeResponseDTO forwardToCentralOffice(SalaryInfoDTO salaryInfoDTO) {
         logger.info("Forwarding employee to Central Office - temp_payroll_id: {}", salaryInfoDTO.getTempPayrollId());
-        // createSalaryInfo already handles setting status to "Pending at CO" and
-        // clearing remarks
-        return createSalaryInfo(salaryInfoDTO);
+
+        // 1. Get current status before update
+        Employee employee = employeeRepository.findByTempPayrollId(salaryInfoDTO.getTempPayrollId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with temp_payroll_id: " + salaryInfoDTO.getTempPayrollId()));
+
+        String previousStatus = employee.getEmp_check_list_status_id() != null
+                ? employee.getEmp_check_list_status_id().getCheck_app_status_name()
+                : "None";
+
+        // 2. Perform the save and status update logic
+        SalaryInfoDTO resultDTO = createSalaryInfo(salaryInfoDTO);
+
+        // 3. Construct the rich response object requested by the user
+        ForwardToCentralOfficeResponseDTO response = new ForwardToCentralOfficeResponseDTO();
+
+        // Copy fields from resultDTO
+        response.setTempPayrollId(resultDTO.getTempPayrollId());
+        response.setEmpId(employee.getEmp_id());
+        response.setPreviousStatus(previousStatus);
+        response.setNewStatus("Pending at CO");
+        response.setMessage("Employee forwarded to Central Office successfully.");
+
+        response.setMonthlyTakeHome(resultDTO.getMonthlyTakeHome());
+        response.setCtcWords(resultDTO.getCtcWords());
+        response.setYearlyCtc(resultDTO.getYearlyCtc());
+        response.setEmpStructureId(resultDTO.getEmpStructureId());
+        response.setGradeId(resultDTO.getGradeId());
+        response.setCostCenterId(resultDTO.getCostCenterId());
+        response.setOrgId(resultDTO.getOrgId());
+        response.setIsPfEligible(resultDTO.getIsPfEligible());
+        response.setIsEsiEligible(resultDTO.getIsEsiEligible());
+
+        response.setPfNo(resultDTO.getPfNo());
+        response.setPfJoinDate(resultDTO.getPfJoinDate());
+        response.setEsiNo(resultDTO.getEsiNo());
+        response.setUanNo(resultDTO.getUanNo());
+
+        response.setUpdatedBy(resultDTO.getUpdatedBy());
+        response.setCreatedBy(employee.getCreated_by());
+        response.setCreatedDate(employee.getCreated_date());
+
+        return response;
+    }
+
+    /**
+     * Save/Update Salary Info without changing employee status.
+     * Used by DO user to save work before final forwarding.
+     * 
+     * @param salaryInfoDTO DTO containing salary data
+     * @return SalaryInfoDTO with saved data
+     */
+    @Transactional
+    public SalaryInfoDTO saveSalaryInfoOnly(SalaryInfoDTO salaryInfoDTO) {
+        logger.info("Saving salary info only (no status change) - temp_payroll_id: {}",
+                salaryInfoDTO.getTempPayrollId());
+
+        // Validate required fields
+        if (salaryInfoDTO.getTempPayrollId() == null || salaryInfoDTO.getTempPayrollId().trim().isEmpty()) {
+            throw new ResourceNotFoundException("tempPayrollId is required.");
+        }
+
+        // Find employee
+        Employee employee = employeeRepository.findByTempPayrollId(salaryInfoDTO.getTempPayrollId().trim())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with temp_payroll_id: " + salaryInfoDTO.getTempPayrollId()));
+
+        Integer empId = employee.getEmp_id();
+
+        // Save EmpSalaryInfo
+        EmpSalaryInfo empSalaryInfo = empSalaryInfoRepository.findByEmpIdAndIsActive(empId, 1)
+                .orElse(new EmpSalaryInfo());
+
+        if (empSalaryInfo.getEmpId() == null) {
+            empSalaryInfo.setEmpId(employee);
+            empSalaryInfo.setCreatedBy(salaryInfoDTO.getUpdatedBy() != null ? salaryInfoDTO.getUpdatedBy() : 1);
+            empSalaryInfo.setCreatedDate(LocalDateTime.now());
+        } else {
+            empSalaryInfo.setUpdatedBy(salaryInfoDTO.getUpdatedBy());
+            empSalaryInfo.setUpdatedDate(LocalDateTime.now());
+        }
+
+        empSalaryInfo.setTempPayrollId(employee.getTempPayrollId());
+        empSalaryInfo.setMonthlyTakeHomeFromDouble(salaryInfoDTO.getMonthlyTakeHome());
+        empSalaryInfo.setYearlyCtcFromDouble(salaryInfoDTO.getYearlyCtc());
+        empSalaryInfo.setCtcWordsFromString(salaryInfoDTO.getCtcWords());
+        empSalaryInfo
+                .setIsPfEligible(salaryInfoDTO.getIsPfEligible() != null && salaryInfoDTO.getIsPfEligible() ? 1 : 0);
+        empSalaryInfo.setIsEsiEligible(
+                salaryInfoDTO.getIsEsiEligible() != null && salaryInfoDTO.getIsEsiEligible() ? 1 : 0);
+        empSalaryInfo.setIsActive(1);
+
+        if (salaryInfoDTO.getEmpStructureId() != null) {
+            empStructureRepository.findById(salaryInfoDTO.getEmpStructureId())
+                    .ifPresent(empSalaryInfo::setEmpStructure);
+        }
+        if (salaryInfoDTO.getGradeId() != null) {
+            empGradeRepository.findById(salaryInfoDTO.getGradeId())
+                    .ifPresent(empSalaryInfo::setGrade);
+        }
+        if (salaryInfoDTO.getCostCenterId() != null) {
+            costCenterRepository.findById(salaryInfoDTO.getCostCenterId())
+                    .ifPresent(empSalaryInfo::setCostCenter);
+        }
+
+        empSalaryInfoRepository.save(empSalaryInfo);
+
+        // Save PF Details
+        EmpPfDetails empPfDetails = empPfDetailsRepository.findByEmployeeId(empId)
+                .orElse(new EmpPfDetails());
+
+        if (empPfDetails.getEmployee_id() == null) {
+            empPfDetails.setEmployee_id(employee);
+            empPfDetails.setCreated_by(salaryInfoDTO.getUpdatedBy() != null ? salaryInfoDTO.getUpdatedBy() : 1);
+            empPfDetails.setCreated_date(LocalDateTime.now());
+        } else {
+            empPfDetails.setUpdated_by(salaryInfoDTO.getUpdatedBy());
+            empPfDetails.setUpdated_date(LocalDateTime.now());
+        }
+
+        empPfDetails.setPf_no(salaryInfoDTO.getPfNo());
+        empPfDetails.setPf_join_date(salaryInfoDTO.getPfJoinDate());
+        empPfDetails.setEsi_no(salaryInfoDTO.getEsiNo());
+        empPfDetails.setUan_no(salaryInfoDTO.getUanNo());
+        empPfDetails.setIs_active(1);
+
+        empPfDetailsRepository.save(empPfDetails);
+
+        populateRelatedSalaryInfo(salaryInfoDTO, empId);
+        return salaryInfoDTO;
     }
 
     /**

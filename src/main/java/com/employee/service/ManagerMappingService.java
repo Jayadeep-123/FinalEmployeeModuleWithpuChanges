@@ -51,8 +51,10 @@ import com.employee.repository.EmployeeRepository;
 import com.employee.repository.SharedEmployeeRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.RoleRepository;
+import com.employee.repository.CampusContactRepository;
 
 /**
+ * 
  * Service for Manager Mapping functionality.
  * Handles the hierarchy: City → Campus → Department → Designation → Employees
  * and updates work starting date for selected employees.
@@ -93,7 +95,11 @@ public class ManagerMappingService {
     @Autowired
     private CampusEmployeeRepository campusEmployeeRepository;
 
+    @Autowired
+    private CampusContactRepository campusContactRepository;
+
     /**
+     * 
      * Maps employee based on payrollId and updates their details.
      * 
      * Flow:
@@ -1211,8 +1217,11 @@ public class ManagerMappingService {
                         batchDTO.setCity(top.getCity());
                         batchDTO.setFullAddress(top.getFullAddress());
                         batchDTO.setBuildingMobileNo(top.getBuildingMobileNo());
+                        batchDTO.setCampusContact(top.getCampusContact());
+                        batchDTO.setCampusEmail(top.getCampusEmail());
 
                         batchDTO.setDesignationId(top.getDesignationId());
+
                         batchDTO.setDesignationName(top.getDesignationName());
 
                         // Get role from sce_emp_view for primary campus
@@ -1304,19 +1313,24 @@ public class ManagerMappingService {
                     // 6. Map to CampusDetailDTO for Shared employees
                     List<CampusDetailDTO> details = flatList.stream()
                             .filter(flat -> flat.getCampusId() != null)
-                            .map(flat -> new CampusDetailDTO(
-                                    flat.getCampusId(),
-                                    flat.getCampusName(),
-                                    flat.getCityId(),
-                                    flat.getCity(),
-                                    flat.getFullAddress(),
-                                    flat.getBuildingMobileNo(),
-                                    flat.getSubjectId(),
-                                    flat.getSubjectName(),
-                                    flat.getDesignationId(),
-                                    flat.getDesignationName(),
-                                    flat.getRoleId(),
-                                    flat.getRoleName()))
+                            .map(flat -> {
+                                CampusDetailDTO cd = new CampusDetailDTO();
+                                cd.setCampusId(flat.getCampusId());
+                                cd.setCampusName(flat.getCampusName());
+                                cd.setCityId(flat.getCityId());
+                                cd.setCity(flat.getCity());
+                                cd.setFullAddress(flat.getFullAddress());
+                                cd.setBuildingMobileNo(flat.getBuildingMobileNo());
+                                cd.setSubjectId(flat.getSubjectId());
+                                cd.setSubjectName(flat.getSubjectName());
+                                cd.setDesignationId(flat.getDesignationId());
+                                cd.setDesignationName(flat.getDesignationName());
+                                cd.setRoleId(flat.getRoleId());
+                                cd.setRoleName(flat.getRoleName());
+                                cd.setCampusContact(flat.getCampusContact());
+                                cd.setCampusEmail(flat.getCampusEmail());
+                                return cd;
+                            })
                             .collect(Collectors.toList());
 
                     // 7. Set Employee Type and Shared Details logic
@@ -1525,6 +1539,10 @@ public class ManagerMappingService {
 
             dto.setFullAddress(sj.toString());
             dto.setBuildingMobileNo(buildingAddress.getMobile_no());
+
+            // Populate campusContact with building mobile number as per new instruction
+            dto.setCampusContact(buildingAddress.getMobile_no());
+            // campusEmail remains null as it's not in the building address table
 
         } catch (Exception e) {
             dto.setFullAddress("Address Error: " + e.getMessage());
@@ -1778,7 +1796,33 @@ public class ManagerMappingService {
             employeeChanged = true;
         }
 
-        // Step 3: Update remarks if provided
+        // Step 3: Unmap Shared Campuses if campusIds provided
+        // Simply providing campusIds in the request is enough to trigger unmapping
+        if (dto.getCampusIds() != null && !dto.getCampusIds().isEmpty()) {
+            for (Integer campusId : dto.getCampusIds()) {
+                // Check if this campus is the primary campus
+                if (employee.getCampus_id() != null &&
+                        employee.getCampus_id().getCampusId() == campusId) {
+                    employee.setCampus_id(null);
+                    employeeChanged = true;
+                }
+
+                // Deactivate shared campus records
+                List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                        .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
+
+                for (SharedEmployee sharedEmployee : sharedEmployees) {
+                    if (sharedEmployee.getIsActive() == 1) {
+                        sharedEmployee.setIsActive(0);
+                        sharedEmployee.setUpdatedBy(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+                        sharedEmployee.setUpdatedDate(LocalDateTime.now());
+                        sharedEmployeeRepository.save(sharedEmployee);
+                    }
+                }
+            }
+        }
+
+        // Step 4: Update remarks if provided
         String remarkValue = dto.getRemark();
         if (remarkValue != null && !remarkValue.trim().isEmpty() && !remarkValue.trim().equalsIgnoreCase("null")) {
             employee.setRemarks(remarkValue.trim());

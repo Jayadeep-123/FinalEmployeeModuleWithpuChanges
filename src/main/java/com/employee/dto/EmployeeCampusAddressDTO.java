@@ -39,4 +39,7 @@ public class EmployeeCampusAddressDTO {
 
     private Integer employeeTypeId;
     private String employeeTypeName;
+
+    private String campusContact;
+    private String campusEmail;
 }

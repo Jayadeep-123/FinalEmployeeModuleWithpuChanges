@@ -72,9 +72,13 @@ public class EmployeeOnboardingService {
             throw e;
         }
 
-        Employee hrEmployee = employeeRepository.findById(hrEmployeeId)
+        Integer finalHrEmpId = hrEmployeeId;
+        if (finalHrEmpId == null) {
+            throw new ResourceNotFoundException("hrEmployeeId is required");
+        }
+        Employee hrEmployee = employeeRepository.findById(finalHrEmpId.intValue())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "HR Employee not found with emp_id: " + hrEmployeeId));
+                        "HR Employee not found with emp_id: " + finalHrEmpId));
 
         Campus campus = hrEmployee.getCampus_id();
         if (campus == null) {
@@ -288,6 +292,9 @@ public class EmployeeOnboardingService {
         Employee employee = null;
 
         if (isUpdate) {
+            if (existingEmployee == null) {
+                throw new ResourceNotFoundException("Updating employee but existingEmployee is null");
+            }
             employee = existingEmployee;
             logger.info("🔄 UPDATE MODE: Updating existing employee (emp_id: {})", employee.getEmp_id());
 

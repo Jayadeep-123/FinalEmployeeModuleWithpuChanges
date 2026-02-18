@@ -395,7 +395,6 @@ public class SkillTestDetailsService {
         }
         if (entity.getEmpStructure() != null) {
             dto.setEmp_structure_id(entity.getEmpStructure().getEmpStructureId());
-            dto.setEmpStructureName(entity.getEmpStructure().getStructureName());
         }
         if (entity.getEmployeeType() != null) {
             dto.setEmpTypeId(entity.getEmployeeType().getEmp_type_id());

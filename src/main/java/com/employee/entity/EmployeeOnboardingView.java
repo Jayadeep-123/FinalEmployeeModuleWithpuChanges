@@ -24,6 +24,9 @@ public class EmployeeOnboardingView {
     @Column(name = "date_of_birth")
     private String dateOfBirth;
 
+    @Column(name = "age")
+    private Integer age;
+
     @Column(name = "gender_id")
     private Integer genderId;
 
@@ -80,6 +83,12 @@ public class EmployeeOnboardingView {
 
     @Column(name = "blood_group_name")
     private String bloodGroupName;
+
+    @Column(name = "marital_status_id")
+    private Integer maritalStatusId;
+
+    @Column(name = "marital_status_type")
+    private String maritalStatusType;
 
     @Column(name = "total_experience")
     private Double totalExperience;

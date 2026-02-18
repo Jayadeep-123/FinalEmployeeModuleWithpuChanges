@@ -19,6 +19,7 @@ import com.employee.entity.Campus;
 import com.employee.entity.City;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeCheckListStatus;
+import com.employee.entity.EmployeeTypeHiring;
 import com.employee.entity.Organization;
 import com.employee.exception.ResourceNotFoundException;
 import com.employee.repository.CampusRepository;
@@ -277,17 +278,43 @@ public class CentralOfficeLevelService {
             throw new ResourceNotFoundException("Organization missing for employee: " + employee.getEmp_id());
         }
 
-        // 2. Get Location data for prefix
-        int city_id = campusdata.getCity().getCityId();
-        City citydata = cityrepository.findById(city_id)
-                .orElseThrow(() -> new ResourceNotFoundException("City not found for city_id: " + city_id));
+        // 2. Determine Prefix based on Hiring Type
+        EmployeeTypeHiring hiringType = employee.getEmployee_type_hiring_id();
+        String prefix;
+        boolean isConsultancyOrAgency = hiringType != null &&
+                ("CONSULTANCY".equalsIgnoreCase(hiringType.getEmp_type_hiring_name()) ||
+                        "AGENCY".equalsIgnoreCase(hiringType.getEmp_type_hiring_name()));
 
-        String payrole_city_code = citydata.getPayroll_city_code();
-        long pay_role_code = org_data.getPayrollCode();
-        String prefix = payrole_city_code + pay_role_code;
+        if (isConsultancyOrAgency) {
+            long pay_role_code = org_data.getPayrollCode();
+            prefix = "CON" + pay_role_code;
+            logger.info("Using '{}' prefix for hiring type: {}", prefix, hiringType.getEmp_type_hiring_name());
+        } else {
+            // Default logic: City Code + Organization Code
+            if (campusdata.getCity() == null) {
+                logger.error("CRITICAL: City missing for campus_id: {}", campusdata.getCampusId());
+                throw new ResourceNotFoundException("City missing for campus: " + campusdata.getCampusId());
+            }
+            int city_id = campusdata.getCity().getCityId();
+            City citydata = cityrepository.findById(city_id)
+                    .orElseThrow(() -> new ResourceNotFoundException("City not found for city_id: " + city_id));
 
-        // 3. Get Base Number from Organization (Master)
-        Long masterBase = org_data.getPayrollMaxNo();
+            String payrole_city_code = citydata.getPayroll_city_code();
+            long pay_role_code = org_data.getPayrollCode();
+            prefix = (payrole_city_code != null ? payrole_city_code : "") + pay_role_code;
+            logger.info("Using standard prefix '{}' (City: {}, Org: {})", prefix, payrole_city_code, pay_role_code);
+        }
+
+        // 3. Get Base Number from Organization (Master) based on Prefix
+        Long masterBase;
+        if (isConsultancyOrAgency) {
+            masterBase = org_data.getConPayrollMaxNo();
+            logger.info("Using 'CON' master base: {}", masterBase);
+        } else {
+            masterBase = org_data.getPayrollMaxNo();
+            logger.info("Using standard master base: {}", masterBase);
+        }
+
         if (masterBase == null)
             masterBase = 0L;
 

@@ -30,6 +30,8 @@ public class EmployeeBatchCampusDTO {
   private String city;
   private String fullAddress;
   private String buildingMobileNo;
+  private String campusContact;
+  private String campusEmail;
 
   private List<CampusDetailDTO> campusDetails;
 

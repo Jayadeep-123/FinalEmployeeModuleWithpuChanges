@@ -3,6 +3,7 @@ package com.employee.service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -34,8 +35,6 @@ import com.employee.repository.CasteRepository;
 import com.employee.repository.CategoryRepository;
 import com.employee.repository.CityRepository;
 import com.employee.repository.CountryRepository;
-import com.employee.repository.DepartmentRepository;
-import com.employee.repository.DesignationRepository;
 import com.employee.repository.DistrictRepository;
 import com.employee.repository.EmpDetailsRepository;
 import com.employee.repository.EmpDocTypeRepository;
@@ -54,11 +53,11 @@ import com.employee.repository.MaritalStatusRepository;
 import com.employee.repository.ModeOfHiringRepository;
 import com.employee.repository.RelationRepository;
 import com.employee.repository.RelegionRepository;
-import com.employee.repository.SkillTestDetailsRepository;
 import com.employee.repository.StateRepository;
 import com.employee.repository.WorkingModeRepository;
 import com.employee.repository.OccupationRepository;
 import com.employee.repository.QualificationRepository;
+import com.employee.repository.EmployeeTypeHiringRepository;
 
 /**
  * Service for handling Basic Info related tabs (4 APIs).
@@ -99,9 +98,6 @@ public class EmployeeBasicInfoTabService {
 
     @Autowired
     private EmpFamilyDetailsRepository empFamilyDetailsRepository;
-
-    @Autowired
-    private EmployeeEntityPreparationService entityPreparationService;
 
     @Autowired
     private EmpExperienceDetailsRepository empExperienceDetailsRepository;
@@ -162,6 +158,9 @@ public class EmployeeBasicInfoTabService {
 
     @Autowired
     private OccupationRepository occupationRepository;
+
+    @Autowired
+    private EmployeeTypeHiringRepository employeeTypeHiringRepository;
 
     // ============================================================================
     // API METHODS (4 APIs)
@@ -252,6 +251,9 @@ public class EmployeeBasicInfoTabService {
             validatePreparedEntities(employee, empDetails, empPfDetails);
             validateEntityConstraints(employee, empDetails, empPfDetails);
 
+            if (employee == null) {
+                throw new ResourceNotFoundException("Failed to prepare employee entity.");
+            }
             // Step 5: Save to database ONLY after all validations pass
             employee = employeeRepository.save(employee);
             logger.info("✅ Employee ID {} {} - proceeding with child entity saves",
@@ -611,6 +613,12 @@ public class EmployeeBasicInfoTabService {
                     .orElseThrow(() -> new ResourceNotFoundException("Active ModeOfHiring not found")));
         }
 
+        if (basicInfo.getEmpTypeHiringId() != null) {
+            employee.setEmployee_type_hiring_id(employeeTypeHiringRepository.findById(basicInfo.getEmpTypeHiringId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "EmployeeTypeHiring not found with ID: " + basicInfo.getEmpTypeHiringId())));
+        }
+
         // Handle reference employees
         if (basicInfo.getReferenceEmpId() != null && basicInfo.getReferenceEmpId() > 0) {
             employee.setEmployee_reference(employeeRepository.findByIdAndIs_active(basicInfo.getReferenceEmpId(), 1)
@@ -830,6 +838,12 @@ public class EmployeeBasicInfoTabService {
         if (basicInfo.getModeOfHiringId() != null) {
             employee.setModeOfHiring_id(modeOfHiringRepository.findByIdAndIsActive(basicInfo.getModeOfHiringId(), 1)
                     .orElseThrow(() -> new ResourceNotFoundException("Active ModeOfHiring not found")));
+        }
+
+        if (basicInfo.getEmpTypeHiringId() != null) {
+            employee.setEmployee_type_hiring_id(employeeTypeHiringRepository.findById(basicInfo.getEmpTypeHiringId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "EmployeeTypeHiring not found with ID: " + basicInfo.getEmpTypeHiringId())));
         }
 
         if (basicInfo.getReferenceEmpId() != null && basicInfo.getReferenceEmpId() > 0) {
@@ -1256,13 +1270,15 @@ public class EmployeeBasicInfoTabService {
 
             if (existingByType.isPresent()) {
                 EmpaddressInfo existing = existingByType.get();
-                updateAddressFields(existing, newAddr);
-                // Set updated_by and updated_date on update
-                if (updatedBy != null && updatedBy > 0) {
-                    existing.setUpdated_by(updatedBy);
-                    existing.setUpdated_date(LocalDateTime.now());
+                boolean changed = updateAddressFields(existing, newAddr);
+                // Set updated_by and updated_date ONLY if something changed
+                if (changed) {
+                    if (updatedBy != null && updatedBy > 0) {
+                        existing.setUpdated_by(updatedBy);
+                        existing.setUpdated_date(LocalDateTime.now());
+                    }
+                    empaddressInfoRepository.save(existing);
                 }
-                empaddressInfoRepository.save(existing);
                 existingAddresses.remove(existing);
             } else {
                 empaddressInfoRepository.save(newAddr);
@@ -1296,27 +1312,83 @@ public class EmployeeBasicInfoTabService {
     /**
      * Helper: Update Address fields
      */
-    private void updateAddressFields(EmpaddressInfo target, EmpaddressInfo source) {
-        if (source.getAddrs_type() != null)
-            target.setAddrs_type(source.getAddrs_type());
-        if (source.getCountry_id() != null)
+    private boolean updateAddressFields(EmpaddressInfo target, EmpaddressInfo source) {
+        boolean changed = false;
+
+        // Hyper-robust string helper: treats null, empty, and whitespace as same,
+        // case-insensitive
+        java.util.function.BiPredicate<String, String> areStringsEqual = (s1, s2) -> {
+
+            String str1 = (s1 == null || s1.trim().isEmpty()) ? "" : s1.trim();
+            String str2 = (s2 == null || s2.trim().isEmpty()) ? "" : s2.trim();
+            return str1.equalsIgnoreCase(str2);
+        };
+
+        // Hyper-robust numeric helper: treats null and 0 as same
+        java.util.function.BiPredicate<Number, Number> areNumbersEqual = (n1, n2) -> {
+            long v1 = (n1 == null) ? 0L : n1.longValue();
+            long v2 = (n2 == null) ? 0L : n2.longValue();
+            return v1 == v2;
+        };
+
+        if (!areStringsEqual.test(target.getAddrs_type(), source.getAddrs_type())) {
+            target.setAddrs_type(source.getAddrs_type() != null ? source.getAddrs_type().trim() : null);
+            changed = true;
+        }
+
+        Integer targetCountryId = target.getCountry_id() != null ? target.getCountry_id().getCountryId() : null;
+        Integer sourceCountryId = source.getCountry_id() != null ? source.getCountry_id().getCountryId() : null;
+        if (!areNumbersEqual.test(targetCountryId, sourceCountryId)) {
             target.setCountry_id(source.getCountry_id());
-        if (source.getState_id() != null)
+            changed = true;
+        }
+
+        Integer targetStateId = target.getState_id() != null ? target.getState_id().getStateId() : null;
+        Integer sourceStateId = source.getState_id() != null ? source.getState_id().getStateId() : null;
+        if (!areNumbersEqual.test(targetStateId, sourceStateId)) {
             target.setState_id(source.getState_id());
-        if (source.getCity_id() != null)
+            changed = true;
+        }
+
+        Integer targetCityId = target.getCity_id() != null ? target.getCity_id().getCityId() : null;
+        Integer sourceCityId = source.getCity_id() != null ? source.getCity_id().getCityId() : null;
+        if (!areNumbersEqual.test(targetCityId, sourceCityId)) {
             target.setCity_id(source.getCity_id());
-        if (source.getDistrict_id() != null)
+            changed = true;
+        }
+
+        Integer targetDistrictId = target.getDistrict_id() != null ? target.getDistrict_id().getDistrictId() : null;
+        Integer sourceDistrictId = source.getDistrict_id() != null ? source.getDistrict_id().getDistrictId() : null;
+        if (!areNumbersEqual.test(targetDistrictId, sourceDistrictId)) {
             target.setDistrict_id(source.getDistrict_id());
-        if (source.getPostal_code() != null)
-            target.setPostal_code(source.getPostal_code());
-        if (source.getHouse_no() != null)
-            target.setHouse_no(source.getHouse_no());
-        if (source.getLandmark() != null)
-            target.setLandmark(source.getLandmark());
-        if (source.getEmrg_contact_no() != null)
+            changed = true;
+        }
+
+        if (!areStringsEqual.test(target.getPostal_code(), source.getPostal_code())) {
+            target.setPostal_code(source.getPostal_code() != null ? source.getPostal_code().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getHouse_no(), source.getHouse_no())) {
+            target.setHouse_no(source.getHouse_no() != null ? source.getHouse_no().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getLandmark(), source.getLandmark())) {
+            target.setLandmark(source.getLandmark() != null ? source.getLandmark().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getEmrg_contact_no(), source.getEmrg_contact_no())) {
             target.setEmrg_contact_no(source.getEmrg_contact_no());
-        target.setIs_active(source.getIs_active());
-        target.setIs_per_and_curr(source.getIs_per_and_curr());
+            changed = true;
+        }
+        if (target.getIs_active() != source.getIs_active()) {
+            target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+        if (!Objects.equals(target.getIs_per_and_curr(), source.getIs_per_and_curr())) {
+            target.setIs_per_and_curr(source.getIs_per_and_curr());
+            changed = true;
+        }
+        return changed;
     }
 
     // ============================================================================
@@ -1492,81 +1564,215 @@ public class EmployeeBasicInfoTabService {
         return familyMember;
     }
 
-    /**
-     * Helper: Update or create Family entities
-     */
     private void updateOrCreateFamilyEntities(List<EmpFamilyDetails> newFamily, Employee employee, Integer updatedBy) {
         int empId = employee.getEmp_id();
 
+        // 1. Get existing active family members
         List<EmpFamilyDetails> existingFamily = empFamilyDetailsRepository.findAll().stream()
                 .filter(fam -> fam.getEmp_id() != null && fam.getEmp_id().getEmp_id() == empId
                         && fam.getIs_active() == 1)
                 .collect(Collectors.toList());
 
-        int maxSize = Math.max(newFamily.size(), existingFamily.size());
+        // 2. Track which existing ones are matched to prevent duplicate matching
+        java.util.Set<Integer> matchedExistingIds = new java.util.HashSet<>();
 
-        for (int i = 0; i < maxSize; i++) {
-            if (i < newFamily.size()) {
-                EmpFamilyDetails newFam = newFamily.get(i);
-                newFam.setEmp_id(employee);
-                newFam.setIs_active(1);
+        // 3. Process newFamily list (updates or new records)
+        for (EmpFamilyDetails newFam : newFamily) {
+            newFam.setEmp_id(employee);
+            newFam.setIs_active(1);
 
-                if (i < existingFamily.size()) {
-                    EmpFamilyDetails existing = existingFamily.get(i);
-                    updateFamilyFields(existing, newFam);
-                    // Set updated_by and updated_date on update
+            // Find match in existing family by relation and name
+            EmpFamilyDetails existingMatch = existingFamily.stream()
+                    .filter(existing -> !matchedExistingIds.contains(existing.getEmp_family_detl_id()))
+                    .filter(existing -> areFamilyMembersSame(existing, newFam))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existingMatch != null) {
+                matchedExistingIds.add(existingMatch.getEmp_family_detl_id());
+                boolean changed = updateFamilyFields(existingMatch, newFam);
+                // Set updated_by and updated_date ONLY if something changed
+                if (changed) {
                     if (updatedBy != null && updatedBy > 0) {
-                        existing.setUpdated_by(updatedBy);
-                        existing.setUpdated_date(LocalDateTime.now());
+                        existingMatch.setUpdated_by(updatedBy);
+                        existingMatch.setUpdated_date(LocalDateTime.now());
                     }
-                    empFamilyDetailsRepository.save(existing);
-                } else {
-                    empFamilyDetailsRepository.save(newFam);
+                    empFamilyDetailsRepository.save(existingMatch);
                 }
-            } else if (i < existingFamily.size()) {
-                existingFamily.get(i).setIs_active(0);
+            } else {
+                // New record - no match found in existing
+                empFamilyDetailsRepository.save(newFam);
+            }
+        }
+
+        // 4. Deactivate existing records that weren't in the new list
+        for (EmpFamilyDetails existing : existingFamily) {
+            if (!matchedExistingIds.contains(existing.getEmp_family_detl_id())) {
+                existing.setIs_active(0);
                 if (updatedBy != null && updatedBy > 0) {
-                    existingFamily.get(i).setUpdated_by(updatedBy);
-                    existingFamily.get(i).setUpdated_date(LocalDateTime.now());
+                    existing.setUpdated_by(updatedBy);
+                    existing.setUpdated_date(LocalDateTime.now());
                 }
-                empFamilyDetailsRepository.save(existingFamily.get(i));
+                empFamilyDetailsRepository.save(existing);
             }
         }
     }
 
     /**
+     * Helper: Check if two family members are the same (used for matching)
+     */
+    private boolean areFamilyMembersSame(EmpFamilyDetails f1, EmpFamilyDetails f2) {
+        if (f1 == null || f2 == null)
+            return false;
+
+        Integer r1 = f1.getRelation_id() != null ? f1.getRelation_id().getStudentRelationId() : null;
+        Integer r2 = f2.getRelation_id() != null ? f2.getRelation_id().getStudentRelationId() : null;
+
+        if (!Objects.equals(r1, r2))
+            return false;
+
+        String n1 = f1.getFullName() != null ? f1.getFullName().trim() : "";
+        String n2 = f2.getFullName() != null ? f2.getFullName().trim() : "";
+
+        return n1.equalsIgnoreCase(n2);
+    }
+
+    /**
      * Helper: Update Family fields
      */
-    private void updateFamilyFields(EmpFamilyDetails target, EmpFamilyDetails source) {
-        if (source.getFullName() != null)
-            target.setFullName(source.getFullName());
-        if (source.getAdhaarNo() != null)
+    private boolean updateFamilyFields(EmpFamilyDetails target, EmpFamilyDetails source) {
+        boolean changed = false;
+        String name = target.getFullName();
+
+        // Hyper-robust string helper: treats null, empty, and whitespace as same,
+        // case-insensitive
+        java.util.function.BiPredicate<String, String> areStringsEqual = (s1, s2) -> {
+            String str1 = (s1 == null || s1.trim().isEmpty()) ? "" : s1.trim();
+            String str2 = (s2 == null || s2.trim().isEmpty()) ? "" : s2.trim();
+            return str1.equalsIgnoreCase(str2);
+        };
+
+        // Hyper-robust numeric helper: treats null and 0 as same
+        java.util.function.BiPredicate<Number, Number> areNumbersEqual = (n1, n2) -> {
+            long v1 = (n1 == null) ? 0L : n1.longValue();
+            long v2 = (n2 == null) ? 0L : n2.longValue();
+            return v1 == v2;
+        };
+
+        // Hyper-robust date helper: compares YYYY-MM-DD using toLocalDate
+        java.util.function.BiPredicate<java.sql.Date, java.sql.Date> areDatesEqual = (d1, d2) -> {
+            if (d1 == null && d2 == null)
+                return true;
+            if (d1 == null || d2 == null)
+                return false;
+            return d1.toLocalDate().equals(d2.toLocalDate());
+        };
+
+        if (!areStringsEqual.test(target.getFullName(), source.getFullName())) {
+            logger.info("Field 'fullName' changed for {}: '{}' -> '{}'", name, target.getFullName(),
+                    source.getFullName());
+            target.setFullName(source.getFullName() != null ? source.getFullName().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getAdhaarNo(), source.getAdhaarNo())) {
+            logger.info("Field 'adhaarNo' changed for {}: '{}' -> '{}'", name, target.getAdhaarNo(),
+                    source.getAdhaarNo());
             target.setAdhaarNo(source.getAdhaarNo());
-        if (source.getDate_of_birth() != null)
+            changed = true;
+        }
+        if (!areDatesEqual.test(target.getDate_of_birth(), source.getDate_of_birth())) {
+            logger.info("Field 'date_of_birth' changed for {}: '{}' -> '{}'", name, target.getDate_of_birth(),
+                    source.getDate_of_birth());
             target.setDate_of_birth(source.getDate_of_birth());
-        if (source.getGender_id() != null)
+            changed = true;
+        }
+
+        Integer targetGenderId = target.getGender_id() != null ? target.getGender_id().getGender_id() : null;
+        Integer sourceGenderId = source.getGender_id() != null ? source.getGender_id().getGender_id() : null;
+        if (!areNumbersEqual.test(targetGenderId, sourceGenderId)) {
+            logger.info("Field 'genderId' changed for {}: '{}' -> '{}'", name, targetGenderId, sourceGenderId);
             target.setGender_id(source.getGender_id());
-        if (source.getRelation_id() != null)
+            changed = true;
+        }
+
+        Integer targetRelationId = target.getRelation_id() != null ? target.getRelation_id().getStudentRelationId()
+                : null;
+        Integer sourceRelationId = source.getRelation_id() != null ? source.getRelation_id().getStudentRelationId()
+                : null;
+        if (!areNumbersEqual.test(targetRelationId, sourceRelationId)) {
+            logger.info("Field 'relationId' changed for {}: '{}' -> '{}'", name, targetRelationId, sourceRelationId);
             target.setRelation_id(source.getRelation_id());
-        if (source.getBlood_group_id() != null)
+            changed = true;
+        }
+
+        Integer targetBloodGroupId = target.getBlood_group_id() != null ? target.getBlood_group_id().getBloodGroupId()
+                : null;
+        Integer sourceBloodGroupId = source.getBlood_group_id() != null ? source.getBlood_group_id().getBloodGroupId()
+                : null;
+        if (!areNumbersEqual.test(targetBloodGroupId, sourceBloodGroupId)) {
+            logger.info("Field 'bloodGroupId' changed for {}: '{}' -> '{}'", name, targetBloodGroupId,
+                    sourceBloodGroupId);
             target.setBlood_group_id(source.getBlood_group_id());
-        if (source.getNationality() != null)
-            target.setNationality(source.getNationality());
-        if (source.getOccupation() != null)
-            target.setOccupation(source.getOccupation());
-        if (source.getIs_dependent() != null)
+            changed = true;
+        }
+
+        if (!areStringsEqual.test(target.getNationality(), source.getNationality())) {
+            logger.info("Field 'nationality' changed for {}: '{}' -> '{}'", name, target.getNationality(),
+                    source.getNationality());
+            target.setNationality(source.getNationality() != null ? source.getNationality().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getOccupation(), source.getOccupation())) {
+            logger.info("Field 'occupation' changed for {}: '{}' -> '{}'", name, target.getOccupation(),
+                    source.getOccupation());
+            target.setOccupation(source.getOccupation() != null ? source.getOccupation().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getIs_dependent(), source.getIs_dependent())) {
+            logger.info("Field 'is_dependent' changed for {}: '{}' -> '{}'", name, target.getIs_dependent(),
+                    source.getIs_dependent());
             target.setIs_dependent(source.getIs_dependent());
-        if (source.getIs_late() != null)
-            target.setIs_late(source.getIs_late());
-        if (source.getIs_sri_chaitanya_emp() != null)
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getIs_late(), source.getIs_late())) {
+            logger.info("Field 'is_late' changed for {}: '{}' -> '{}'", name, target.getIs_late(), source.getIs_late());
+            target.setIs_late(source.getIs_late() != null ? source.getIs_late().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getIs_sri_chaitanya_emp(), source.getIs_sri_chaitanya_emp())) {
+            logger.info("Field 'is_sri_chaitanya_emp' changed for {}: '{}' -> '{}'", name,
+                    target.getIs_sri_chaitanya_emp(), source.getIs_sri_chaitanya_emp());
             target.setIs_sri_chaitanya_emp(source.getIs_sri_chaitanya_emp());
-        if (source.getParent_emp_id() != null)
+            changed = true;
+        }
+
+        Integer targetParentId = target.getParent_emp_id() != null ? target.getParent_emp_id().getEmp_id() : null;
+        Integer sourceParentId = source.getParent_emp_id() != null ? source.getParent_emp_id().getEmp_id() : null;
+        if (!areNumbersEqual.test(targetParentId, sourceParentId)) {
+            logger.info("Field 'parentEmpId' changed for {}: '{}' -> '{}'", name, targetParentId, sourceParentId);
             target.setParent_emp_id(source.getParent_emp_id());
-        if (source.getEmail() != null)
-            target.setEmail(source.getEmail());
-        if (source.getContact_no() != null)
+            changed = true;
+        }
+
+        if (!areStringsEqual.test(target.getEmail(), source.getEmail())) {
+            logger.info("Field 'email' changed for {}: '{}' -> '{}'", name, target.getEmail(), source.getEmail());
+            target.setEmail(source.getEmail() != null ? source.getEmail().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getContact_no(), source.getContact_no())) {
+            logger.info("Field 'contactNo' changed for {}: '{}' -> '{}'", name, target.getContact_no(),
+                    source.getContact_no());
             target.setContact_no(source.getContact_no());
-        target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+        if (target.getIs_active() != source.getIs_active()) {
+            logger.info("Field 'is_active' changed for {}: '{}' -> '{}'", name, target.getIs_active(),
+                    source.getIs_active());
+            target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+
+        return changed;
     }
 
     /**
@@ -1749,51 +1955,80 @@ public class EmployeeBasicInfoTabService {
         int empId = employee.getEmp_id();
         Integer createdBy = dto.getCreatedBy();
 
+        // 1. Get existing active experience records
         List<EmpExperienceDetails> existingExperience = empExperienceDetailsRepository.findAll().stream()
                 .filter(exp -> exp.getEmployee_id() != null && exp.getEmployee_id().getEmp_id() == empId
                         && exp.getIs_active() == 1)
                 .collect(Collectors.toList());
 
-        int maxSize = Math.max(newExperience.size(), existingExperience.size());
+        // 2. Track which existing ones are matched to prevent duplicate matching
+        java.util.Set<Integer> matchedExistingIds = new java.util.HashSet<>();
 
-        for (int i = 0; i < maxSize; i++) {
-            if (i < newExperience.size()) {
-                EmpExperienceDetails newExp = newExperience.get(i);
-                newExp.setEmployee_id(employee);
-                newExp.setIs_active(1);
+        // 3. Process newExperience list (updates or new records)
+        // Since newExperience is prepared from dto.getPreviousEmployers(), we can use
+        // index to sync them
+        for (int i = 0; i < newExperience.size(); i++) {
+            EmpExperienceDetails newExp = newExperience.get(i);
+            newExp.setEmployee_id(employee);
+            newExp.setIs_active(1);
 
-                EmpExperienceDetails savedExp;
-                if (i < existingExperience.size()) {
-                    EmpExperienceDetails existing = existingExperience.get(i);
-                    updateExperienceFields(existing, newExp);
+            // Find match in existing experience by organization name
+            EmpExperienceDetails existingMatch = existingExperience.stream()
+                    .filter(existing -> !matchedExistingIds.contains(existing.getEmp_exp_detl_id()))
+                    .filter(existing -> areExperiencesSame(existing, newExp))
+                    .findFirst()
+                    .orElse(null);
+
+            EmpExperienceDetails savedExp;
+            if (existingMatch != null) {
+                matchedExistingIds.add(existingMatch.getEmp_exp_detl_id());
+                boolean changed = updateExperienceFields(existingMatch, newExp);
+                // Set updated_by and updated_date ONLY if something changed
+                if (changed) {
                     if (updatedBy != null && updatedBy > 0) {
-                        existing.setUpdated_by(updatedBy);
-                        existing.setUpdated_date(LocalDateTime.now());
+                        existingMatch.setUpdated_by(updatedBy);
+                        existingMatch.setUpdated_date(LocalDateTime.now());
                     }
-                    savedExp = empExperienceDetailsRepository.save(existing);
+                    savedExp = empExperienceDetailsRepository.save(existingMatch);
                 } else {
-                    savedExp = empExperienceDetailsRepository.save(newExp);
+                    savedExp = existingMatch;
                 }
+            } else {
+                // New record - no match found in existing
+                savedExp = empExperienceDetailsRepository.save(newExp);
+            }
 
-                // Handle documents for this employer
-                if (dto.getPreviousEmployers().get(i).getDocuments() != null) {
-                    saveEmployerDocuments(employee, savedExp, dto.getPreviousEmployers().get(i).getDocuments(),
-                            createdBy, updatedBy);
-                }
-            } else if (i < existingExperience.size()) {
-                EmpExperienceDetails expToDelete = existingExperience.get(i);
-                expToDelete.setIs_active(0);
-                if (updatedBy != null && updatedBy > 0) {
-                    expToDelete.setUpdated_by(updatedBy);
-                    expToDelete.setUpdated_date(LocalDateTime.now());
-                }
-                empExperienceDetailsRepository.save(expToDelete);
-
-                // Deactivate associated documents only when the experience record is being
-                // deactivated
-                deactivateExperienceDocuments(expToDelete.getEmp_exp_detl_id(), updatedBy);
+            // Handle documents for this employer (use index i to link to correct DTO item)
+            if (dto.getPreviousEmployers().get(i).getDocuments() != null) {
+                saveEmployerDocuments(employee, savedExp, dto.getPreviousEmployers().get(i).getDocuments(),
+                        createdBy, updatedBy);
             }
         }
+
+        // 4. Deactivate existing records that weren't in the new list
+        for (EmpExperienceDetails existing : existingExperience) {
+            if (!matchedExistingIds.contains(existing.getEmp_exp_detl_id())) {
+                existing.setIs_active(0);
+                if (updatedBy != null && updatedBy > 0) {
+                    existing.setUpdated_by(updatedBy);
+                    existing.setUpdated_date(LocalDateTime.now());
+                }
+                empExperienceDetailsRepository.save(existing);
+                // Deactivate associated documents
+                deactivateExperienceDocuments(existing.getEmp_exp_detl_id(), updatedBy);
+            }
+        }
+    }
+
+    /**
+     * Helper: Check if two experience records are the same (used for matching)
+     */
+    private boolean areExperiencesSame(EmpExperienceDetails e1, EmpExperienceDetails e2) {
+        if (e1 == null || e2 == null)
+            return false;
+        String n1 = e1.getPre_organigation_name() != null ? e1.getPre_organigation_name().trim() : "";
+        String n2 = e2.getPre_organigation_name() != null ? e2.getPre_organigation_name().trim() : "";
+        return n1.equalsIgnoreCase(n2);
     }
 
     /**
@@ -1865,27 +2100,72 @@ public class EmployeeBasicInfoTabService {
         }
     }
 
-    /**
-     * Helper: Update Experience fields
-     */
-    private void updateExperienceFields(EmpExperienceDetails target, EmpExperienceDetails source) {
-        if (source.getPre_organigation_name() != null)
-            target.setPre_organigation_name(source.getPre_organigation_name());
-        if (source.getDate_of_join() != null)
+    private boolean updateExperienceFields(EmpExperienceDetails target, EmpExperienceDetails source) {
+        boolean changed = false;
+
+        // Hyper-robust string helper: treats null, empty, and whitespace as same,
+        // case-insensitive
+        java.util.function.BiPredicate<String, String> areStringsEqual = (s1, s2) -> {
+            String str1 = (s1 == null || s1.trim().isEmpty()) ? "" : s1.trim();
+            String str2 = (s2 == null || s2.trim().isEmpty()) ? "" : s2.trim();
+            return str1.equalsIgnoreCase(str2);
+        };
+
+        // Hyper-robust numeric helper: treats null and 0 as same
+        java.util.function.BiPredicate<Number, Number> areNumbersEqual = (n1, n2) -> {
+            long v1 = (n1 == null) ? 0L : n1.longValue();
+            long v2 = (n2 == null) ? 0L : n2.longValue();
+            return v1 == v2;
+        };
+
+        // Hyper-robust date helper: compares YYYY-MM-DD using toLocalDate
+        java.util.function.BiPredicate<java.sql.Date, java.sql.Date> areDatesEqual = (d1, d2) -> {
+            if (d1 == null && d2 == null)
+                return true;
+            if (d1 == null || d2 == null)
+                return false;
+            return d1.toLocalDate().equals(d2.toLocalDate());
+        };
+
+        if (!areStringsEqual.test(target.getPre_organigation_name(), source.getPre_organigation_name())) {
+            target.setPre_organigation_name(
+                    source.getPre_organigation_name() != null ? source.getPre_organigation_name().trim() : null);
+            changed = true;
+        }
+        if (!areDatesEqual.test(target.getDate_of_join(), source.getDate_of_join())) {
             target.setDate_of_join(source.getDate_of_join());
-        if (source.getDate_of_leave() != null)
+            changed = true;
+        }
+        if (!areDatesEqual.test(target.getDate_of_leave(), source.getDate_of_leave())) {
             target.setDate_of_leave(source.getDate_of_leave());
-        if (source.getDesignation() != null)
-            target.setDesignation(source.getDesignation());
-        if (source.getLeaving_reason() != null)
-            target.setLeaving_reason(source.getLeaving_reason());
-        if (source.getNature_of_duties() != null)
-            target.setNature_of_duties(source.getNature_of_duties());
-        if (source.getCompany_addr() != null)
-            target.setCompany_addr(source.getCompany_addr());
-        if (source.getGross_salary() != 0)
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getDesignation(), source.getDesignation())) {
+            target.setDesignation(source.getDesignation() != null ? source.getDesignation().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getLeaving_reason(), source.getLeaving_reason())) {
+            target.setLeaving_reason(source.getLeaving_reason() != null ? source.getLeaving_reason().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getNature_of_duties(), source.getNature_of_duties())) {
+            target.setNature_of_duties(
+                    source.getNature_of_duties() != null ? source.getNature_of_duties().trim() : null);
+            changed = true;
+        }
+        if (!areStringsEqual.test(target.getCompany_addr(), source.getCompany_addr())) {
+            target.setCompany_addr(source.getCompany_addr() != null ? source.getCompany_addr().trim() : null);
+            changed = true;
+        }
+        if (!areNumbersEqual.test(target.getGross_salary(), source.getGross_salary())) {
             target.setGross_salary(source.getGross_salary());
-        target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+        if (target.getIs_active() != source.getIs_active()) {
+            target.setIs_active(source.getIs_active());
+            changed = true;
+        }
+        return changed;
     }
 
     // ============================================================================
@@ -1909,7 +2189,8 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("Employee last name is required");
         }
 
-        if (employee.getCreated_by() == null || employee.getCreated_by() <= 0) {
+        Integer empCreatedBy = employee.getCreated_by();
+        if (empCreatedBy == null || empCreatedBy <= 0) {
             throw new ResourceNotFoundException("Employee created_by must be set (NOT NULL column)");
         }
 
@@ -1917,16 +2198,20 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("EmpDetails entity cannot be null");
         }
 
-        if (empDetails.getCreated_by() == null || empDetails.getCreated_by() <= 0) {
-            empDetails.setCreated_by(employee.getCreated_by());
+        Integer detailsCreatedBy = empDetails.getCreated_by();
+        if (detailsCreatedBy == null || detailsCreatedBy <= 0) {
+            empDetails.setCreated_by(empCreatedBy);
         }
 
         if (empDetails.getEmergency_ph_no() == null || empDetails.getEmergency_ph_no().trim().isEmpty()) {
             throw new ResourceNotFoundException("EmpDetails: Emergency Phone Number is required (NOT NULL column)");
         }
 
-        if (empPfDetails != null && (empPfDetails.getCreated_by() == null || empPfDetails.getCreated_by() <= 0)) {
-            empPfDetails.setCreated_by(employee.getCreated_by());
+        if (empPfDetails != null) {
+            Integer pfCreatedBy = empPfDetails.getCreated_by();
+            if (pfCreatedBy == null || pfCreatedBy <= 0) {
+                empPfDetails.setCreated_by(empCreatedBy);
+            }
         }
     }
 
@@ -2117,6 +2402,12 @@ public class EmployeeBasicInfoTabService {
             modeOfHiringRepository.findById(basicInfo.getModeOfHiringId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Mode of Hiring not found with ID: " + basicInfo.getModeOfHiringId()));
+        }
+
+        if (basicInfo.getEmpTypeHiringId() != null) {
+            employeeTypeHiringRepository.findById(basicInfo.getEmpTypeHiringId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Employee Type Hiring not found with ID: " + basicInfo.getEmpTypeHiringId()));
         }
 
         // Validate Aadhaar Number format IF provided (optional field)
