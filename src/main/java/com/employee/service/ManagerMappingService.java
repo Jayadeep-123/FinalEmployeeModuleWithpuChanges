@@ -1224,25 +1224,6 @@ public class ManagerMappingService {
 
                         batchDTO.setDesignationName(top.getDesignationName());
 
-                        // Get role from sce_emp_view for primary campus
-                        try {
-                            String applicationRole = employeeRepository.findApplicationRoleByEmpId(emp.getEmp_id());
-                            if (applicationRole != null && !applicationRole.isEmpty()) {
-                                batchDTO.setRole(applicationRole);
-
-                                // Look up roleId from role table based on role name
-                                try {
-                                    com.employee.entity.Role role = roleRepository.findByRoleName(applicationRole);
-                                    if (role != null) {
-                                        batchDTO.setRoleId(role.getRoleId());
-                                    }
-                                } catch (Exception ex) {
-                                    // Role name not found in role table, leave roleId as null
-                                }
-                            }
-                        } catch (Exception e) {
-                            // Ignore and leave role as null
-                        }
                     } else {
                         // Fallback if no primary campus
                         batchDTO.setFullAddress("Address: Primary campus not assigned or inactive");
@@ -1295,19 +1276,30 @@ public class ManagerMappingService {
                         batchDTO.setDesignationName(emp.getDesignation().getDesignation_name());
                     }
 
-                    // Fetch Role Info (as requested in previous steps)
+                    // Fetch Role Info from user_admin view and then from Role table
                     try {
-                        List<Integer> roleIds = employeeRepository.findRoleIdByEmpId(emp.getEmp_id());
-                        if (roleIds != null && !roleIds.isEmpty()) {
-                            batchDTO.setRoleId(roleIds.get(0));
-                        }
-
                         List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
                         if (roles != null && !roles.isEmpty()) {
-                            batchDTO.setRole(roles.get(0));
+                            String roleNameFromView = roles.get(0);
+
+                            // Move to role table to pick role id and role name
+                            com.employee.entity.Role roleEntity = roleRepository.findByRoleName(roleNameFromView);
+                            if (roleEntity != null) {
+                                batchDTO.setRoleId(roleEntity.getRoleId());
+                                batchDTO.setRole(roleEntity.getRoleName());
+                            } else {
+                                // Role name found in view but not in role table
+                                batchDTO.setRoleId(null);
+                                batchDTO.setRole(roleNameFromView);
+                            }
+                        } else {
+                            // No data in user_admin view
+                            batchDTO.setRoleId(null);
+                            batchDTO.setRole(null);
                         }
                     } catch (Exception e) {
-                        // Ignore
+                        batchDTO.setRoleId(null);
+                        batchDTO.setRole(null);
                     }
 
                     // 6. Map to CampusDetailDTO for Shared employees
@@ -1431,19 +1423,6 @@ public class ManagerMappingService {
                     dto.setDesignationId(se.getDesignationId().getDesignation_id());
                     dto.setDesignationName(se.getDesignationId().getDesignation_name());
                 }
-                // SharedEmployee doesn't have roleId directly, fetch global role
-                try {
-                    List<Integer> info = employeeRepository.findRoleIdByEmpId(emp.getEmp_id());
-                    if (info != null && !info.isEmpty()) {
-                        dto.setRoleId(info.get(0));
-                    }
-                    List<String> roleNames = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
-                    if (roleNames != null && !roleNames.isEmpty()) {
-                        dto.setRoleName(roleNames.get(0));
-                    }
-                } catch (Exception e) {
-                    // Ignore
-                }
 
             } else if (mappingEntity instanceof com.employee.entity.CampusEmployee) {
                 com.employee.entity.CampusEmployee ce = (com.employee.entity.CampusEmployee) mappingEntity;
@@ -1470,19 +1449,7 @@ public class ManagerMappingService {
                     dto.setDesignationId(emp.getDesignation().getDesignation_id());
                     dto.setDesignationName(emp.getDesignation().getDesignation_name());
                 }
-                // Fetch global role
-                try {
-                    List<Integer> info = employeeRepository.findRoleIdByEmpId(emp.getEmp_id());
-                    if (info != null && !info.isEmpty()) {
-                        dto.setRoleId(info.get(0));
-                    }
-                    List<String> roleNames = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
-                    if (roleNames != null && !roleNames.isEmpty()) {
-                        dto.setRoleName(roleNames.get(0));
-                    }
-                } catch (Exception e) {
-                    // Ignore
-                }
+
             }
 
             // Populate City from Campus
@@ -1594,23 +1561,6 @@ public class ManagerMappingService {
             if (emp.getDesignation() != null) {
                 dto.setDesignationId(emp.getDesignation().getDesignation_id());
                 dto.setDesignationName(emp.getDesignation().getDesignation_name());
-            }
-
-            // Populate Role Info from View
-            try {
-                System.out.println("==================================================");
-                System.out
-                        .println("DEBUG CHECKING ROLE FOR: " + emp.getFirst_name() + " (ID: " + emp.getEmp_id() + ")");
-                List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
-                System.out.println("DEBUG RESULT: " + (roles != null ? roles.toString() : "NULL LIST"));
-                System.out.println("==================================================");
-
-                if (roles != null && !roles.isEmpty()) {
-                    dto.setRole(roles.get(0));
-                }
-            } catch (Exception e) {
-                System.err.println("DEBUG ERROR: " + e.getMessage());
-                e.printStackTrace();
             }
 
             // Populate Employee Type Info

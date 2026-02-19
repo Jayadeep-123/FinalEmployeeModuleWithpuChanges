@@ -563,7 +563,9 @@ public class DropDownService {
 
 	public List<GenericDropdownDTO> getActiveEmployeesWithPayrollByCampusId(Integer campusId) {
 		return employeeRepository.findActiveEmployeesWithPayrollByCampusId(campusId).stream()
-				.map(emp -> new GenericDropdownDTO(emp.getEmp_id(), emp.getFirst_name() + " " + emp.getLast_name()))
+				.map(emp -> new GenericDropdownDTO(
+						emp.getEmp_id(),
+						emp.getFirst_name() + " " + emp.getLast_name() + " (" + emp.getPayRollId() + ")"))
 				.collect(Collectors.toList());
 	}
 
