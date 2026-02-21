@@ -1157,7 +1157,10 @@ public class HREmpDetlService {
                         address.getLandmark(),
                         address.getPostal_code(),
                         address.getCity_id() != null ? address.getCity_id().getCityName() : null,
-                        address.getDistrict_id() != null ? address.getDistrict_id().getDistrictName() : null,
+                        address.getDistrict_id() != null ? address.getDistrict_id().getDistrictName()
+                                : (address.getCity_id() != null && address.getCity_id().getDistrict() != null
+                                        ? address.getCity_id().getDistrict().getDistrictName()
+                                        : null),
                         address.getState_id() != null ? address.getState_id().getStateName() : null,
                         address.getCountry_id() != null ? address.getCountry_id().getCountryName() : null,
                         address.getEmrg_contact_no(),

@@ -16,5 +16,7 @@ public class EmployeeLocationDTO {
     private String stateName;
     private Integer cityId;
     private String cityName;
+    private Integer buildingId;
+    private String buildingName;
     private List<CampusInfoDTO> campusDetails;
 }

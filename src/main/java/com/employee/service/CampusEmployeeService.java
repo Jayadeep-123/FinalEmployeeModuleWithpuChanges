@@ -183,6 +183,12 @@ public class CampusEmployeeService {
                 locationDTO.setCityName(primaryCampus.getCity().getCityName());
             }
 
+            // Set Building Fields
+            if (employee.getBuilding_id() != null) {
+                locationDTO.setBuildingId(employee.getBuilding_id().getBuildingId());
+                locationDTO.setBuildingName(employee.getBuilding_id().getBuildingName());
+            }
+
             // Track Primary Campus ID to avoid adding it to the list later
             addedCampusIds.add(primaryCampus.getCampusId());
         }

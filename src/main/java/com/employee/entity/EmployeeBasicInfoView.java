@@ -24,7 +24,28 @@ public class EmployeeBasicInfoView {
     private String employeeName;
 
     @Column(name = "adhaar_no")
-    private String adhaarNo;
+    private Long adhaarNo;
+
+    @Column(name = "emergency_ph_no")
+    private String emergencyPhNo;
+
+    @Column(name = "emergency_cont_name")
+    private String emergencyContName;
+
+    @Column(name = "relation_id")
+    private Integer relationId;
+
+    @Column(name = "relation_type")
+    private String relationType;
+
+    @Column(name = "religion_id")
+    private Integer religionId;
+
+    @Column(name = "religion_type")
+    private String religionType;
+
+    @Column(name = "payroll_id")
+    private String payrollId;
 
     @Column(name = "adhaar_enrolment_no")
     private String adhaarEnrolmentNo;
@@ -45,23 +66,20 @@ public class EmployeeBasicInfoView {
     private String motherName;
 
     @Column(name = "pre_esi_no")
-    private String preEsiNo;
+    private Long preEsiNo;
 
     @Column(name = "uan_no")
-    private String uanNo;
+    private Long uanNo;
 
     @Column(name = "total_experience")
-    private Double totalExperience; // Using Double for potential "2.5" years
+    private Double totalExperience;
 
     @Column(name = "highest_qualification_id")
-    private Integer qualificationId;
+    private Integer highestQualificationId;
 
     @Column(name = "highest_qualification_name")
-    private String qualificationName;
+    private String highestQualificationName;
 
     @Column(name = "pre_chaitanya_id")
     private String preChaitanyaId;
-    
-    @Column(name = "payroll_id")
-    private String payrollId;
 }
