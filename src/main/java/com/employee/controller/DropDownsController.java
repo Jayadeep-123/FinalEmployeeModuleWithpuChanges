@@ -128,12 +128,15 @@ public class DropDownsController {
 		return ResponseEntity.ok(paymentTypes);
 	}
 
-	@GetMapping("/department")
+	@GetMapping("/departments")
 	public ResponseEntity<?> getDepartments(
 			@RequestParam Integer empTypeId,
-			@RequestParam Integer departmentCategoryId) {
+			@RequestParam String categoryName) {
+		List<GenericDropdownDTO> departments = empDropdownService.getDepartments(empTypeId, categoryName);
 
-		List<GenericDropdownDTO> departments = empDropdownService.getDepartments(empTypeId, departmentCategoryId);
+		if (departments == null || departments.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No active departments found");
+		}
 
 		return ResponseEntity.ok(departments);
 	}
@@ -180,9 +183,9 @@ public class DropDownsController {
 
 	@GetMapping("/subjects")
 	public ResponseEntity<?> getSubjects(
-			@RequestParam(required = false) Integer subjectCategoryId,
+			@RequestParam(required = false) String categoryName,
 			@RequestParam(required = false) Integer empSubject) {
-		List<GenericDropdownDTO> subjects = empDropdownService.getSubjects(subjectCategoryId, empSubject);
+		List<GenericDropdownDTO> subjects = empDropdownService.getSubjects(categoryName, empSubject);
 
 		if (subjects == null || subjects.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No subjects found");

@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.employee.exception.ResourceNotFoundException;
 import com.employee.dto.CampusContactDTO;
 import com.employee.dto.CampusDto;
 import com.employee.dto.CmpsOrientationsDTO;
@@ -13,6 +14,7 @@ import com.employee.dto.Dgmdto;
 import com.employee.dto.GenericDropdownDTO;
 import com.employee.dto.OrganizationDTO;
 import com.employee.entity.Building;
+import com.employee.entity.BusinessType;
 import com.employee.entity.Campus;
 import com.employee.entity.CampusContact;
 import com.employee.entity.Department;
@@ -216,15 +218,18 @@ public class DropDownService {
 	// .collect(Collectors.toList());
 	// }
 
-	public List<GenericDropdownDTO> getDepartments(Integer empTypeId, Integer departmentCategoryId) {
+	public List<GenericDropdownDTO> getDepartments(Integer empTypeId, String categoryName) {
 		List<Department> departments;
 
-		if (empTypeId == null || departmentCategoryId == null) {
-			throw new IllegalArgumentException("Employee Type ID and Department Category ID are mandatory");
+		if (empTypeId == null || categoryName == null) {
+			throw new IllegalArgumentException("Employee Type ID and Category Name are mandatory");
 		}
 
+		BusinessType category = businessTypeRepository.findByBusinessTypeNameIgnoreCase(categoryName)
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found: " + categoryName));
+
 		departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndDepartmentCategory_BusinessTypeIdAndIsActive(
-				empTypeId, departmentCategoryId, 1);
+				empTypeId, category.getBusinessTypeId(), 1);
 
 		// 3. Convert Entity list to DTO list
 		return departments.stream()
@@ -267,14 +272,18 @@ public class DropDownService {
 		return relationRepository.findAll();
 	}
 
-	public List<GenericDropdownDTO> getSubjects(Integer subjectCategoryId, Integer empSubject) {
+	public List<GenericDropdownDTO> getSubjects(String categoryName, Integer empSubject) {
 		final int ACTIVE_STATUS = 1;
 
 		List<Subject> subjects;
 
-		if (subjectCategoryId != null && empSubject != null) {
+		if (categoryName != null && empSubject != null) {
+			BusinessType category = businessTypeRepository.findByBusinessTypeNameIgnoreCase(categoryName)
+					.orElseThrow(() -> new ResourceNotFoundException("Category not found: " + categoryName));
+
 			// 1. Fetch subjects filtered by category and type
-			subjects = subjectRepo.findBySubjectCategory_BusinessTypeIdAndEmpSubjectAndIsActive(subjectCategoryId,
+			subjects = subjectRepo.findBySubjectCategory_BusinessTypeIdAndEmpSubjectAndIsActive(
+					category.getBusinessTypeId(),
 					empSubject, ACTIVE_STATUS);
 		} else {
 			// 2. Fetch all active subjects
