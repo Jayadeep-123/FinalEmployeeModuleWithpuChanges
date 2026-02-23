@@ -92,4 +92,10 @@ public class SkillTestApproval {
 
     @Column(name = "grade_name")
     private String gradeName;
+
+    @Column(name = "subject_name")
+    private String subjectName;
+
+    @Column(name = "subject_id")
+    private Integer subjectId;
 }

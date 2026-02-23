@@ -29,5 +29,7 @@ public class SkillTestDetailsResultDto {
 	private String status;
 	private Long contactNumber;
 	private Double totalExperience;
+	private Integer subjectId;
+	private String subjectName;
 
 }

@@ -216,18 +216,15 @@ public class DropDownService {
 	// .collect(Collectors.toList());
 	// }
 
-	public List<GenericDropdownDTO> getDepartments(Integer empTypeId) {
+	public List<GenericDropdownDTO> getDepartments(Integer empTypeId, Integer departmentCategoryId) {
 		List<Department> departments;
 
-		if (empTypeId == null) {
-			// 1. If ID is null (not passed), fetch ALL active departments
-			departments = departmentRepo.findByIsActive(1);
-		} else {
-			// 2. If ID is passed, fetch departments specific to that Employee Type
-			// Note: This relies on the Department entity having a relationship named
-			// 'empTypeId'
-			departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndIsActive(empTypeId, 1);
+		if (empTypeId == null || departmentCategoryId == null) {
+			throw new IllegalArgumentException("Employee Type ID and Department Category ID are mandatory");
 		}
+
+		departments = departmentRepo.findByEmpTypeId_EmpTypeIdAndDepartmentCategory_BusinessTypeIdAndIsActive(
+				empTypeId, departmentCategoryId, 1);
 
 		// 3. Convert Entity list to DTO list
 		return departments.stream()
@@ -270,14 +267,22 @@ public class DropDownService {
 		return relationRepository.findAll();
 	}
 
-	public List<GenericDropdownDTO> getSubjects() {
+	public List<GenericDropdownDTO> getSubjects(Integer subjectCategoryId, Integer empSubject) {
 		final int ACTIVE_STATUS = 1;
 
-		// 1. Fetch all active subjects
-		List<Subject> activeSubjects = subjectRepo.findByIsActive(ACTIVE_STATUS);
+		List<Subject> subjects;
 
-		// 2. Map to DTO (using the correct underscore getters)
-		return activeSubjects.stream()
+		if (subjectCategoryId != null && empSubject != null) {
+			// 1. Fetch subjects filtered by category and type
+			subjects = subjectRepo.findBySubjectCategory_BusinessTypeIdAndEmpSubjectAndIsActive(subjectCategoryId,
+					empSubject, ACTIVE_STATUS);
+		} else {
+			// 2. Fetch all active subjects
+			subjects = subjectRepo.findByIsActive(ACTIVE_STATUS);
+		}
+
+		// 3. Map to DTO
+		return subjects.stream()
 				.map(subject -> new GenericDropdownDTO(subject.getSubject_id(), subject.getSubject_name()))
 				.collect(Collectors.toList());
 	}

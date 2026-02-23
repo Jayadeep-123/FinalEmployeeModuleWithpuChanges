@@ -111,40 +111,44 @@ public class SkillTestDetailsService {
 
     @PostConstruct
     public void initializeCounters() {
-        // ... (Counter logic remains exactly the same as before) ...
         log.info("Initializing campus ID counters...");
-        List<Campus> allCampuses = campusrepository.findAllWithCodeNotNull();
-        for (Campus campus : allCampuses) {
-            String baseKey = "TEMP" + campus.getCode();
-            int lastValue = 0;
-            try {
-                String lastIdInSkillTest = skillTestDetailsRepository.findMaxTempPayrollIdByKey(baseKey + "%");
-                String lastIdInEmployee = employeeRepository.findMaxTempPayrollIdByKey(baseKey + "%");
-                if (lastIdInSkillTest != null) {
-                    try {
-                        int val = Integer.parseInt(lastIdInSkillTest.substring(baseKey.length()));
-                        lastValue = Math.max(lastValue, val);
-                    } catch (Exception e) {
+        try {
+            List<Campus> allCampuses = campusrepository.findAllWithCodeNotNull();
+            for (Campus campus : allCampuses) {
+                String baseKey = "TEMP" + campus.getCode();
+                int lastValue = 0;
+                try {
+                    String lastIdInSkillTest = skillTestDetailsRepository.findMaxTempPayrollIdByKey(baseKey + "%");
+                    String lastIdInEmployee = employeeRepository.findMaxTempPayrollIdByKey(baseKey + "%");
+                    if (lastIdInSkillTest != null) {
+                        try {
+                            int val = Integer.parseInt(lastIdInSkillTest.substring(baseKey.length()));
+                            lastValue = Math.max(lastValue, val);
+                        } catch (Exception e) {
+                        }
                     }
-                }
-                if (lastIdInEmployee != null) {
-                    try {
-                        int val = Integer.parseInt(lastIdInEmployee.substring(baseKey.length()));
-                        lastValue = Math.max(lastValue, val);
-                    } catch (Exception e) {
+                    if (lastIdInEmployee != null) {
+                        try {
+                            int val = Integer.parseInt(lastIdInEmployee.substring(baseKey.length()));
+                            lastValue = Math.max(lastValue, val);
+                        } catch (Exception e) {
+                        }
                     }
+                } catch (Exception e) {
+                    log.error("Error for key {}: {}", baseKey, e.getMessage());
                 }
-            } catch (Exception e) {
-                log.error("Error for key {}: {}", baseKey, e.getMessage());
-            }
 
-            // QA Sequence Start Logic
-            if (dbUrl != null && dbUrl.contains("20.21")) {
-                if (lastValue < 10001) {
-                    lastValue = 10001;
+                // QA Sequence Start Logic
+                if (dbUrl != null && dbUrl.contains("20.21")) {
+                    if (lastValue < 10001) {
+                        lastValue = 10001;
+                    }
                 }
+                campusCounters.put(baseKey, new AtomicInteger(lastValue));
             }
-            campusCounters.put(baseKey, new AtomicInteger(lastValue));
+        } catch (Exception e) {
+            log.warn("Database connection unavailable at startup. Campus ID counters will not be initialized: {}",
+                    e.getMessage());
         }
     }
 
@@ -521,6 +525,11 @@ public class SkillTestDetailsService {
                         dto.setGender("N/A");
                     }
 
+                    if (entity.getSubject() != null) {
+                        dto.setSubjectId(entity.getSubject().getSubject_id());
+                        dto.setSubjectName(entity.getSubject().getSubject_name().replaceAll("\\s+$", ""));
+                    }
+
                     return dto;
                 }).collect(Collectors.toList());
     }
@@ -598,6 +607,11 @@ public class SkillTestDetailsService {
                         dto.setGender(entity.getGender().getGenderName());
                     } else {
                         dto.setGender("N/A");
+                    }
+
+                    if (entity.getSubject() != null) {
+                        dto.setSubjectId(entity.getSubject().getSubject_id());
+                        dto.setSubjectName(entity.getSubject().getSubject_name().replaceAll("\\s+$", ""));
                     }
 
                     return dto;

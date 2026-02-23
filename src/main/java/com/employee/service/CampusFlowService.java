@@ -157,11 +157,6 @@ public class CampusFlowService {
     }
 
     public List<GenericDropdownDTO> getActiveDepartments() {
-        return departmentRepository.findByIsActive(1) // Filter for active
-                .stream()
-                .map(dept -> new GenericDropdownDTO(
-                        dept.getDepartment_id(),
-                        dept.getDepartment_name()))
-                .collect(Collectors.toList());
+    	return departmentRepository.findActiveDepartmentNamesWithTypes();
     }
 }

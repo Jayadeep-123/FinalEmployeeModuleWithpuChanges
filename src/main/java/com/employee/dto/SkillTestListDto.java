@@ -17,4 +17,6 @@ public class SkillTestListDto {
     private String city;
     private String campus;
     private String gender;
+    private Integer subjectId;
+    private String subjectName;
 }

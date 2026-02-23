@@ -113,4 +113,7 @@ public class FullBasicInfoDto {
 
     private Double totalExperience;
     private Long preEsiNo;
+
+    private Date contractStartDate;
+    private Date contractEndDate;
 }

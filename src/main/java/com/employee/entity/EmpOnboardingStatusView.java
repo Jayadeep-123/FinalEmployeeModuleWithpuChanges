@@ -33,6 +33,10 @@ public class EmpOnboardingStatusView {
 	private String remarks;
 	private Integer join_type_id;
 	private String join_type;
+	private Integer replaced_by_emp_id;
+	private String replaced_by_emp_payroll;
+	private Integer verify_kyc;
+	private String kyc_status;
 	private String check_app_status_name;
 
 }

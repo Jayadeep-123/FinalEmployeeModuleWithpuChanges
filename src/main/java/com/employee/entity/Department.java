@@ -11,7 +11,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
 
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -29,5 +28,9 @@ public class Department {
 	@ManyToOne
 	@JoinColumn(name = "emp_type_id")
 	private EmployeeType empTypeId;
+
+	@ManyToOne
+	@JoinColumn(name = "department_category_id")
+	private BusinessType departmentCategory;
 
 }
