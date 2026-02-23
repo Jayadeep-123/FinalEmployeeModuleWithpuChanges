@@ -156,7 +156,10 @@ public class CampusFlowService {
         return Period.between(birthDate, currentDate).getYears();
     }
 
-    public List<GenericDropdownDTO> getActiveDepartments() {
-    	return departmentRepository.findActiveDepartmentNamesWithTypes();
+    public List<GenericDropdownDTO> getActiveDepartments(String categoryName) {
+        if (categoryName != null && !categoryName.isEmpty()) {
+            return departmentRepository.findActiveDepartmentNamesWithTypesByCategory(categoryName);
+        }
+        return departmentRepository.findActiveDepartmentNamesWithTypes();
     }
 }
