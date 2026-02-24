@@ -586,25 +586,25 @@ public class EmployeeBasicInfoTabService {
                             "replacedByEmpId is required when joinTypeId is 3 (Replacement). Please provide a valid replacement employee ID.");
                 }
             }
+        }
 
-            if (basicInfo.getJoinTypeId() == 4) {
-                if (basicInfo.getContractStartDate() != null) {
-                    employee.setContract_start_date(basicInfo.getContractStartDate());
-                } else {
-                    employee.setContract_start_date(basicInfo.getDateOfJoin());
-                }
+        if (isConsultancyHiringType(basicInfo.getEmpTypeHiringId())) {
+            if (basicInfo.getContractStartDate() != null) {
+                employee.setContract_start_date(basicInfo.getContractStartDate());
+            } else {
+                employee.setContract_start_date(basicInfo.getDateOfJoin());
+            }
 
-                if (basicInfo.getContractEndDate() != null) {
-                    employee.setContract_end_date(basicInfo.getContractEndDate());
-                } else {
-                    java.sql.Date startDate = basicInfo.getContractStartDate() != null
-                            ? basicInfo.getContractStartDate()
-                            : basicInfo.getDateOfJoin();
-                    if (startDate != null) {
-                        long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
-                        java.util.Date endDateUtil = new java.util.Date(startDate.getTime() + oneYearInMillis);
-                        employee.setContract_end_date(new java.sql.Date(endDateUtil.getTime()));
-                    }
+            if (basicInfo.getContractEndDate() != null) {
+                employee.setContract_end_date(basicInfo.getContractEndDate());
+            } else {
+                java.sql.Date startDate = basicInfo.getContractStartDate() != null
+                        ? basicInfo.getContractStartDate()
+                        : basicInfo.getDateOfJoin();
+                if (startDate != null) {
+                    long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
+                    java.util.Date endDateUtil = new java.util.Date(startDate.getTime() + oneYearInMillis);
+                    employee.setContract_end_date(new java.sql.Date(endDateUtil.getTime()));
                 }
             }
         }
@@ -672,7 +672,8 @@ public class EmployeeBasicInfoTabService {
         // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
         // 0), if not entered, set to null
         if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
-            Employee preChaitanyaEmp = employeeRepository.findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
+            Employee preChaitanyaEmp = employeeRepository
+                    .findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
                                     + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
@@ -817,25 +818,25 @@ public class EmployeeBasicInfoTabService {
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
+        }
 
-            if (basicInfo.getJoinTypeId() == 4) {
-                if (basicInfo.getContractStartDate() != null) {
-                    employee.setContract_start_date(basicInfo.getContractStartDate());
-                } else if (basicInfo.getDateOfJoin() != null) {
-                    employee.setContract_start_date(basicInfo.getDateOfJoin());
-                }
+        if (isConsultancyHiringType(basicInfo.getEmpTypeHiringId())) {
+            if (basicInfo.getContractStartDate() != null) {
+                employee.setContract_start_date(basicInfo.getContractStartDate());
+            } else if (basicInfo.getDateOfJoin() != null) {
+                employee.setContract_start_date(basicInfo.getDateOfJoin());
+            }
 
-                if (basicInfo.getContractEndDate() != null) {
-                    employee.setContract_end_date(basicInfo.getContractEndDate());
-                } else {
-                    java.sql.Date startDate = basicInfo.getContractStartDate() != null
-                            ? basicInfo.getContractStartDate()
-                            : basicInfo.getDateOfJoin();
-                    if (startDate != null) {
-                        long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
-                        java.util.Date endDateUtil = new java.util.Date(startDate.getTime() + oneYearInMillis);
-                        employee.setContract_end_date(new java.sql.Date(endDateUtil.getTime()));
-                    }
+            if (basicInfo.getContractEndDate() != null) {
+                employee.setContract_end_date(basicInfo.getContractEndDate());
+            } else {
+                java.sql.Date startDate = basicInfo.getContractStartDate() != null
+                        ? basicInfo.getContractStartDate()
+                        : basicInfo.getDateOfJoin();
+                if (startDate != null) {
+                    long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
+                    java.util.Date endDateUtil = new java.util.Date(startDate.getTime() + oneYearInMillis);
+                    employee.setContract_end_date(new java.sql.Date(endDateUtil.getTime()));
                 }
             }
         }
@@ -887,7 +888,8 @@ public class EmployeeBasicInfoTabService {
         // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
         // 0), if not entered, set to null
         if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
-            Employee preChaitanyaEmp = employeeRepository.findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
+            Employee preChaitanyaEmp = employeeRepository
+                    .findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
                                     + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
@@ -2744,5 +2746,14 @@ public class EmployeeBasicInfoTabService {
         }
 
         return check == 0;
+    }
+
+    private boolean isConsultancyHiringType(Integer empTypeHiringId) {
+        if (empTypeHiringId == null) {
+            return false;
+        }
+        return employeeTypeHiringRepository.findById(empTypeHiringId)
+                .map(type -> "CONSULTANCY".equalsIgnoreCase(type.getEmp_type_hiring_name()))
+                .orElse(false);
     }
 }
