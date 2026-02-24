@@ -35,6 +35,6 @@ public class FamilyDetailsResponseDTO {
     private Boolean isLate; // Added
     private Boolean isDependent; // Added
     private Boolean isSriChaitanyaEmp; // Changed from Integer to Boolean
-    private Integer parentEmpId; // Added
+    private String parentEmpId; // Links to payroll_id
     private String parentEmpPayrollId;
 }

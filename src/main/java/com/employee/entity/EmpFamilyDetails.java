@@ -40,7 +40,7 @@ public class EmpFamilyDetails {
 	// @Column(name = "last_name", nullable = false)
 	// private String last_name; // Required NOT NULL
 
-	@Column(name = "full_name", length = 100)
+	@Column(name = "full_name", length = 100, nullable = false)
 	private String fullName;
 
 	@Column(name = "adhaar_no") // Note: Matches your SQL spelling "adhaar"
@@ -54,13 +54,14 @@ public class EmpFamilyDetails {
 	private Gender gender_id; // Required NOT NULL
 
 	@ManyToOne
-	@JoinColumn(name = "blood_group_id", nullable = false)
-	private BloodGroup blood_group_id; // Required NOT NULL
+	@JoinColumn(name = "blood_group_id", nullable = true)
+	private BloodGroup blood_group_id; // Nullable as per DDL
 
 	@Column(name = "nationality", nullable = false)
 	private String nationality; // Required NOT NULL
 
-	private String is_late; // Nullable
+	@Column(name = "is_late", nullable = false, length = 20)
+	private String is_late; // Required NOT NULL
 
 	@ManyToOne
 	@JoinColumn(name = "relation_id", nullable = false)
@@ -76,8 +77,8 @@ public class EmpFamilyDetails {
 	private Long contact_no; // Optional - nullable (int8 in database - bigint)
 
 	@ManyToOne
-	@JoinColumn(name = "parent_emp_id")
-	private Employee parent_emp_id; // Optional - nullable, but REQUIRED if is_sri_chaitanya_emp = 1
+	@JoinColumn(name = "parent_emp_id", referencedColumnName = "payroll_id")
+	private Employee parent_emp_id; // Optional - links to sce_emp(payroll_id)
 
 	private int is_active; // Default 1
 

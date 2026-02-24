@@ -226,7 +226,8 @@ public class EmployeeValidationService {
 
             // Validate preChaitanyaId: if entered, must be an inactive employee (is_active
             // = 0)
-            if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()
+                    && !"0".equals(basicInfo.getPreChaitanyaId().trim())) {
                 String prevPayrollId = basicInfo.getPreChaitanyaId().trim();
                 employeeRepository.findByPayRollIdAndIs_active(prevPayrollId, 0)
                         .orElseThrow(() -> new ResourceNotFoundException(

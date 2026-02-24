@@ -673,7 +673,8 @@ public class EmployeeBasicInfoTabService {
 
         // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
         // 0), if not entered, set to null
-        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()
+                && !"0".equals(basicInfo.getPreChaitanyaId().trim())) {
             Employee preChaitanyaEmp = employeeRepository
                     .findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -892,7 +893,8 @@ public class EmployeeBasicInfoTabService {
 
         // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
         // 0), if not entered, set to null
-        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()
+                && !"0".equals(basicInfo.getPreChaitanyaId().trim())) {
             Employee preChaitanyaEmp = employeeRepository
                     .findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -1537,19 +1539,20 @@ public class EmployeeBasicInfoTabService {
         familyMember.setIs_sri_chaitanya_emp(isSriChaitanyaEmpValue);
 
         if (isSriChaitanyaEmpValue == 1) {
-            if (memberDTO.getParentEmpId() == null || memberDTO.getParentEmpId() <= 0) {
+            if (memberDTO.getParentEmpId() == null || memberDTO.getParentEmpId().trim().isEmpty()) {
                 throw new ResourceNotFoundException(
-                        "parentEmpId is required when isSriChaitanyaEmp is true. Please provide a valid parent employee ID.");
+                        "parentEmpId is required when isSriChaitanyaEmp is true. Please provide a valid parent payroll ID.");
             }
-            Employee parentEmployee = employeeRepository.findById(memberDTO.getParentEmpId())
+            Employee parentEmployee = employeeRepository.findByPayrollId(memberDTO.getParentEmpId().trim())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Parent Employee not found with ID: " + memberDTO.getParentEmpId()));
+                            "Parent Employee not found with Payroll ID: " + memberDTO.getParentEmpId()));
             familyMember.setParent_emp_id(parentEmployee);
         } else {
-            if (memberDTO.getParentEmpId() != null && memberDTO.getParentEmpId() > 0) {
-                Employee parentEmployee = employeeRepository.findById(memberDTO.getParentEmpId())
+            if (memberDTO.getParentEmpId() != null && !memberDTO.getParentEmpId().trim().isEmpty()
+                    && !"0".equals(memberDTO.getParentEmpId().trim())) {
+                Employee parentEmployee = employeeRepository.findByPayrollId(memberDTO.getParentEmpId().trim())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Parent Employee not found with ID: " + memberDTO.getParentEmpId()));
+                                "Parent Employee not found with Payroll ID: " + memberDTO.getParentEmpId()));
                 familyMember.setParent_emp_id(parentEmployee);
             }
         }
@@ -1759,10 +1762,13 @@ public class EmployeeBasicInfoTabService {
             changed = true;
         }
 
-        Integer targetParentId = target.getParent_emp_id() != null ? target.getParent_emp_id().getEmp_id() : null;
-        Integer sourceParentId = source.getParent_emp_id() != null ? source.getParent_emp_id().getEmp_id() : null;
-        if (!areNumbersEqual.test(targetParentId, sourceParentId)) {
-            logger.info("Field 'parentEmpId' changed for {}: '{}' -> '{}'", name, targetParentId, sourceParentId);
+        String targetParentPayrollId = target.getParent_emp_id() != null ? target.getParent_emp_id().getPayRollId()
+                : null;
+        String sourceParentPayrollId = source.getParent_emp_id() != null ? source.getParent_emp_id().getPayRollId()
+                : null;
+        if (!areStringsEqual.test(targetParentPayrollId, sourceParentPayrollId)) {
+            logger.info("Field 'parentEmpId' changed for {}: '{}' -> '{}'", name, targetParentPayrollId,
+                    sourceParentPayrollId);
             target.setParent_emp_id(source.getParent_emp_id());
             changed = true;
         }
@@ -2365,7 +2371,8 @@ public class EmployeeBasicInfoTabService {
 
         // Validate preChaitanyaId: if entered, must be an inactive employee (is_active
         // = 0)
-        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()
+                && !"0".equals(basicInfo.getPreChaitanyaId().trim())) {
             String prevPayrollId = basicInfo.getPreChaitanyaId().trim();
             employeeRepository.findByPayRollIdAndIs_active(prevPayrollId, 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -2606,10 +2613,6 @@ public class EmployeeBasicInfoTabService {
                 if (member.getOccupation() == null || member.getOccupation().trim().isEmpty()) {
                     throw new ResourceNotFoundException(
                             "Occupation is required for family member: " + member.getFullName());
-                }
-                if (member.getAdhaarNo() == null) {
-                    throw new ResourceNotFoundException(
-                            "Aadhaar Number is required for family member: " + member.getFullName());
                 }
             }
         }

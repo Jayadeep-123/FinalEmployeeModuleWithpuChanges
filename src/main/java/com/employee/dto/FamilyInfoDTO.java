@@ -58,6 +58,6 @@ public class FamilyInfoDTO {
 		private Date dateOfBirth; // Optional - date of birth
 		private Boolean isDependent; // Optional - is dependent (true/false)
 		private Boolean isSriChaitanyaEmp; // Optional - is Sri Chaitanya employee (true/false), defaults to false
-		private Integer parentEmpId; // Optional - parent employee ID, REQUIRED if isSriChaitanyaEmp = true
+		private String parentEmpId; // Optional - parent payroll ID, REQUIRED if isSriChaitanyaEmp = true
 	}
 }

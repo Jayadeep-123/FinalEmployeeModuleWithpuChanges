@@ -727,11 +727,11 @@ public class GetEmpDetailsService {
 
 			if (familyDetail.getParent_emp_id() != null) {
 				Employee parent = familyDetail.getParent_emp_id();
-				dto.setParentEmpId(parent.getEmp_id());
 				String pId = parent.getPayRollId();
 				if (pId == null || pId.isEmpty()) {
 					pId = parent.getTempPayrollId();
 				}
+				dto.setParentEmpId(pId);
 				dto.setParentEmpPayrollId(pId);
 			}
 

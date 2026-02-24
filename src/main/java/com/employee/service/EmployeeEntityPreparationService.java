@@ -271,7 +271,8 @@ public class EmployeeEntityPreparationService {
         } else {
             employee.setEmployee_reporting_id(null);
         }
-        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()
+                && !"0".equals(basicInfo.getPreChaitanyaId().trim())) {
             Employee preChaitanyaEmp = employeeRepository
                     .findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(
@@ -491,7 +492,8 @@ public class EmployeeEntityPreparationService {
         } else {
             employee.setEmployee_reporting_id(null);
         }
-        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()
+                && !"0".equals(basicInfo.getPreChaitanyaId().trim())) {
             Employee preChaitanyaEmp = employeeRepository
                     .findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(
