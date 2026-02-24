@@ -586,6 +586,8 @@ public class EmployeeBasicInfoTabService {
                             "replacedByEmpId is required when joinTypeId is 3 (Replacement). Please provide a valid replacement employee ID.");
                 }
             }
+        } else {
+            employee.setJoin_type_id(null);
         }
 
         if (isConsultancyHiringType(basicInfo.getEmpTypeHiringId())) {
@@ -818,6 +820,9 @@ public class EmployeeBasicInfoTabService {
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
+        } else {
+            employee.setJoin_type_id(null);
+            employee.setEmployee_replaceby_id(null);
         }
 
         if (isConsultancyHiringType(basicInfo.getEmpTypeHiringId())) {

@@ -203,6 +203,9 @@ public class EmployeeEntityPreparationService {
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
+        } else {
+            employee.setJoin_type_id(null);
+            employee.setEmployee_replaceby_id(null);
         }
 
         if (isConsultancyHiringType(basicInfo.getEmpTypeHiringId())) {
@@ -431,6 +434,9 @@ public class EmployeeEntityPreparationService {
             } else {
                 employee.setEmployee_replaceby_id(null);
             }
+        } else {
+            employee.setJoin_type_id(null);
+            employee.setEmployee_replaceby_id(null);
         }
 
         if (isConsultancyHiringType(basicInfo.getEmpTypeHiringId())) {
