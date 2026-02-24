@@ -25,4 +25,7 @@ public class EmpRecentSearchDTO {
     private LocalDateTime createdDate;
     private Integer updatedBy;
     private LocalDateTime updatedDate;
+    private Integer cmpsId;
+    private String cmpsName;
+    private Integer businessName;
 }

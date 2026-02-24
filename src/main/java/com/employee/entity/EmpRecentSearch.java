@@ -73,4 +73,13 @@ public class EmpRecentSearch {
 
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
+
+    @Column(name = "cmps_id")
+    private Integer cmpsId;
+
+    @Column(name = "cmps_name", length = 250)
+    private String cmpsName;
+
+    @Column(name = "business_name")
+    private Integer businessName;
 }

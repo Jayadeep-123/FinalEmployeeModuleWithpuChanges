@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.employee.dto.EmpRecentSearchDTO;
 import com.employee.entity.EmpRecentSearch;
+import com.employee.entity.Employee;
 import com.employee.repository.EmpRecentSearchRepository;
 import com.employee.repository.EmployeeRepository;
 
@@ -38,8 +39,28 @@ public class EmpRecentSearchService {
         dto.setLevelName(cleanseString(dto.getLevelName()));
         dto.setPhotoPath(cleanseString(dto.getPhotoPath()));
 
+        // Auto-populate campus fields from the searched employee's primary campus
+        // (backend only)
+        Integer cmpsId = null;
+        String cmpsName = null;
+        Integer businessName = null;
+        if (dto.getEmpId() != null) {
+            try {
+                Employee searchedEmp = employeeRepository.findById(dto.getEmpId()).orElse(null);
+                if (searchedEmp != null && searchedEmp.getCampus_id() != null) {
+                    cmpsId = searchedEmp.getCampus_id().getCampusId();
+                    cmpsName = searchedEmp.getCampus_id().getCampusName();
+                    if (searchedEmp.getCampus_id().getBusinessType() != null) {
+                        businessName = searchedEmp.getCampus_id().getBusinessType().getBusinessTypeId();
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore if campus lookup fails — fields remain null
+            }
+        }
+
         if (dto.getLogInEmpId() != null && dto.getEmpId() != null) {
-            // 1. Check if this user has EVER searched for this employee before (Across
+            // Check if this user has EVER searched for this employee before (Across
             // sessions)
             Optional<EmpRecentSearch> existingRecord = empRecentSearchRepository
                     .findTopByLogInEmployee_EmpIdAndEmployee_EmpIdOrderByLogInDesc(dto.getLogInEmpId(), dto.getEmpId());
@@ -52,18 +73,23 @@ public class EmpRecentSearchService {
                 entity.setUpdatedBy(dto.getCreatedBy());
                 entity.setUpdatedDate(now);
 
-                // Refresh other fields as well in case they changed (Department, Level, etc.)
+                // Refresh other fields in case they changed
                 entity.setDepartmentName(dto.getDepartmentName());
                 entity.setLevelName(dto.getLevelName());
                 entity.setJoinType(dto.getJoinType());
                 entity.setPhotoPath(dto.getPhotoPath());
+
+                // Refresh campus fields (auto-populated from backend)
+                entity.setCmpsId(cmpsId);
+                entity.setCmpsName(cmpsName);
+                entity.setBusinessName(businessName);
 
                 empRecentSearchRepository.save(entity);
                 return;
             }
         }
 
-        // 3. Create and save new search record
+        // Create and save new search record
         EmpRecentSearch entity = new EmpRecentSearch();
 
         if (dto.getLogInEmpId() != null) {
@@ -81,10 +107,16 @@ public class EmpRecentSearchService {
         entity.setJoinType(dto.getJoinType());
         entity.setLevelName(dto.getLevelName());
         entity.setLogIn(now);
-        entity.setLogOut(null); // Active session
+        entity.setLogOut(null);
         entity.setPhotoPath(dto.getPhotoPath());
         entity.setCreatedBy(dto.getCreatedBy());
         entity.setCreatedDate(now);
+
+        // Set auto-populated campus fields (backend-resolved from employee's primary
+        // campus)
+        entity.setCmpsId(cmpsId);
+        entity.setCmpsName(cmpsName);
+        entity.setBusinessName(businessName);
 
         empRecentSearchRepository.save(entity);
     }
@@ -128,6 +160,9 @@ public class EmpRecentSearchService {
         dto.setCreatedDate(entity.getCreatedDate());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedDate(entity.getUpdatedDate());
+        dto.setCmpsId(entity.getCmpsId());
+        dto.setCmpsName(entity.getCmpsName());
+        dto.setBusinessName(entity.getBusinessName());
         return dto;
     }
 }
