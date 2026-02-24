@@ -226,10 +226,11 @@ public class EmployeeValidationService {
 
             // Validate preChaitanyaId: if entered, must be an inactive employee (is_active
             // = 0)
-            if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-                employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
+            if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+                String prevPayrollId = basicInfo.getPreChaitanyaId().trim();
+                employeeRepository.findByPayRollIdAndIs_active(prevPayrollId, 0)
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
+                                "Previous Chaitanya Employee not found with Payroll ID: " + prevPayrollId
                                         + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
             }
 
@@ -563,11 +564,13 @@ public class EmployeeValidationService {
 
         // Validate preChaitanyaId: if entered, must be an inactive employee (is_active
         // = 0)
-        if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-            employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
-                    .orElseThrow(() -> new ResourceNotFoundException("Previous Chaitanya Employee not found with ID: "
-                            + basicInfo.getPreChaitanyaId()
-                            + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            String prevPayrollId = basicInfo.getPreChaitanyaId().trim();
+            employeeRepository.findByPayRollIdAndIs_active(prevPayrollId, 0)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Previous Chaitanya Employee not found with Payroll ID: "
+                                    + prevPayrollId
+                                    + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
         }
 
         if (basicInfo.getCampusId() != null && basicInfo.getCampusId() > 0) {

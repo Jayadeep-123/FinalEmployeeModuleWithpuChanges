@@ -268,11 +268,11 @@ public class EmployeeEntityPreparationService {
         } else {
             employee.setEmployee_reporting_id(null);
         }
-        if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-            Employee preChaitanyaEmp = employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            Employee preChaitanyaEmp = employeeRepository.findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(
                             () -> new ResourceNotFoundException("Previous Chaitanya Employee not found or active"));
-            employee.setPre_chaitanya_id(String.valueOf(preChaitanyaEmp.getEmp_id()));
+            employee.setPre_chaitanya_id(preChaitanyaEmp.getPayRollId());
         } else {
             employee.setPre_chaitanya_id(null);
         }
@@ -484,11 +484,11 @@ public class EmployeeEntityPreparationService {
         } else {
             employee.setEmployee_reporting_id(null);
         }
-        if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-            Employee preChaitanyaEmp = employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            Employee preChaitanyaEmp = employeeRepository.findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(
                             () -> new ResourceNotFoundException("Previous Chaitanya Employee not found or active"));
-            employee.setPre_chaitanya_id(String.valueOf(preChaitanyaEmp.getEmp_id()));
+            employee.setPre_chaitanya_id(preChaitanyaEmp.getPayRollId());
         } else {
             employee.setPre_chaitanya_id(null);
         }

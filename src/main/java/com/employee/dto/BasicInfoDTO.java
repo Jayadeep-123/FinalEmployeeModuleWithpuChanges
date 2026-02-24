@@ -105,7 +105,7 @@ public class BasicInfoDTO {
 	private String tempPayrollId; // Optional - validates against sce_skill_test_detl.temp_payroll_id
 
 	// Previous Chaitanya Employee ID - if employee worked at Chaitanya before
-	private Integer preChaitanyaId; // Optional - validates that employee exists with is_active = 0
+	private String preChaitanyaId; // Optional - validates that employee exists with is_active = 0
 
 	// Age field
 	private Integer age;

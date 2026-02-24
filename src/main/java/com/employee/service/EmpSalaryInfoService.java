@@ -1034,8 +1034,11 @@ public class EmpSalaryInfoService {
             }
 
             salaryInfoDTO.setEmpStructureId(projection.getEmp_structure_id());
+            salaryInfoDTO.setEmpStructureName(projection.getEmp_structure_name());
             salaryInfoDTO.setGradeId(projection.getGrade_id());
+            salaryInfoDTO.setGradeName(projection.getGrade_name());
             salaryInfoDTO.setCostCenterId(projection.getCost_center_id());
+            salaryInfoDTO.setCostCenterName(projection.getCost_center_name());
 
             // Convert Integer to Boolean (1 = true, 0 = false)
             salaryInfoDTO
@@ -1068,12 +1071,15 @@ public class EmpSalaryInfoService {
 
             if (empSalaryInfo.getEmpStructure() != null) {
                 salaryInfoDTO.setEmpStructureId(empSalaryInfo.getEmpStructure().getEmpStructureId());
+                salaryInfoDTO.setEmpStructureName(empSalaryInfo.getEmpStructure().getStructreName());
             }
             if (empSalaryInfo.getGrade() != null) {
                 salaryInfoDTO.setGradeId(empSalaryInfo.getGrade().getEmpGradeId());
+                salaryInfoDTO.setGradeName(empSalaryInfo.getGrade().getGradeName());
             }
             if (empSalaryInfo.getCostCenter() != null) {
                 salaryInfoDTO.setCostCenterId(empSalaryInfo.getCostCenter().getCostCenterId());
+                salaryInfoDTO.setCostCenterName(empSalaryInfo.getCostCenter().getCostCenterName());
             }
 
             salaryInfoDTO
@@ -1130,8 +1136,11 @@ public class EmpSalaryInfoService {
             }
 
             salaryInfoDTO.setEmpStructureId(projection.getEmp_structure_id());
+            salaryInfoDTO.setEmpStructureName(projection.getEmp_structure_name());
             salaryInfoDTO.setGradeId(projection.getGrade_id());
+            salaryInfoDTO.setGradeName(projection.getGrade_name());
             salaryInfoDTO.setCostCenterId(projection.getCost_center_id());
+            salaryInfoDTO.setCostCenterName(projection.getCost_center_name());
 
             // Convert Integer to Boolean (1 = true, 0 = false)
             salaryInfoDTO
@@ -1163,12 +1172,15 @@ public class EmpSalaryInfoService {
 
             if (empSalaryInfo.getEmpStructure() != null) {
                 salaryInfoDTO.setEmpStructureId(empSalaryInfo.getEmpStructure().getEmpStructureId());
+                salaryInfoDTO.setEmpStructureName(empSalaryInfo.getEmpStructure().getStructreName());
             }
             if (empSalaryInfo.getGrade() != null) {
                 salaryInfoDTO.setGradeId(empSalaryInfo.getGrade().getEmpGradeId());
+                salaryInfoDTO.setGradeName(empSalaryInfo.getGrade().getGradeName());
             }
             if (empSalaryInfo.getCostCenter() != null) {
                 salaryInfoDTO.setCostCenterId(empSalaryInfo.getCostCenter().getCostCenterId());
+                salaryInfoDTO.setCostCenterName(empSalaryInfo.getCostCenter().getCostCenterName());
             }
 
             salaryInfoDTO
@@ -1196,10 +1208,13 @@ public class EmpSalaryInfoService {
             salaryInfoDTO.setUanNo(empPfDetails.getUan_no());
         }
 
-        // Step 3: Get Org ID from Employee table
+        // Step 3: Get Org ID and Employee Name from Employee table
         employeeRepository.findById(empId).ifPresent(emp -> {
+            salaryInfoDTO.setEmployeeName(
+                    emp.getFirst_name() + (emp.getLast_name() != null ? " " + emp.getLast_name() : ""));
             if (emp.getOrg_id() != null) {
                 salaryInfoDTO.setOrgId(emp.getOrg_id().getOrganizationId());
+                salaryInfoDTO.setOrgName(emp.getOrg_id().getOrganizationName());
             }
         });
     }
@@ -1311,15 +1326,24 @@ public class EmpSalaryInfoService {
 
         if (salaryInfoDTO.getEmpStructureId() != null) {
             empStructureRepository.findById(salaryInfoDTO.getEmpStructureId())
-                    .ifPresent(empSalaryInfo::setEmpStructure);
+                    .ifPresent(struct -> {
+                        empSalaryInfo.setEmpStructure(struct);
+                        salaryInfoDTO.setEmpStructureName(struct.getStructreName());
+                    });
         }
         if (salaryInfoDTO.getGradeId() != null) {
             empGradeRepository.findById(salaryInfoDTO.getGradeId())
-                    .ifPresent(empSalaryInfo::setGrade);
+                    .ifPresent(grade -> {
+                        empSalaryInfo.setGrade(grade);
+                        salaryInfoDTO.setGradeName(grade.getGradeName());
+                    });
         }
         if (salaryInfoDTO.getCostCenterId() != null) {
             costCenterRepository.findById(salaryInfoDTO.getCostCenterId())
-                    .ifPresent(empSalaryInfo::setCostCenter);
+                    .ifPresent(cc -> {
+                        empSalaryInfo.setCostCenter(cc);
+                        salaryInfoDTO.setCostCenterName(cc.getCostCenterName());
+                    });
         }
 
         empSalaryInfoRepository.save(empSalaryInfo);

@@ -61,6 +61,13 @@ public class SalaryInfoDTO {
 	// Checklist IDs - comma-separated string like "1,2,3,4,5,6,7"
 	private String checkListIds; // Optional - Comma-separated checklist IDs
 
+	// Name fields for UI display
+	private String employeeName;
+	private String empStructureName;
+	private String gradeName;
+	private String costCenterName;
+	private String orgName;
+
 	// Audit field - passed from frontend
 	private Integer updatedBy;
 }

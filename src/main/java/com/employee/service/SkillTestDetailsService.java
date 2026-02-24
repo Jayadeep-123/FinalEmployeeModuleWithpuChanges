@@ -331,6 +331,19 @@ public class SkillTestDetailsService {
         SkillTestDetails newDetails = new SkillTestDetails();
 
         newDetails.setAadhaar_no(requestDto.getAadhaarNo());
+
+        // === Validate Previous Chaitanya ID ===
+        if (requestDto.getPreviousChaitanyaId() != null && !requestDto.getPreviousChaitanyaId().trim().isEmpty()) {
+            String prevId = requestDto.getPreviousChaitanyaId().trim();
+            Employee prevEmp = employeeRepository.findByPayRollId(prevId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Previous Chaitanya ID not found in database: " + prevId));
+
+            if (prevEmp.getIs_active() != 0) {
+                throw new ResourceNotFoundException(
+                        "Previous Chaitanya employee with ID " + prevId + " must be INACTIVE (is_active = 0).");
+            }
+        }
         newDetails.setPrevious_chaitanya_id(requestDto.getPreviousChaitanyaId());
         newDetails.setFirstName(requestDto.getFirstName());
         newDetails.setLastName(requestDto.getLastName());

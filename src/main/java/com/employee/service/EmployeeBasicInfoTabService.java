@@ -671,12 +671,12 @@ public class EmployeeBasicInfoTabService {
 
         // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
         // 0), if not entered, set to null
-        if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-            Employee preChaitanyaEmp = employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            Employee preChaitanyaEmp = employeeRepository.findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
                                     + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
-            employee.setPre_chaitanya_id(String.valueOf(preChaitanyaEmp.getEmp_id()));
+            employee.setPre_chaitanya_id(preChaitanyaEmp.getPayRollId());
         } else {
             employee.setPre_chaitanya_id(null);
         }
@@ -886,12 +886,12 @@ public class EmployeeBasicInfoTabService {
 
         // Handle preChaitanyaId: if entered, must be an inactive employee (is_active =
         // 0), if not entered, set to null
-        if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-            Employee preChaitanyaEmp = employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            Employee preChaitanyaEmp = employeeRepository.findByPayRollIdAndIs_active(basicInfo.getPreChaitanyaId().trim(), 0)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Previous Chaitanya Employee not found with ID: " + basicInfo.getPreChaitanyaId()
                                     + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
-            employee.setPre_chaitanya_id(String.valueOf(preChaitanyaEmp.getEmp_id()));
+            employee.setPre_chaitanya_id(preChaitanyaEmp.getPayRollId());
         } else {
             employee.setPre_chaitanya_id(null);
         }
@@ -2358,11 +2358,13 @@ public class EmployeeBasicInfoTabService {
 
         // Validate preChaitanyaId: if entered, must be an inactive employee (is_active
         // = 0)
-        if (basicInfo.getPreChaitanyaId() != null && basicInfo.getPreChaitanyaId() > 0) {
-            employeeRepository.findByIdAndIs_active(basicInfo.getPreChaitanyaId(), 0)
-                    .orElseThrow(() -> new ResourceNotFoundException("Previous Chaitanya Employee not found with ID: "
-                            + basicInfo.getPreChaitanyaId()
-                            + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
+        if (basicInfo.getPreChaitanyaId() != null && !basicInfo.getPreChaitanyaId().trim().isEmpty()) {
+            String prevPayrollId = basicInfo.getPreChaitanyaId().trim();
+            employeeRepository.findByPayRollIdAndIs_active(prevPayrollId, 0)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Previous Chaitanya Employee not found with Payroll ID: "
+                                    + prevPayrollId
+                                    + ". Only inactive employees (is_active = 0) can be used as previous Chaitanya employee."));
         }
 
         if (basicInfo.getCampusId() != null && basicInfo.getCampusId() > 0) {
