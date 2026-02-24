@@ -350,4 +350,7 @@ public class SkillTestDetails {
     @JoinColumn(name = "building_id")
     private Building building;
 
+    @Column(name = "campus_category", length = 50)
+    private String campusCategory;
+
 }

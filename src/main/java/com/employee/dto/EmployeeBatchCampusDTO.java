@@ -49,4 +49,7 @@ public class EmployeeBatchCampusDTO {
   private Integer roleId; // Role ID from sce_user_admin view
   // @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
   private String role; // Role from sce_user_admin view
+
+  private Integer subjectId;
+  private String subjectName;
 }

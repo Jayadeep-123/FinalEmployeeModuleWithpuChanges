@@ -61,4 +61,6 @@ public class SkillTestDetailsDto {
     // Audit fields
     private Integer createdBy; // User ID who created the skill test details record
 
+    private String campusCategory;
+
 }

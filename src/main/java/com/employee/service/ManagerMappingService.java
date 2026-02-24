@@ -1184,31 +1184,35 @@ public class ManagerMappingService {
                     EmployeeBatchCampusDTO batchDTO = new EmployeeBatchCampusDTO();
 
                     // Populate Top-Level Fields strictly from the PRIMARY campus (Employee table)
+                    Object matchingMapping = null;
+                    EmployeeCampusAddressDTO top = null;
                     if (emp.getCampus_id() != null && Integer.valueOf(1).equals(emp.getCampus_id().getIsActive())) {
                         int primaryCampusId = emp.getCampus_id().getCampusId();
-                        Object matchingMapping = null;
 
                         // Fetch shared mappings to enrich primary campus details if they exist
+                        // PRIORITY 1: CampusEmployee (Role)
+                        // PRIORITY 2: SharedEmployee (Subject/Designation)
                         List<com.employee.entity.CampusEmployee> campusEmployees = campusEmployeeRepository
                                 .findByEmpId(emp.getEmp_id());
                         List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
                                 .findActiveByEmpId(emp.getEmp_id());
 
-                        if (sharedEmployees != null) {
-                            matchingMapping = sharedEmployees.stream()
-                                    .filter(se -> se.getCmpsId() != null
-                                            && se.getCmpsId().getCampusId() == primaryCampusId)
-                                    .findFirst().orElse(null);
-                        }
-                        if (matchingMapping == null && campusEmployees != null) {
+                        if (campusEmployees != null) {
                             matchingMapping = campusEmployees.stream()
                                     .filter(ce -> ce.getCmpsId() != null
                                             && ce.getCmpsId().getCampusId() == primaryCampusId)
                                     .findFirst().orElse(null);
                         }
 
+                        if (matchingMapping == null && sharedEmployees != null) {
+                            matchingMapping = sharedEmployees.stream()
+                                    .filter(se -> se.getCmpsId() != null
+                                            && se.getCmpsId().getCampusId() == primaryCampusId)
+                                    .findFirst().orElse(null);
+                        }
+
                         // Create detailed DTO for primary campus
-                        EmployeeCampusAddressDTO top = createDTOForCampus(emp, emp.getCampus_id(), payrollIds, false,
+                        top = createDTOForCampus(emp, emp.getCampus_id(), payrollIds, false,
                                 matchingMapping);
 
                         batchDTO.setCampusId(top.getCampusId());
@@ -1219,10 +1223,6 @@ public class ManagerMappingService {
                         batchDTO.setBuildingMobileNo(top.getBuildingMobileNo());
                         batchDTO.setCampusContact(top.getCampusContact());
                         batchDTO.setCampusEmail(top.getCampusEmail());
-
-                        batchDTO.setDesignationId(top.getDesignationId());
-
-                        batchDTO.setDesignationName(top.getDesignationName());
 
                     } else {
                         // Fallback if no primary campus
@@ -1276,30 +1276,37 @@ public class ManagerMappingService {
                         batchDTO.setDesignationName(emp.getDesignation().getDesignation_name());
                     }
 
-                    // Fetch Role Info from user_admin view and then from Role table
+                    // 5.5 Fetch Global Role Info (BEFORE Mapping Promotion to allow Mapping
+                    // priority)
                     try {
-                        List<String> roles = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
-                        if (roles != null && !roles.isEmpty()) {
-                            String roleNameFromView = roles.get(0);
-
-                            // Move to role table to pick role id and role name
+                        List<String> rolesFromView = employeeRepository.findRoleNameByEmpId(emp.getEmp_id());
+                        if (rolesFromView != null && !rolesFromView.isEmpty()) {
+                            String roleNameFromView = rolesFromView.get(0);
                             com.employee.entity.Role roleEntity = roleRepository.findByRoleName(roleNameFromView);
                             if (roleEntity != null) {
                                 batchDTO.setRoleId(roleEntity.getRoleId());
                                 batchDTO.setRole(roleEntity.getRoleName());
                             } else {
-                                // Role name found in view but not in role table
-                                batchDTO.setRoleId(null);
                                 batchDTO.setRole(roleNameFromView);
                             }
-                        } else {
-                            // No data in user_admin view
-                            batchDTO.setRoleId(null);
-                            batchDTO.setRole(null);
                         }
                     } catch (Exception e) {
-                        batchDTO.setRoleId(null);
-                        batchDTO.setRole(null);
+                        // Ignore view errors
+                    }
+
+                    // 5.9 Promote Mapping Info to Top Level (PRIORITY OVER GLOBAL)
+                    if (top != null) {
+                        batchDTO.setDesignationId(top.getDesignationId());
+                        batchDTO.setDesignationName(top.getDesignationName());
+                        batchDTO.setSubjectId(top.getSubjectId());
+                        batchDTO.setSubjectName(top.getSubjectName());
+
+                        if (top.getRoleId() != null) {
+                            batchDTO.setRoleId(top.getRoleId());
+                        }
+                        if (top.getRoleName() != null) {
+                            batchDTO.setRole(top.getRoleName());
+                        }
                     }
 
                     // 6. Map to CampusDetailDTO for Shared employees
@@ -1327,7 +1334,9 @@ public class ManagerMappingService {
 
                     // 7. Set Employee Type and Shared Details logic
                     batchDTO.setCampusDetails(details);
-                    if (details != null && !details.isEmpty()) {
+                    // Shared if they have other campuses OR if primary campus has a mapping record
+                    if ((details != null && !details.isEmpty())
+                            || (batchDTO.getCampusId() != null && matchingMapping != null)) {
                         batchDTO.setEmployeeType("Shared");
                     } else {
                         batchDTO.setEmployeeType("Not Shared");
@@ -1355,43 +1364,35 @@ public class ManagerMappingService {
      */
     private List<EmployeeCampusAddressDTO> processSingleEmployee(Employee emp, List<String> inputIds,
             boolean includeFullDetails) {
-        // Use a linked hash set (or similar) to maintain order and unique campuses
-        // Priority: 1. Primary Campus, 2. CampusEmployee mappings, 3. SharedEmployee
-        // mappings
-        Map<Integer, EmployeeCampusAddressDTO> uniqueCampuses = new LinkedHashMap<>();
+        // Use a list to maintain order and allow multiple mappings per campus
+        List<EmployeeCampusAddressDTO> dtoList = new ArrayList<>();
 
-        // 0. Fetch mapping records upfront to enrich primary campus details if possible
+        // 0. Fetch mapping records upfront
         List<com.employee.entity.CampusEmployee> campusEmployees = campusEmployeeRepository
                 .findByEmpId(emp.getEmp_id());
         List<SharedEmployee> sharedEmployees = sharedEmployeeRepository.findActiveByEmpId(emp.getEmp_id());
 
-        // 1. Logic changed: We no longer add the primary campus to this list.
-        // The list returned by this method will exclusively contain additional
-        // mappings.
-
-        // 2. Add CampusEmployee mappings (Active only)
+        // 1. Add CampusEmployee mappings (Active only)
+        // Note: We no longer exclude the primary campus to ensure all mappings are
+        // "observed"
         if (campusEmployees != null) {
             for (com.employee.entity.CampusEmployee ce : campusEmployees) {
                 if (ce.getCmpsId() != null && Integer.valueOf(1).equals(ce.getCmpsId().getIsActive())
-                        && !uniqueCampuses.containsKey(ce.getCmpsId().getCampusId())) {
-                    uniqueCampuses.put(ce.getCmpsId().getCampusId(),
-                            createDTOForCampus(emp, ce.getCmpsId(), inputIds, includeFullDetails, ce));
+                        && Integer.valueOf(1).equals(ce.getIsActive())) {
+                    dtoList.add(createDTOForCampus(emp, ce.getCmpsId(), inputIds, includeFullDetails, ce));
                 }
             }
         }
 
-        // 3. Add SharedEmployee mappings (Active only)
+        // 2. Add SharedEmployee mappings (Active only)
         if (sharedEmployees != null) {
             for (SharedEmployee se : sharedEmployees) {
                 if (se.getCmpsId() != null && Integer.valueOf(1).equals(se.getCmpsId().getIsActive())
-                        && !uniqueCampuses.containsKey(se.getCmpsId().getCampusId())) {
-                    uniqueCampuses.put(se.getCmpsId().getCampusId(),
-                            createDTOForCampus(emp, se.getCmpsId(), inputIds, includeFullDetails, se));
+                        && Integer.valueOf(1).equals(se.getIsActive())) {
+                    dtoList.add(createDTOForCampus(emp, se.getCmpsId(), inputIds, includeFullDetails, se));
                 }
             }
         }
-
-        List<EmployeeCampusAddressDTO> dtoList = new ArrayList<>(uniqueCampuses.values());
 
         // Fallback for no campus assigned
         if (dtoList.isEmpty()) {

@@ -102,9 +102,10 @@ public class SkillTestDetailsController {
      * GET /api/v1/skill-details/list
      */
     @GetMapping("/list")
-    public ResponseEntity<List<com.employee.dto.SkillTestListDto>> getAllSkillTestList() {
-        log.info("Fetching all skill test list");
-        List<com.employee.dto.SkillTestListDto> list = skillTestDetailsService.getSkillTestList();
+    public ResponseEntity<List<com.employee.dto.SkillTestListDto>> getAllSkillTestList(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String campusCategory) {
+        log.info("Fetching all skill test list with campusCategory: {}", campusCategory);
+        List<com.employee.dto.SkillTestListDto> list = skillTestDetailsService.getSkillTestList(campusCategory);
         return ResponseEntity.ok(list);
     }
 

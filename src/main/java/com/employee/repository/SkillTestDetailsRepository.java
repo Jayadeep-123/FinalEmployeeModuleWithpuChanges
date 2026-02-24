@@ -69,4 +69,6 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
         List<SkillTestDetails> findActiveWithoutResults();
 
         List<SkillTestDetails> findByIsActive(Integer isActive);
+
+        List<SkillTestDetails> findByIsActiveAndCampusCategory(Integer isActive, String campusCategory);
 }

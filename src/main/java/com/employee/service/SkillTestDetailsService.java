@@ -303,12 +303,6 @@ public class SkillTestDetailsService {
                     .orElseThrow(() -> new ResourceNotFoundException("Orientation Group not found"));
         }
 
-        Campus detailCampus = null;
-        if (requestDto.getCmpsId() != null && requestDto.getCmpsId() > 0) {
-            detailCampus = campusrepository.findById(requestDto.getCmpsId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Campus not found for provided ID"));
-        }
-
         Orientation orientation = null;
         if (requestDto.getOrientationId() != null && requestDto.getOrientationId() > 0) {
             orientation = orientationRepository.findById(requestDto.getOrientationId())
@@ -373,9 +367,14 @@ public class SkillTestDetailsService {
 
         newDetails.setOrientationGroup(group);
         newDetails.setOrientation(orientation);
-        newDetails.setCampus(detailCampus);
+        newDetails.setCampus(campus);
         newDetails.setCity(city);
         newDetails.setBuilding(building);
+
+        // === Sync Campus Category ===
+        if (campus != null && campus.getBusinessType() != null) {
+            newDetails.setCampusCategory(campus.getBusinessType().getBusinessTypeName());
+        }
 
         // === Audit Fields ===
         // Set created_by from user input (Request DTO) - validation already done at
@@ -465,6 +464,9 @@ public class SkillTestDetailsService {
         if (entity.getBuilding() != null) {
             dto.setBuildingId(entity.getBuilding().getBuildingId());
         }
+
+        // Set campus category
+        dto.setCampusCategory(entity.getCampusCategory());
 
         // Set audit fields
         dto.setCreatedBy(entity.getCreatedBy());
@@ -604,9 +606,16 @@ public class SkillTestDetailsService {
      * Get list of all skill test details with specific fields
      */
     @Transactional(readOnly = true)
-    public List<com.employee.dto.SkillTestListDto> getSkillTestList() {
+    public List<com.employee.dto.SkillTestListDto> getSkillTestList(String campusCategory) {
         // Use repository method to get active records directly from DB
-        return skillTestDetailsRepository.findByIsActive(1).stream()
+        List<SkillTestDetails> entities;
+        if (campusCategory != null && !campusCategory.trim().isEmpty()) {
+            entities = skillTestDetailsRepository.findByIsActiveAndCampusCategory(1, campusCategory);
+        } else {
+            entities = skillTestDetailsRepository.findByIsActive(1);
+        }
+
+        return entities.stream()
                 .map(entity -> {
                     com.employee.dto.SkillTestListDto dto = new com.employee.dto.SkillTestListDto();
 
@@ -666,6 +675,9 @@ public class SkillTestDetailsService {
                         dto.setSubjectId(entity.getSubject().getSubject_id());
                         dto.setSubjectName(entity.getSubject().getSubject_name().replaceAll("\\s+$", ""));
                     }
+
+                    // 8. Campus Category
+                    dto.setCampusCategory(entity.getCampusCategory());
 
                     return dto;
                 })
