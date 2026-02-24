@@ -493,6 +493,7 @@ public class EmployeeBasicInfoTabService {
         employee.setLast_name(basicInfo.getLastName());
         employee.setDate_of_join(basicInfo.getDateOfJoin());
         employee.setPrimary_mobile_no(basicInfo.getPrimaryMobileNo());
+        employee.setSecondary_mobile_no(basicInfo.getSecondaryMobileNo());
         employee.setEmail(null); // Email goes to EmpDetails.personal_email only
 
         if (basicInfo.getTotalExperience() != null) {
@@ -713,6 +714,10 @@ public class EmployeeBasicInfoTabService {
 
         if (basicInfo.getPrimaryMobileNo() != null && basicInfo.getPrimaryMobileNo() > 0) {
             employee.setPrimary_mobile_no(basicInfo.getPrimaryMobileNo());
+        }
+
+        if (basicInfo.getSecondaryMobileNo() != null && basicInfo.getSecondaryMobileNo() > 0) {
+            employee.setSecondary_mobile_no(basicInfo.getSecondaryMobileNo());
         }
 
         employee.setEmail(null);

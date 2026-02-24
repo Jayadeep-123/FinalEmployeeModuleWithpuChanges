@@ -26,6 +26,7 @@ public class BasicInfoDTO {
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
 	private Date dateOfJoin;
 	private Long primaryMobileNo;
+	private Long secondaryMobileNo;
 	private String email;
 
 	// Employee foreign key references (IDs) - All Integer types

@@ -5,6 +5,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.employee.entity.Orientation;
+import com.employee.repository.OrientationRepository;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -46,6 +48,7 @@ import com.employee.repository.GradeRepository;
 import com.employee.repository.JoiningAsRepository;
 import com.employee.repository.QualificationRepository;
 import com.employee.repository.SkillTestApprovalStatusRepository;
+import com.employee.repository.EmpDetailsRepository;
 import com.employee.repository.SkillTestDetailsRepository;
 import com.employee.repository.SkillTestResultRepository;
 import com.employee.repository.StreamRepository;
@@ -103,6 +106,12 @@ public class SkillTestDetailsService {
     private SkillTestApprovalRepository skillTestApprovalRepository;
     @Autowired
     private OrientationGroupRepository orientationGroupRepository;
+    @Autowired
+    private OrientationRepository orientationRepository;
+    @Autowired
+    private EmpDetailsRepository empDetailsRepository;
+
+    private final Map<Long, Boolean> processingAadhaars = new java.util.concurrent.ConcurrentHashMap<>();
 
     @org.springframework.beans.factory.annotation.Value("${spring.datasource.url}")
     private String dbUrl;
@@ -187,6 +196,12 @@ public class SkillTestDetailsService {
             throw new ResourceNotFoundException("No campus specified and Employee has no campus assigned");
         }
 
+        if (campus.getCode() == null || campus.getCode() == 0) {
+            throw new ResourceNotFoundException(
+                    "Campus code is missing or zero for campus: " + campus.getCampusName()
+                            + " (ID: " + campus.getCampusId() + "). Cannot generate temp_payroll_id.");
+        }
+
         // === Generate TempPayrollId ===
         String baseKey = "TEMP" + campus.getCode();
 
@@ -219,7 +234,17 @@ public class SkillTestDetailsService {
 
         // === Aadhaar Validation ===
         if (requestDto.getAadhaarNo() != null && requestDto.getAadhaarNo() > 0) {
-            String aadhaar = String.valueOf(requestDto.getAadhaarNo());
+            long aadhaarLong = requestDto.getAadhaarNo();
+
+            // Check for uniqueness in BOTH tables
+            boolean existsInSkillTest = skillTestDetailsRepository.existsByAadhaar_no(aadhaarLong);
+            boolean existsInEmployee = empDetailsRepository.existsByAdhaar_no(aadhaarLong);
+
+            if (existsInSkillTest || existsInEmployee) {
+                throw new IllegalArgumentException("Aadhaar number already exists in DB: " + aadhaarLong);
+            }
+
+            String aadhaar = String.valueOf(aadhaarLong);
             if (!aadhaar.matches("^[0-9]{12}$"))
                 throw new ResourceNotFoundException("Aadhaar must be exactly 12 digits");
             if (!isValidAadhaar(aadhaar))
@@ -284,6 +309,12 @@ public class SkillTestDetailsService {
                     .orElseThrow(() -> new ResourceNotFoundException("Campus not found for provided ID"));
         }
 
+        Orientation orientation = null;
+        if (requestDto.getOrientationId() != null && requestDto.getOrientationId() > 0) {
+            orientation = orientationRepository.findById(requestDto.getOrientationId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Orientation not found"));
+        }
+
         City city = null;
         if (requestDto.getCityId() != null && requestDto.getCityId() > 0) {
             city = cityRepository.findById(requestDto.getCityId())
@@ -328,6 +359,7 @@ public class SkillTestDetailsService {
         newDetails.setEmployeeType(employeeType);
 
         newDetails.setOrientationGroup(group);
+        newDetails.setOrientation(orientation);
         newDetails.setCampus(detailCampus);
         newDetails.setCity(city);
         newDetails.setBuilding(building);
@@ -406,6 +438,10 @@ public class SkillTestDetailsService {
         }
         if (entity.getOrientationGroup() != null) {
             dto.setGroupId(entity.getOrientationGroup().getGroupId());
+        }
+        if (entity.getOrientation() != null) {
+            dto.setOrientationId(entity.getOrientation().getOrientationId());
+            dto.setOrientationName(entity.getOrientation().getOrientationName());
         }
         if (entity.getCampus() != null) {
             dto.setCampusId(entity.getCampus().getCampusId());

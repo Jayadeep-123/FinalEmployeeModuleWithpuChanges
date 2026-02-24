@@ -340,6 +340,15 @@ public class EmployeeValidationService {
                     throw new ResourceNotFoundException(
                             "Invalid Aadhaar number format. Please verify the Aadhaar number and try again.");
                 }
+
+                // Layer 3: Database existence check - Check both Employee and Skill Test tables
+                long aadhaarLong = basicInfo.getAdhaarNo();
+                boolean existsInEmployee = empDetailsRepository.existsByAdhaar_no(aadhaarLong);
+                boolean existsInSkillTest = skillTestDetlRepository.existsByAadhaar_no(aadhaarLong);
+
+                if (existsInEmployee || existsInSkillTest) {
+                    throw new ResourceNotFoundException("Aadhar number already exists in database.");
+                }
             }
 
             // Validate tempPayrollId - check BOTH SkillTestDetails and Employee tables
@@ -490,6 +499,13 @@ public class EmployeeValidationService {
 
         if (basicInfo.getPrimaryMobileNo() == null || basicInfo.getPrimaryMobileNo() == 0) {
             throw new ResourceNotFoundException("Primary Mobile Number is required");
+        }
+
+        if (basicInfo.getSecondaryMobileNo() != null && basicInfo.getSecondaryMobileNo() > 0) {
+            String secondary = String.valueOf(basicInfo.getSecondaryMobileNo());
+            if (!secondary.matches("^[0-9]{10}$")) {
+                throw new ResourceNotFoundException("Secondary Mobile Number must be exactly 10 numeric digits.");
+            }
         }
 
         if (basicInfo.getEmail() != null && basicInfo.getEmail().length() > 50) {
@@ -682,7 +698,11 @@ public class EmployeeValidationService {
                 case "aadhaar":
                 case "adhaar":
                 case "adhaar_no":
+                case "aadhaarno":
+                case "aadhaar_no":
+                case "aadhar no":
                 case "aadhaar no":
+                case "adhaar no":
                     // Layer 1: Pattern check (must be 12 digits)
                     if (!normalizedValue.matches("^[0-9]{12}$")) {
                         exists = false;
@@ -695,7 +715,23 @@ public class EmployeeValidationService {
                     }
                     // Layer 3: Database existence check
                     else {
-                        exists = empDetailsRepository.existsByAdhaar_no(Long.parseLong(normalizedValue));
+                        try {
+                            long aadhaarLong = Long.parseLong(normalizedValue);
+                            System.out.println("DEBUG: Validating Aadhaar field: " + normalizedFieldName + ", value: "
+                                    + aadhaarLong);
+
+                            boolean existsInEmployee = empDetailsRepository.existsByAdhaar_no(aadhaarLong);
+                            System.out.println("DEBUG: Exists in Employee table: " + existsInEmployee);
+
+                            boolean existsInSkillTest = skillTestDetlRepository.existsByAadhaar_no(aadhaarLong);
+                            System.out.println("DEBUG: Exists in Skill Test table: " + existsInSkillTest);
+
+                            exists = existsInEmployee || existsInSkillTest;
+                        } catch (Exception e) {
+                            System.err.println("DEBUG: Error in Aadhaar validation: " + e.getMessage());
+                            throw e; // Let the outer catch handle it
+                        }
+
                         if (exists) {
                             message = "Aadhar number already exists in database.";
                         } else {
@@ -721,9 +757,17 @@ public class EmployeeValidationService {
                 case "mobile":
                 case "mobile no":
                 case "primary_mobile_no":
+                case "primary mobile no":
                     exists = employeeRepository.existsByPrimary_mobile_no(Long.parseLong(normalizedValue));
                     if (exists)
                         message = "Mobile number already exists.";
+                    break;
+                case "secondary mobile no":
+                case "secondary_mobile_no":
+                case "secondarymobile":
+                    exists = employeeRepository.existsBySecondary_mobile_no(Long.parseLong(normalizedValue));
+                    if (exists)
+                        message = "Secondary mobile number already exists.";
                     break;
                 case "email":
                 case "personal_email":

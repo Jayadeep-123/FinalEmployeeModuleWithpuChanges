@@ -227,7 +227,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
                             e.total_experience,
                             epd.pre_esi_no,
                             e.contract_start_date,
-                            e.contract_end_date
+                            e.contract_end_date,
+                            eth.emp_type_hiring_id,
+                            eth.emp_type_hiring_name
                         )
                         FROM Employee e
                         LEFT JOIN EmpDetails ed ON ed.employee_id.emp_id = e.emp_id AND ed.is_active = 1
@@ -249,6 +251,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
                         LEFT JOIN e.employee_hired hired
                         LEFT JOIN e.employee_reporting_id rm
                         LEFT JOIN e.employee_replaceby_id rep
+                        LEFT JOIN e.employee_type_hiring_id eth
 
                         LEFT JOIN ed.bloodGroup_id bg
                         LEFT JOIN ed.caste_id cs
@@ -271,6 +274,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Em
 
         @Query("SELECT COUNT(e) > 0 FROM Employee e WHERE e.primary_mobile_no = :mobileNo")
         boolean existsByPrimary_mobile_no(@Param("mobileNo") Long mobileNo);
+
+        @Query("SELECT COUNT(e) > 0 FROM Employee e WHERE e.secondary_mobile_no = :mobileNo")
+        boolean existsBySecondary_mobile_no(@Param("mobileNo") Long mobileNo);
 
         @Query(value = "SELECT role_id FROM sce_admin.sce_user_admin WHERE emp_id = :empId LIMIT 1", nativeQuery = true)
         List<Integer> findRoleIdByEmpId(@Param("empId") Integer empId);

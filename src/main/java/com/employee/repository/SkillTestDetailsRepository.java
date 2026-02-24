@@ -47,6 +47,9 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
         @Query("SELECT std FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo")
         Optional<SkillTestDetails> findByAadhaarNo(@Param("aadhaarNo") Long aadhaarNo);
 
+        @Query("SELECT COUNT(std) > 0 FROM SkillTestDetails std WHERE std.aadhaar_no = :aadhaarNo")
+        boolean existsByAadhaar_no(@Param("aadhaarNo") Long aadhaarNo);
+
         @Query("SELECT std FROM SkillTestDetails std WHERE std.contact_number = :contactNumber")
         Optional<SkillTestDetails> findByContactNumber(@Param("contactNumber") Long contactNumber);
 

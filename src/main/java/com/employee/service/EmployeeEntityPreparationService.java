@@ -116,6 +116,7 @@ public class EmployeeEntityPreparationService {
         employee.setLast_name(basicInfo.getLastName());
         employee.setDate_of_join(basicInfo.getDateOfJoin());
         employee.setPrimary_mobile_no(basicInfo.getPrimaryMobileNo());
+        employee.setSecondary_mobile_no(basicInfo.getSecondaryMobileNo());
         employee.setEmail(null);
         if (basicInfo.getTotalExperience() != null)
             employee.setTotal_experience(basicInfo.getTotalExperience().doubleValue());
@@ -362,6 +363,8 @@ public class EmployeeEntityPreparationService {
             employee.setDate_of_join(basicInfo.getDateOfJoin());
         if (basicInfo.getPrimaryMobileNo() != null && basicInfo.getPrimaryMobileNo() > 0)
             employee.setPrimary_mobile_no(basicInfo.getPrimaryMobileNo());
+        if (basicInfo.getSecondaryMobileNo() != null && basicInfo.getSecondaryMobileNo() > 0)
+            employee.setSecondary_mobile_no(basicInfo.getSecondaryMobileNo());
         employee.setEmail(null);
         if (basicInfo.getTotalExperience() != null)
             employee.setTotal_experience(basicInfo.getTotalExperience().doubleValue());

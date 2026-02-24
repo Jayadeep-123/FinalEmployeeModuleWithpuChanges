@@ -182,7 +182,6 @@
 //}
 // 
 
-
 package com.employee.entity;
 
 import java.time.LocalDate;
@@ -218,7 +217,7 @@ public class SkillTestDetails {
     @JoinColumn(name = "emp_id")
     private Employee empId;
 
-    @Column(name = "aadhaar_no")
+    @Column(name = "aadhaar_no", unique = true)
     private Long aadhaar_no;
 
     @Column(name = "pan_number", length = 15)
@@ -332,10 +331,13 @@ public class SkillTestDetails {
     @Column(name = "created_date", insertable = false, updatable = false)
     private LocalDate joinDate;
 
-    // Foreign key to sce_orientation_group table
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private OrientationGroup orientationGroup;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "orientation_id")
+    private Orientation orientation;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cmps_id")
     private Campus campus; // Make sure you have a 'Cmps' entity class

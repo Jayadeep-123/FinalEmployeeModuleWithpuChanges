@@ -96,19 +96,19 @@ public class FullBasicInfoDto {
     private Long sscNo;
 
     // Reference Employee
-    private Integer referenceEmployeeId; // ✅ Added
+    private Integer referenceEmployeeId;
     private String referenceEmployeeName;
 
     // Hired By Employee (Recruiter/HR)
-    private Integer hiredByEmployeeId; // ✅ Added
+    private Integer hiredByEmployeeId;
     private String hiredByEmployeeName;
 
     // Reporting Manager
-    private Integer reportingManagerId; // ✅ Added
+    private Integer reportingManagerId;
     private String reportingManagerName;
 
     // Replacement Employee
-    private Integer replacementEmployeeId; // ✅ Added
+    private Integer replacementEmployeeId;
     private String replacementEmployeeName;
 
     private Double totalExperience;
@@ -116,4 +116,8 @@ public class FullBasicInfoDto {
 
     private Date contractStartDate;
     private Date contractEndDate;
+
+    // Hiring Type Info
+    private Integer empTypeHiringId;
+    private String empTypeHiringName;
 }
