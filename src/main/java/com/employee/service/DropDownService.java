@@ -570,8 +570,13 @@ public class DropDownService {
 
 	public List<GenericDropdownDTO> getAllEmployeesByCampusId(Integer campusId) {
 		return employeeRepository.findAllEmployeesByCampusId(campusId).stream()
-				.map(emp -> new GenericDropdownDTO(emp.getEmp_id(), emp.getFirst_name() + " "
-						+ emp.getLast_name()))
+				.filter(emp -> emp.getPayRollId() != null && !emp.getPayRollId().trim().isEmpty())
+				.map(emp -> {
+					String pId = emp.getPayRollId().trim();
+					String fullName = (emp.getFirst_name() != null ? emp.getFirst_name() : "") + " "
+							+ (emp.getLast_name() != null ? emp.getLast_name() : "");
+					return new GenericDropdownDTO(emp.getEmp_id(), fullName.trim() + " (" + pId + ")");
+				})
 				.collect(Collectors.toList());
 	}
 
