@@ -17,6 +17,7 @@ public class SkillTestDetailsResultDto {
 
 	private String employeeName;
 	private String tempPayrollId;
+	private String previousChaitanyaId;
 	@JsonFormat(pattern = "dd/MM/yyyy")
 	private LocalDate joinDate;
 	@JsonFormat(pattern = "dd/MM/yyyy")

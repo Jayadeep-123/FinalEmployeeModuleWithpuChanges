@@ -1515,12 +1515,13 @@ public class EmployeeBasicInfoTabService {
             throw new ResourceNotFoundException("Gender ID is required (NOT NULL column)");
         }
 
-        if (memberDTO.getBloodGroupId() == null) {
-            throw new ResourceNotFoundException("BloodGroup ID is required (NOT NULL column)");
+        if (memberDTO.getBloodGroupId() != null && memberDTO.getBloodGroupId() > 0) {
+            familyMember.setBlood_group_id(bloodGroupRepository.findByIdAndIsActive(memberDTO.getBloodGroupId(), 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Active BloodGroup not found with ID: " + memberDTO.getBloodGroupId())));
+        } else {
+            familyMember.setBlood_group_id(null);
         }
-        familyMember.setBlood_group_id(bloodGroupRepository.findByIdAndIsActive(memberDTO.getBloodGroupId(), 1)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Active BloodGroup not found with ID: " + memberDTO.getBloodGroupId())));
 
         Integer isSriChaitanyaEmpValue = 0;
         if (memberDTO.getIsSriChaitanyaEmp() != null) {
@@ -2579,14 +2580,12 @@ public class EmployeeBasicInfoTabService {
                                     + member.getGenderId() + " for family member: " + member.getFullName()));
                 }
 
-                // 4. Blood Group Validation
-                if (member.getBloodGroupId() == null) {
-                    throw new ResourceNotFoundException(
-                            "Blood Group ID is required for family member: " + member.getFullName());
+                // 4. Blood Group Validation - NOW OPTIONAL
+                if (member.getBloodGroupId() != null && member.getBloodGroupId() > 0) {
+                    bloodGroupRepository.findByIdAndIsActive(member.getBloodGroupId(), 1)
+                            .orElseThrow(() -> new ResourceNotFoundException("Active Blood Group not found with ID: "
+                                    + member.getBloodGroupId() + " for family member: " + member.getFullName()));
                 }
-                bloodGroupRepository.findByIdAndIsActive(member.getBloodGroupId(), 1)
-                        .orElseThrow(() -> new ResourceNotFoundException("Active Blood Group not found with ID: "
-                                + member.getBloodGroupId() + " for family member: " + member.getFullName()));
 
                 // 5. Nationality Validation
                 if (member.getNationality() == null || member.getNationality().trim().isEmpty()) {

@@ -18,6 +18,7 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
                         "COALESCE(d.firstName, '') || ' ' || COALESCE(d.lastName, ''), " +
                         "e.payRollId, " +
                         "d.tempPayrollId, " +
+                        "d.previous_chaitanya_id, " +
                         "d.joinDate, " +
                         "c.cityName, " +
                         "ca.campusName, " +

@@ -521,6 +521,7 @@ public class SkillTestDetailsService {
                     dto.setEmployeeName((fName + " " + lName).trim());
 
                     dto.setTempPayrollId(entity.getTempPayrollId());
+                    dto.setPreviousChaitanyaId(entity.getPrevious_chaitanya_id());
                     dto.setJoinDate(entity.getJoinDate());
 
                     // FIX 2: Ensure getGenderName() exists in your Gender Entity!
@@ -603,6 +604,9 @@ public class SkillTestDetailsService {
 
                     // 2. Temp Payroll ID
                     dto.setTempPayrollId(entity.getTempPayrollId());
+
+                    // 2a. Previous Chaitanya ID
+                    dto.setPreviousChaitanyaId(entity.getPrevious_chaitanya_id());
 
                     // 3. Employee Number
                     // Try to get from Employee entity first, else fallback to previous_chaitanya_id

@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class SkillTestListDto {
     private String employeeName;
     private String tempPayrollId;
+    private String previousChaitanyaId;
     private String employeeNumber;
     private LocalDateTime joinDate;
     private String city;
