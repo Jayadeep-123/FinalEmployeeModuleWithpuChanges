@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +51,9 @@ public class EmployeeOnboardingService {
 
     @Autowired
     private EmployeeEntityPreparationService entityPreparationService;
+
+    @Value("${spring.datasource.url}")
+    private String dbUrl;
 
     @Transactional
     public TempPayrollIdResponseDTO generateOrValidateTempPayrollId(Integer hrEmployeeId, BasicInfoDTO basicInfo) {
@@ -281,6 +285,15 @@ public class EmployeeOnboardingService {
             }
 
             int nextValue = maxValue + 1;
+
+            // QA Server Sequence Start Logic: if on QA (DB URL contains '20.21'),
+            // ensure temp IDs start from 10001 (same logic as SkillTestDetailsService)
+            if (dbUrl != null && dbUrl.contains("20.21")) {
+                if (nextValue < 10001) {
+                    nextValue = 10001;
+                }
+            }
+
             String paddedValue = String.format("%04d", nextValue);
             finalTempPayrollId = baseKey + paddedValue;
 
