@@ -39,14 +39,14 @@ public class EmpRecentSearchService {
         dto.setLevelName(cleanseString(dto.getLevelName()));
         dto.setPhotoPath(cleanseString(dto.getPhotoPath()));
 
-        // Auto-populate campus fields from the searched employee's primary campus
+        // Auto-populate campus fields from the LOGGED-IN employee's primary campus
         // (backend only)
         Integer cmpsId = null;
         String cmpsName = null;
         Integer businessName = null;
-        if (dto.getEmpId() != null) {
+        if (dto.getLogInEmpId() != null) {
             try {
-                Employee searchedEmp = employeeRepository.findById(dto.getEmpId()).orElse(null);
+                Employee searchedEmp = employeeRepository.findById(dto.getLogInEmpId()).orElse(null);
                 if (searchedEmp != null && searchedEmp.getCampus_id() != null) {
                     cmpsId = searchedEmp.getCampus_id().getCampusId();
                     cmpsName = searchedEmp.getCampus_id().getCampusName();
