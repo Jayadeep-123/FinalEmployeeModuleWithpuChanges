@@ -32,7 +32,9 @@ public interface SkillTestDetailsRepository extends JpaRepository<SkillTestDetai
                         "LEFT JOIN d.orientationGroup s")
         List<SkillTestDashboardDto> getSkillTestDashboardDetails();
 
-        @Query("SELECT MAX(s.tempPayrollId) FROM SkillTestDetails s WHERE s.tempPayrollId LIKE :keyPrefix")
+        @Query(value = "SELECT temp_payroll_id FROM sce_employee.sce_skill_test_detl " +
+                        "WHERE temp_payroll_id LIKE :keyPrefix " +
+                        "ORDER BY LENGTH(temp_payroll_id) DESC, temp_payroll_id DESC LIMIT 1", nativeQuery = true)
         String findMaxTempPayrollIdByKey(@Param("keyPrefix") String keyPrefix);
 
         @Query("SELECT std FROM SkillTestDetails std WHERE std.tempPayrollId = :tempPayrollId")

@@ -193,13 +193,20 @@ public class SkillTestDetailsService {
         }
 
         if (campus == null) {
-            throw new ResourceNotFoundException("No campus specified and Employee has no campus assigned");
+            throw new ResourceNotFoundException("No campus specified and Employee (emp_id: " + emp_id
+                    + ") does not have a campus assigned. Cannot generate temp_payroll_id.");
+        }
+
+        if (campus.getIsActive() == null || campus.getIsActive() != 1) {
+            throw new ResourceNotFoundException(
+                    "Selected campus (campus_id: " + campus.getCampusId()
+                            + ") is not active. Cannot generate temp_payroll_id.");
         }
 
         if (campus.getCode() == null || campus.getCode() == 0) {
             throw new ResourceNotFoundException(
-                    "Campus code is missing or zero for campus: " + campus.getCampusName()
-                            + " (ID: " + campus.getCampusId() + "). Cannot generate temp_payroll_id.");
+                    "Campus code is 0 or not set for selected campus_id: " + campus.getCampusId()
+                            + ". Cannot generate temp_payroll_id.");
         }
 
         // === Generate TempPayrollId ===

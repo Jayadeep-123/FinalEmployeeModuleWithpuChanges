@@ -19,6 +19,7 @@ import com.employee.entity.EmpPfDetails;
 import com.employee.entity.Employee;
 import com.employee.entity.EmployeeCheckListStatus;
 import com.employee.exception.ResourceNotFoundException;
+import com.employee.repository.CampusRepository;
 import com.employee.repository.EmpDetailsRepository;
 import com.employee.repository.EmpPfDetailsRepository;
 import com.employee.repository.EmployeeCheckListStatusRepository;
@@ -52,6 +53,9 @@ public class EmployeeOnboardingService {
     @Autowired
     private EmployeeEntityPreparationService entityPreparationService;
 
+    @Autowired
+    private CampusRepository campusRepository;
+
     @Value("${spring.datasource.url}")
     private String dbUrl;
 
@@ -84,16 +88,27 @@ public class EmployeeOnboardingService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "HR Employee not found with emp_id: " + finalHrEmpId));
 
-        Campus campus = hrEmployee.getCampus_id();
+        Campus campus = null;
+
+        // PRIORITIZE SELECTED CAMPUS FROM FORM
+        if (basicInfo.getCampusId() != null && basicInfo.getCampusId() > 0) {
+            campus = campusRepository.findById(basicInfo.getCampusId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Selected Campus not found with ID: " + basicInfo.getCampusId()));
+        } else {
+            // FALLBACK TO HR EMPLOYEE'S CAMPUS
+            campus = hrEmployee.getCampus_id();
+        }
+
         if (campus == null) {
             throw new ResourceNotFoundException(
-                    "HR Employee (emp_id: " + hrEmployeeId
+                    "No campus specified and HR Employee (emp_id: " + hrEmployeeId
                             + ") does not have a campus assigned. Cannot generate temp_payroll_id.");
         }
 
         if (campus.getIsActive() == null || campus.getIsActive() != 1) {
             throw new ResourceNotFoundException(
-                    "HR Employee's campus (campus_id: " + campus.getCampusId()
+                    "Selected campus (campus_id: " + campus.getCampusId()
                             + ") is not active. Cannot generate temp_payroll_id.");
         }
 
