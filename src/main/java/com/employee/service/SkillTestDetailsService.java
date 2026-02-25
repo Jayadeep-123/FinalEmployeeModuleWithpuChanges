@@ -344,8 +344,10 @@ public class SkillTestDetailsService {
                 throw new ResourceNotFoundException(
                         "Previous Chaitanya employee with ID " + prevId + " must be INACTIVE (is_active = 0).");
             }
+            newDetails.setPrevious_chaitanya_id(prevId);
+        } else {
+            newDetails.setPrevious_chaitanya_id(null);
         }
-        newDetails.setPrevious_chaitanya_id(requestDto.getPreviousChaitanyaId());
         newDetails.setFirstName(requestDto.getFirstName());
         newDetails.setLastName(requestDto.getLastName());
         newDetails.setDob(requestDto.getDob());
