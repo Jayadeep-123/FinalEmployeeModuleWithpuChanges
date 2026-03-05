@@ -277,20 +277,26 @@ public class DropDownService {
 
 		List<Subject> subjects;
 
-		if (categoryName != null && empSubject != null) {
-			BusinessType category = businessTypeRepository.findByBusinessTypeNameIgnoreCase(categoryName)
+		if (categoryName != null && !categoryName.trim().isEmpty()) {
+			BusinessType category = businessTypeRepository.findByBusinessTypeNameIgnoreCase(categoryName.trim())
 					.orElseThrow(() -> new ResourceNotFoundException("Category not found: " + categoryName));
 
-			// 1. Fetch subjects filtered by category and type
-			subjects = subjectRepo.findBySubjectCategory_BusinessTypeIdAndEmpSubjectAndIsActive(
-					category.getBusinessTypeId(),
-					empSubject, ACTIVE_STATUS);
+			if (empSubject != null) {
+				// 1. Fetch subjects filtered by category and type
+				subjects = subjectRepo.findBySubjectCategory_BusinessTypeIdAndEmpSubjectAndIsActive(
+						category.getBusinessTypeId(),
+						empSubject, ACTIVE_STATUS);
+			} else {
+				// 2. Fetch subjects filtered by category only
+				subjects = subjectRepo.findBySubjectCategory_BusinessTypeIdAndIsActive(
+						category.getBusinessTypeId(), ACTIVE_STATUS);
+			}
 		} else {
-			// 2. Fetch all active subjects
+			// 3. Fetch all active subjects (fallback)
 			subjects = subjectRepo.findByIsActive(ACTIVE_STATUS);
 		}
 
-		// 3. Map to DTO
+		// 4. Map to DTO
 		return subjects.stream()
 				.map(subject -> new GenericDropdownDTO(subject.getSubject_id(), subject.getSubject_name()))
 				.collect(Collectors.toList());

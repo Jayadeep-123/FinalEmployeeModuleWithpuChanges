@@ -180,7 +180,13 @@ public class GetEmpDetailsService {
 		// Interpreting gross_salary as monthly salary as per POST structure
 		BigDecimal monthlySalary = BigDecimal.valueOf(entity.getGross_salary());
 		dto.setGrossSalaryPerMonth(monthlySalary);
-		dto.setCtc(monthlySalary.multiply(BigDecimal.valueOf(12))); // Annual CTC
+
+		// Use stored CTC directly
+		if (entity.getCtc() != null) {
+			dto.setCtc(BigDecimal.valueOf(entity.getCtc()));
+		} else {
+			dto.setCtc(null); // No calculation, return null if not stored
+		}
 
 		// Fetch and map associated documents
 		List<EmpDocuments> docEntities = empDocumentsRepository.findByExperienceId(entity.getEmp_exp_detl_id());

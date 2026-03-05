@@ -1949,6 +1949,11 @@ public class EmployeeBasicInfoTabService {
 
         experience.setGross_salary(
                 employerDTO.getGrossSalaryPerMonth() != null ? employerDTO.getGrossSalaryPerMonth() : 0);
+
+        if (employerDTO.getCtc() != null) {
+            experience.setCtc(employerDTO.getCtc().doubleValue());
+        }
+
         experience.setIs_active(1);
 
         // Set created_by and created_date (required NOT NULL columns)
@@ -2178,6 +2183,11 @@ public class EmployeeBasicInfoTabService {
         }
         if (!areNumbersEqual.test(target.getGross_salary(), source.getGross_salary())) {
             target.setGross_salary(source.getGross_salary());
+            changed = true;
+        }
+
+        if (!Objects.equals(target.getCtc(), source.getCtc())) {
+            target.setCtc(source.getCtc());
             changed = true;
         }
         if (target.getIs_active() != source.getIs_active()) {

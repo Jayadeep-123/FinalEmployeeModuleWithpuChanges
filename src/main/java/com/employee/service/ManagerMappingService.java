@@ -147,7 +147,7 @@ public class ManagerMappingService {
             for (CampusMappingDTO dto : campusMappingsList) {
                 // If this mapping matches the Primary Campus in the Employee table
                 if (employeeCampus != null && employeeCampus.getCampusId() == dto.getCampusId()) {
-                    // Check if Department or Designation changed for Primary record
+                    // Update main employee fields
                     if (dto.getDepartmentId() != null && dto.getDepartmentId() > 0) {
                         if (employee.getDepartment() == null
                                 || employee.getDepartment().getDepartment_id() != dto.getDepartmentId()) {
@@ -157,12 +157,9 @@ public class ManagerMappingService {
                             employee.setDepartment(newDept);
                             employeeChanged = true;
                         }
-                    } else {
-                        // If provided as 0 or null, clear it
-                        if (employee.getDepartment() != null) {
-                            employee.setDepartment(null);
-                            employeeChanged = true;
-                        }
+                    } else if (employee.getDepartment() != null) {
+                        employee.setDepartment(null);
+                        employeeChanged = true;
                     }
 
                     if (dto.getDesignationId() != null && dto.getDesignationId() > 0) {
@@ -174,16 +171,19 @@ public class ManagerMappingService {
                             employee.setDesignation(newDesig);
                             employeeChanged = true;
                         }
-                    } else {
-                        // If provided as 0 or null, clear it
-                        if (employee.getDesignation() != null) {
-                            employee.setDesignation(null);
-                            employeeChanged = true;
-                        }
+                    } else if (employee.getDesignation() != null) {
+                        employee.setDesignation(null);
+                        employeeChanged = true;
                     }
-                    // Note: Subject is not stored in Employee table, strictly SharedEmployee
-                } else {
-                    // Not the primary campus, add to shared mappings list
+                }
+
+                // ALWAYS process in sharedMappings if a subject is provided (even for Primary
+                // Campus)
+                // or if it's strictly a shared campus
+                if (dto.getSubjectId() != null && dto.getSubjectId() > 0) {
+                    sharedMappings.add(dto);
+                } else if (employeeCampus == null || employeeCampus.getCampusId() != dto.getCampusId()) {
+                    // Strictly shared campus (even without subject)
                     sharedMappings.add(dto);
                 }
             }
@@ -488,11 +488,9 @@ public class ManagerMappingService {
                                     employee.setDepartment(newBulkDept);
                                     empChangedForBulk = true;
                                 }
-                            } else {
-                                if (employee.getDepartment() != null) {
-                                    employee.setDepartment(null);
-                                    empChangedForBulk = true;
-                                }
+                            } else if (employee.getDepartment() != null) {
+                                employee.setDepartment(null);
+                                empChangedForBulk = true;
                             }
 
                             if (dto.getDesignationId() != null && dto.getDesignationId() > 0) {
@@ -505,13 +503,16 @@ public class ManagerMappingService {
                                     employee.setDesignation(newBulkDesig);
                                     empChangedForBulk = true;
                                 }
-                            } else {
-                                if (employee.getDesignation() != null) {
-                                    employee.setDesignation(null);
-                                    empChangedForBulk = true;
-                                }
+                            } else if (employee.getDesignation() != null) {
+                                employee.setDesignation(null);
+                                empChangedForBulk = true;
                             }
-                        } else {
+                        }
+
+                        // Add to shared logic if subject is present or if it's a shared campus
+                        if (dto.getSubjectId() != null && dto.getSubjectId() > 0) {
+                            bulkSharedMappings.add(dto);
+                        } else if (empCampusForBulk == null || empCampusForBulk.getCampusId() != dto.getCampusId()) {
                             bulkSharedMappings.add(dto);
                         }
                     }
@@ -667,30 +668,30 @@ public class ManagerMappingService {
             // Check if this campus is already active for the employee
             if (activeMappings != null) {
                 for (com.employee.entity.SharedEmployee existing : activeMappings) {
+                    // Check if SUBJECT matches as well
+                    Integer existingSubjectId = (existing.getSubjectId() != null)
+                            ? existing.getSubjectId().getSubject_id()
+                            : null;
+                    Integer newSubjectId = (dto.getSubjectId() != null && dto.getSubjectId() != 0)
+                            ? dto.getSubjectId()
+                            : null;
+
+                    boolean subjectsMatch = java.util.Objects.equals(existingSubjectId, newSubjectId);
+
                     if (existing.getCmpsId().getCampusId() == dto.getCampusId()
+                            && subjectsMatch
                             && !processedSharedEmployeeIds.contains(existing.getSharedEmployeeId())) {
 
-                        // --- OPTIMIZATION ---
-                        // Check if data is actually different (Designation and Subject)
-                        Integer existingSubjectId = (existing.getSubjectId() != null)
-                                ? existing.getSubjectId().getSubject_id()
-                                : null;
-                        Integer newSubjectId = (dto.getSubjectId() != null && dto.getSubjectId() != 0)
-                                ? dto.getSubjectId()
-                                : null;
-
-                        boolean subjectsMatch = java.util.Objects.equals(existingSubjectId, newSubjectId);
-
-                        if (existing.getDesignationId().getDesignation_id() == dto.getDesignationId()
-                                && subjectsMatch) {
-                            // No change for this campus, skip update/re-insertion
+                        // Match found (Campus + Subject)! Check if designation is different
+                        if (existing.getDesignationId().getDesignation_id() == dto.getDesignationId()) {
+                            // No change for this Campus + Subject, skip
                             processedSharedEmployeeIds.add(existing.getSharedEmployeeId());
                             matched = true;
                             break;
                         }
 
-                        // Match found but data is different! Deactivate the old record and create a NEW
-                        // one
+                        // Designation is different for this Campus + Subject!
+                        // Deactivate the old record and create a NEW one
                         existing.setIsActive(0);
                         existing.setUpdatedBy(updatedBy);
                         existing.setUpdatedDate(LocalDateTime.now());
@@ -1241,6 +1242,7 @@ public class ManagerMappingService {
                         fullName += " " + emp.getLast_name();
                     }
                     batchDTO.setEmployeeName(fullName);
+                    batchDTO.setEmployeeMobileNo(String.valueOf(emp.getPrimary_mobile_no()));
 
                     // 2. Manager Info
                     if (emp.getEmployee_manager_id() != null) {
@@ -1251,6 +1253,7 @@ public class ManagerMappingService {
                             mgrName += " " + manager.getLast_name();
                         }
                         batchDTO.setManagerName(mgrName);
+                        batchDTO.setManagerMobileNo(String.valueOf(manager.getPrimary_mobile_no()));
                     }
 
                     // 3. Reporting Manager Info
@@ -1262,6 +1265,7 @@ public class ManagerMappingService {
                             rMgrName += " " + rManager.getLast_name();
                         }
                         batchDTO.setReportingManagerName(rMgrName);
+                        batchDTO.setReportingManagerMobileNo(String.valueOf(rManager.getPrimary_mobile_no()));
                     }
 
                     // 4. Department Info

@@ -10,4 +10,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Integer> {
 
 	List<Subject> findBySubjectCategory_BusinessTypeIdAndEmpSubjectAndIsActive(Integer subjectCategoryId,
 			Integer empSubject, Integer isActive);
+
+	List<Subject> findBySubjectCategory_BusinessTypeIdAndIsActive(Integer subjectCategoryId, Integer isActive);
 }
