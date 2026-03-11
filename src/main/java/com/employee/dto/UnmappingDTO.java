@@ -14,9 +14,9 @@ import lombok.NoArgsConstructor;
  * - unmapManager: If true, removes manager assignment
  * - unmapReportingManager: If true, removes reporting manager assignment
  * 
- * Always use campusIds array for shared campus unmapping:
- * - Single Campus: campusIds with 1 item
- * - Multiple Campuses: campusIds with 2+ items
+ * Campus unmapping:
+ * - campusId + subjectId: Only unmap that specific subject, campus stays active
+ * - campusId only (no subjectId): Unmap the entire campus and all its subjects
  */
 @Data
 @NoArgsConstructor
@@ -24,11 +24,6 @@ import lombok.NoArgsConstructor;
 public class UnmappingDTO {
 
     private Integer cityId;
-
-    // Always use this array - even for single campus
-    // Single campus: [ campusId1 ]
-    // Multiple campuses: [ campusId1, campusId2, ... ]
-    private List<Integer> campusIds;
 
     private String payrollId;
 
@@ -61,4 +56,9 @@ public class UnmappingDTO {
     private Date lastDate;
     private String remark;
     private Integer updatedBy;
+
+    // Fields for both input (what to unmap) and output (what was successfully
+    // unmapped)
+    private List<Integer> unmappedCampusIds;
+    private List<Integer> unmappedSubjectIds;
 }

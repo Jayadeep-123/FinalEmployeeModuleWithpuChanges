@@ -545,11 +545,21 @@ public class DropDownService {
 		return resultdata != null ? resultdata : null;
 	}
 
-	public List<GenericDropdownDTO> getCampusesByCity(int cityId) {
-		// Call the new repository method
+	public List<GenericDropdownDTO> getCampusesByCity(int cityId, String category) {
+		// 1. If category provided, filter by City + Business Type
+		if (category != null && !category.trim().isEmpty()) {
+			java.util.Optional<com.employee.entity.BusinessType> business = businessTypeRepository
+					.findByBusinessTypeNameIgnoreCase(category.trim());
+
+			if (business.isPresent()) {
+				return campusRepository.findCampusDropdownByCityAndBusinessId(cityId,
+						business.get().getBusinessTypeId());
+			}
+		}
+
+		// 2. Fallback: return all active campuses for the city
 		List<Campus> campuses = campusRepository.findCampusesByCityId(cityId);
 
-		// Convert to GenericDropdownDTO
 		return campuses.stream()
 				.map(c -> new GenericDropdownDTO(c.getCampusId(), c.getCampusName()))
 				.collect(Collectors.toList());

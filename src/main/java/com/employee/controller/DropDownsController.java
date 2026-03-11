@@ -507,8 +507,10 @@ public class DropDownsController {
 	}
 
 	@GetMapping("/campuses/{cityId}")
-	public ResponseEntity<List<GenericDropdownDTO>> getCampusesByCity(@PathVariable int cityId) {
-		return ResponseEntity.ok(empDropdownService.getCampusesByCity(cityId));
+	public ResponseEntity<List<GenericDropdownDTO>> getCampusesByCity(
+			@PathVariable int cityId,
+			@RequestParam(required = false) String category) {
+		return ResponseEntity.ok(empDropdownService.getCampusesByCity(cityId, category));
 	}
 
 	@GetMapping("/getallOrientations/{cmpsId}")

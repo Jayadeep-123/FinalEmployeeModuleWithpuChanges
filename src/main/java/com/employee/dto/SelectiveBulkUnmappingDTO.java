@@ -25,9 +25,6 @@ public class SelectiveBulkUnmappingDTO {
 
     private Integer cityId;
 
-    // Always use this array - even for single campus
-    private List<Integer> campusIds;
-
     private List<String> payrollIds;
 
     /**
@@ -53,4 +50,9 @@ public class SelectiveBulkUnmappingDTO {
     private Date lastDate;
     private String remark;
     private Integer updatedBy;
+
+    // Fields for both input (what to unmap) and output (what was successfully
+    // unmapped)
+    private List<Integer> unmappedCampusIds;
+    private List<Integer> unmappedSubjectIds;
 }

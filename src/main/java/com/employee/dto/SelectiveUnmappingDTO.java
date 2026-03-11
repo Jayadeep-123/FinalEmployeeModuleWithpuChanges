@@ -58,7 +58,7 @@ public class SelectiveUnmappingDTO {
     /**
      * List of campus IDs to unmap (optional)
      */
-    private java.util.List<Integer> campusIds;
+    private java.util.List<Integer> unmappedCampusIds;
 
     /**
      * Last working date (optional)

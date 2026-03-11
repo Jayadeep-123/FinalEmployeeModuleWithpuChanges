@@ -36,6 +36,7 @@ import com.employee.entity.CampusEmployee;
 import com.employee.entity.City;
 import com.employee.entity.Department;
 import com.employee.entity.Designation;
+import com.employee.entity.EmpSubject;
 import com.employee.entity.Employee;
 import com.employee.entity.SharedEmployee;
 import com.employee.entity.Subject;
@@ -48,6 +49,7 @@ import com.employee.repository.CityRepository;
 import com.employee.repository.DepartmentRepository;
 import com.employee.repository.DesignationRepository;
 import com.employee.repository.EmployeeRepository;
+import com.employee.repository.EmpSubjectRepository;
 import com.employee.repository.SharedEmployeeRepository;
 import com.employee.repository.SubjectRepository;
 import com.employee.repository.RoleRepository;
@@ -97,6 +99,9 @@ public class ManagerMappingService {
 
     @Autowired
     private CampusContactRepository campusContactRepository;
+
+    @Autowired
+    private EmpSubjectRepository empSubjectRepository;
 
     /**
      * 
@@ -869,8 +874,8 @@ public class ManagerMappingService {
         if (unmappingDTO.getCityId() == null) {
             throw new IllegalArgumentException("cityId is required");
         }
-        if (unmappingDTO.getCampusIds() == null || unmappingDTO.getCampusIds().isEmpty()) {
-            throw new IllegalArgumentException("campusIds array is required and cannot be empty");
+        if (unmappingDTO.getUnmappedCampusIds() == null || unmappingDTO.getUnmappedCampusIds().isEmpty()) {
+            throw new IllegalArgumentException("unmappedCampusIds list is required and cannot be empty");
         }
         if (unmappingDTO.getPayrollId() == null || unmappingDTO.getPayrollId().trim().isEmpty()) {
             throw new IllegalArgumentException("payrollId is required");
@@ -884,18 +889,22 @@ public class ManagerMappingService {
                 .orElseThrow(
                         () -> new ResourceNotFoundException("City not found with ID: " + unmappingDTO.getCityId()));
 
-        // Step 2: Always use campusIds array - required field
-        List<Integer> campusIdsList = unmappingDTO.getCampusIds();
+        List<Integer> campusesToProcess = new java.util.ArrayList<>();
+        if (unmappingDTO.getUnmappedCampusIds() != null && !unmappingDTO.getUnmappedCampusIds().isEmpty()) {
+            campusesToProcess.addAll(unmappingDTO.getUnmappedCampusIds());
+        } else {
+            throw new IllegalArgumentException("unmappedCampusIds list is required and cannot be empty");
+        }
 
         // Step 3: Validate all campuses exist and belong to the City
-        for (Integer campusId : campusIdsList) {
-            Campus campus = campusRepository.findByCampusIdAndIsActive(campusId, 1)
-                    .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + campusId));
+        for (Integer cid : campusesToProcess) {
+            Campus campus = campusRepository.findByCampusIdAndIsActive(cid, 1)
+                    .orElseThrow(() -> new ResourceNotFoundException("Active Campus not found with ID: " + cid));
 
             if (campus.getCity() == null || campus.getCity().getCityId() != unmappingDTO.getCityId()) {
                 throw new ResourceNotFoundException(
                         String.format("Campus with ID %d is not assigned to City with ID %d",
-                                campusId, unmappingDTO.getCityId()));
+                                cid, unmappingDTO.getCityId()));
             }
         }
 
@@ -908,21 +917,77 @@ public class ManagerMappingService {
                     "Employee with payrollId " + unmappingDTO.getPayrollId() + " is not active");
         }
 
-        // Step 7: Process campus unmapping
-        // For each campus ID:
-        // - If it's a shared campus: Deactivate in SharedEmployee table
-        // - If it's the primary campus: Set to null in Employee table
-        if (campusIdsList != null && !campusIdsList.isEmpty()) {
-            for (Integer campusId : campusIdsList) {
+        // Step 7: Process campus/subject unmapping
+        List<Integer> subjectIds = unmappingDTO.getUnmappedSubjectIds();
+        List<Integer> successfullyUnmappedCampuses = new java.util.ArrayList<>();
+        List<Integer> successfullyUnmappedSubjects = new java.util.ArrayList<>();
+
+        for (Integer campusId : campusesToProcess) {
+            if (subjectIds != null && !subjectIds.isEmpty()) {
+                // --- Selective subject unmapping: deactivate the given subjects, campus stays
+                // active ---
+                boolean anySubjectFound = false;
+
+                // Check in EmpSubject (primary campus subjects)
+                if (employee.getCampus_id() != null && employee.getCampus_id().getCampusId() == campusId) {
+                    List<EmpSubject> empSubjects = empSubjectRepository.findActiveSubjectsByEmpId(employee.getEmp_id());
+                    for (EmpSubject es : empSubjects) {
+                        if (es.getSubject_id() != null && subjectIds.contains(es.getSubject_id().getSubject_id())) {
+                            es.setIs_active(0);
+                            es.setUpdated_by(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
+                            es.setUpdated_date(LocalDateTime.now());
+                            empSubjectRepository.save(es);
+                            if (!successfullyUnmappedSubjects.contains(es.getSubject_id().getSubject_id())) {
+                                successfullyUnmappedSubjects.add(es.getSubject_id().getSubject_id());
+                            }
+                            anySubjectFound = true;
+                        }
+                    }
+                }
+
+                // Check in SharedEmployee (shared campus subjects)
+                List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
+                        .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
+                for (SharedEmployee sharedEmployee : sharedEmployees) {
+                    if (sharedEmployee.getIsActive() == 1
+                            && sharedEmployee.getSubjectId() != null
+                            && subjectIds.contains(sharedEmployee.getSubjectId().getSubject_id())) {
+                        sharedEmployee.setIsActive(0);
+                        sharedEmployee
+                                .setUpdatedBy(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
+                        sharedEmployee.setUpdatedDate(LocalDateTime.now());
+                        sharedEmployeeRepository.save(sharedEmployee);
+                        if (!successfullyUnmappedSubjects.contains(sharedEmployee.getSubjectId().getSubject_id())) {
+                            successfullyUnmappedSubjects.add(sharedEmployee.getSubjectId().getSubject_id());
+                        }
+                        anySubjectFound = true;
+                    }
+                }
+
+                if (anySubjectFound) {
+                    if (!successfullyUnmappedCampuses.contains(campusId)) {
+                        successfullyUnmappedCampuses.add(campusId);
+                    }
+                }
+
+            } else {
+                // --- Full campus unmapping: remove campus and all its subjects ---
                 boolean isSharedCampus = false;
 
                 // Check if this campus is a shared campus
                 List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
                         .findAllByEmpIdAndCampusId(employee.getEmp_id(), campusId);
 
-                // Deactivate shared campus records if they exist
                 for (SharedEmployee sharedEmployee : sharedEmployees) {
                     if (sharedEmployee.getIsActive() == 1) {
+                        if (!successfullyUnmappedCampuses.contains(campusId)) {
+                            successfullyUnmappedCampuses.add(campusId);
+                        }
+                        if (sharedEmployee.getSubjectId() != null) {
+                            if (!successfullyUnmappedSubjects.contains(sharedEmployee.getSubjectId().getSubject_id())) {
+                                successfullyUnmappedSubjects.add(sharedEmployee.getSubjectId().getSubject_id());
+                            }
+                        }
                         sharedEmployee.setIsActive(0);
                         sharedEmployee
                                 .setUpdatedBy(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
@@ -936,11 +1001,41 @@ public class ManagerMappingService {
                 if (!isSharedCampus) {
                     if (employee.getCampus_id() != null &&
                             employee.getCampus_id().getCampusId() == campusId) {
-                        // This is the primary campus - set to null
+
+                        if (!successfullyUnmappedCampuses.contains(campusId)) {
+                            successfullyUnmappedCampuses.add(campusId);
+                        }
+
+                        // Remove primary campus
                         employee.setCampus_id(null);
+
+                        // Deactivate all primary campus subjects
+                        List<EmpSubject> empSubjects = empSubjectRepository
+                                .findActiveSubjectsByEmpId(employee.getEmp_id());
+                        for (EmpSubject es : empSubjects) {
+                            if (!successfullyUnmappedSubjects.contains(es.getSubject_id().getSubject_id())) {
+                                successfullyUnmappedSubjects.add(es.getSubject_id().getSubject_id());
+                            }
+                            es.setIs_active(0);
+                            es.setUpdated_by(unmappingDTO.getUpdatedBy() != null ? unmappingDTO.getUpdatedBy() : 1);
+                            es.setUpdated_date(LocalDateTime.now());
+                            empSubjectRepository.save(es);
+                        }
                     }
                 }
             }
+        }
+
+        // If subject IDs were provided but NO subjects were found across ANY campus
+        if (subjectIds != null && !subjectIds.isEmpty() && successfullyUnmappedSubjects.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "Active subjects with IDs " + subjectIds + " not found for this employee in campuses "
+                            + campusesToProcess);
+        }
+
+        unmappingDTO.setUnmappedCampusIds(successfullyUnmappedCampuses);
+        if (!successfullyUnmappedSubjects.isEmpty()) {
+            unmappingDTO.setUnmappedSubjectIds(successfullyUnmappedSubjects);
         }
 
         // Step 8: Unmap manager if flag is true
@@ -1065,7 +1160,7 @@ public class ManagerMappingService {
         }
 
         // Step 2: Validate all campuses exist and belong to the City (if provided)
-        List<Integer> campusIdsToUnmap = dto.getCampusIds();
+        List<Integer> campusIdsToUnmap = dto.getUnmappedCampusIds();
         if (campusIdsToUnmap != null && !campusIdsToUnmap.isEmpty()) {
             for (Integer campusId : campusIdsToUnmap) {
                 Campus campus = campusRepository.findByCampusIdAndIsActive(campusId, 1)
@@ -1102,6 +1197,16 @@ public class ManagerMappingService {
                     for (Integer campusId : campusIdsToUnmap) {
                         if (employeeCampus != null && employeeCampus.getCampusId() == campusId) {
                             employee.setCampus_id(null);
+
+                            // Deactivate primary campus subjects (EmpSubject table)
+                            List<EmpSubject> empSubjects = empSubjectRepository
+                                    .findActiveSubjectsByEmpId(employee.getEmp_id());
+                            for (EmpSubject es : empSubjects) {
+                                es.setIs_active(0);
+                                es.setUpdated_by(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+                                es.setUpdated_date(LocalDateTime.now());
+                                empSubjectRepository.save(es);
+                            }
                         }
 
                         List<SharedEmployee> sharedEmployees = sharedEmployeeRepository
@@ -1753,8 +1858,8 @@ public class ManagerMappingService {
 
         // Step 3: Unmap Shared Campuses if campusIds provided
         // Simply providing campusIds in the request is enough to trigger unmapping
-        if (dto.getCampusIds() != null && !dto.getCampusIds().isEmpty()) {
-            for (Integer campusId : dto.getCampusIds()) {
+        if (dto.getUnmappedCampusIds() != null && !dto.getUnmappedCampusIds().isEmpty()) {
+            for (Integer campusId : dto.getUnmappedCampusIds()) {
                 // Check if this campus is the primary campus
                 if (employee.getCampus_id() != null &&
                         employee.getCampus_id().getCampusId() == campusId) {
@@ -1898,6 +2003,15 @@ public class ManagerMappingService {
         if (employee.getCampus_id() != null) {
             employee.setCampus_id(null);
             employeeChanged = true;
+
+            // Deactivate primary campus subjects (EmpSubject table)
+            List<EmpSubject> empSubjects = empSubjectRepository.findActiveSubjectsByEmpId(employee.getEmp_id());
+            for (EmpSubject es : empSubjects) {
+                es.setIs_active(0);
+                es.setUpdated_by(dto.getUpdatedBy() != null ? dto.getUpdatedBy() : 1);
+                es.setUpdated_date(LocalDateTime.now());
+                empSubjectRepository.save(es);
+            }
         }
 
         // Deactivate ALL shared campuses

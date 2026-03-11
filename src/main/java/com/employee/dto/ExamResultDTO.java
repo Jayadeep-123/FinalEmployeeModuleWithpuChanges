@@ -16,6 +16,10 @@ public class ExamResultDTO {
     private String attempted;
     private String unAttempted;
 
+    // Audit fields
+    private Integer createdBy;
+    private Integer updatedBy;
+
     // Nested List for "levels"
     private List<ExamLevelDTO> levels;
 

@@ -251,7 +251,7 @@ public class EmpExamIntegrationService {
 
             // Hardcoded / Default fields
             resultEntity.setIsActive(1);
-            resultEntity.setCreatedBy(1); // Hardcoded as per instruction
+            resultEntity.setCreatedBy(dto.getCreatedBy()); // Passed from DTO as per instruction
 
             // Set Approval Status (ID 1: "Skill Test Approval")
             skillTestApprovalStatusRepository.findById(1).ifPresent(resultEntity::setSkillTestApprovalStatus);
